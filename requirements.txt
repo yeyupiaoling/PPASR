@@ -1,0 +1,8 @@
+paddlepaddle-gpu==2.0.0
+numpy~=1.19.3
+scipy
+tqdm
+pyaudio
+pytest-runner
+librosa~=0.6.3
+levenshtein~=0.12.0
