@@ -25,6 +25,7 @@ class GreedyDecoder(object):
     def process_string(self, sequence, size, remove_repetitions=False):
         string = ""
         offsets = []
+        sequence = sequence.numpy()
         for i in range(size):
             char = self.int_to_char[sequence[i].item()]
             if char != self.int_to_char[self.blank_index]:
@@ -59,7 +60,7 @@ class GreedyDecoder(object):
             strings: sequences of the model's best guess for the transcription on inputs
             offsets: time step per character predicted
         """
-        max_probs = paddle.max(probs, 2)
+        max_probs = paddle.argmax(probs, 2)
         strings, offsets = self.convert_to_strings(
             max_probs,
             sizes,

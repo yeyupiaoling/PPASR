@@ -47,7 +47,7 @@ def create_manifest(annotation_path, manifest_path_prefix):
             data_list.append(audio_path + "," + text)
 
     f_train = codecs.open(os.path.join(manifest_path_prefix, 'manifest.train'), 'w', 'utf-8')
-    f_dev = codecs.open(os.path.join(manifest_path_prefix, 'manifest.dev'), 'w', 'utf-8')
+    f_dev = codecs.open(os.path.join(manifest_path_prefix, 'manifest.test'), 'w', 'utf-8')
     for i, line in enumerate(data_list):
         if i % 100 == 0:
             f_dev.write(line + '\n')

@@ -1,7 +1,7 @@
 import wave
+
 import librosa
 import numpy as np
-import paddle
 from paddle.io import Dataset
 
 
@@ -20,7 +20,6 @@ def audio_to_stft(wav, normalize=True):
     D = librosa.stft(wav, n_fft=320, hop_length=160, win_length=320, window="hamming")
     spec, phase = librosa.magphase(D)
     spec = np.log1p(spec)
-    spec = paddle.to_tensor(spec, dtype='float32')
     if normalize:
         spec = (spec - spec.mean()) / spec.std()
     return spec
@@ -47,7 +46,7 @@ class PPASRDataset(Dataset):
         stft = audio_to_stft(wav)
         # 将字符标签转换为int数据
         transcript = list(filter(None, [self.vocabulary.get(x) for x in transcript]))
-        transcript = paddle.to_tensor(transcript, dtype='int32')
+        transcript = np.array(transcript, dtype='int32')
         return stft, transcript
 
     def __len__(self):
@@ -65,8 +64,8 @@ def collate_fn(batch):
     batch_temp = sorted(batch, key=lambda sample: len(sample[1]), reverse=True)
     max_label_length = len(batch_temp[0][1])
     # 以最大的长度创建0张量
-    inputs = paddle.zeros((batch_size, freq_size, max_audio_length), dtype='float32')
-    labels = paddle.zeros((batch_size, max_label_length), dtype='int32')
+    inputs = np.zeros((batch_size, freq_size, max_audio_length), dtype='float32')
+    labels = np.zeros((batch_size, max_label_length), dtype='int32')
     input_lens = []
     label_lens = []
     for x in range(batch_size):
@@ -80,6 +79,6 @@ def collate_fn(batch):
         labels[x, :label_length] = target[:]
         input_lens.append(seq_length)
         label_lens.append(len(target))
-    input_lens = paddle.to_tensor(input_lens, dtype='int64')
-    label_lens = paddle.to_tensor(label_lens, dtype='int64')
+    input_lens = np.array(input_lens, dtype='int64')
+    label_lens = np.array(label_lens, dtype='int64')
     return inputs, labels, input_lens, label_lens
