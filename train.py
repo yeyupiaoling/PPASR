@@ -78,7 +78,7 @@ def train(args):
     model = paddle.DataParallel(model)
     # 设置优化方法
     clip = paddle.nn.ClipGradByNorm(clip_norm=0.2)
-    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
+    # scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=args.learning_rate,
                                       grad_clip=clip)
@@ -117,7 +117,7 @@ def train(args):
             test_step += 1
             model.train()
             # 记录学习率
-            writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
+            # writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
             # 保存模型
             model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
             if epoch == args.num_epoch - 1:
@@ -126,7 +126,7 @@ def train(args):
                 os.makedirs(model_path)
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
-        scheduler.step()
+        # scheduler.step()
 
 
 if __name__ == '__main__':
