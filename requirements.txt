@@ -1,8 +1,8 @@
 paddlepaddle-gpu==2.0.0
-numpy~=1.19.3
-scipy
+numpy==1.19.3
+scipy==1.6.1
 tqdm
-pyaudio
 pytest-runner
-librosa~=0.6.3
-levenshtein~=0.12.0
+librosa==0.6.3
+python-Levenshtein==0.12.2
+visualdl==2.1.1

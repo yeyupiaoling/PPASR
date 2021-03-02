@@ -7,8 +7,8 @@ class GreedyDecoder(object):
         self.int_to_char = dict([(i, c) for (i, c) in enumerate(vocabulary)])
         self.blank_index = blank_index
 
+    # 给定一个数字序列列表，返回相应的字符串
     def convert_to_strings(self, sequences, sizes=None, remove_repetitions=False, return_offsets=False):
-        """Given a list of numeric sequences, returns the corresponding strings"""
         strings = []
         offsets = [] if return_offsets else None
         for x in range(len(sequences)):
@@ -22,6 +22,7 @@ class GreedyDecoder(object):
         else:
             return strings
 
+    # 获取字符，并删除重复的字符
     def process_string(self, sequence, size, remove_repetitions=False):
         string = ""
         offsets = []
@@ -29,7 +30,7 @@ class GreedyDecoder(object):
         for i in range(size):
             char = self.int_to_char[sequence[i].item()]
             if char != self.int_to_char[self.blank_index]:
-                # if this char is a repetition and remove_repetitions=true, then skip
+                # 是否删除重复的字符
                 if remove_repetitions and i != 0 and char == self.int_to_char[sequence[i - 1].item()]:
                     pass
                 else:
@@ -39,19 +40,18 @@ class GreedyDecoder(object):
 
     def cer(self, s1, s2):
         """
-        Computes the Character Error Rate, defined as the edit distance.
+       通过计算两个字符串的距离，得出字错率
 
         Arguments:
-            s1 (string): space-separated sentence
-            s2 (string): space-separated sentence
+            s1 (string): 比较的字符串
+            s2 (string): 比较的字符串
         """
         s1, s2, = s1.replace(" ", ""), s2.replace(" ", "")
         return Lev.distance(s1, s2)
 
     def decode(self, probs, sizes=None):
         """
-        Returns the argmax decoding given the probability matrix. Removes
-        repeated elements in the sequence, as well as blanks.
+        解码，传入结果的概率解码得到字符串，删除序列中的重复元素和空格。
 
         Arguments:
             probs: Tensor of character probabilities from the network. Expected shape of batch x seq_length x output_dim
