@@ -13,7 +13,6 @@ from utils.data import PPASRDataset, collate_fn
 from utils.decoder import GreedyDecoder
 from utils.model import PPASR
 
-
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('batch_size',       int,  32,                       '训练的批量大小')
@@ -58,18 +57,21 @@ def train(args):
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=args.batch_size,
                               collate_fn=collate_fn,
-                              num_workers=args.num_workers)
+                              num_workers=args.num_workers,
+                              use_shared_memory=False)
     train_loader_shuffle = DataLoader(dataset=train_dataset,
                                       batch_size=args.batch_size,
                                       collate_fn=collate_fn,
                                       num_workers=args.num_workers,
-                                      shuffle=True)
+                                      shuffle=True,
+                                      use_shared_memory=False)
     # 获取测试数据
     test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab)
     test_loader = DataLoader(dataset=test_dataset,
                              batch_size=args.batch_size,
                              collate_fn=collate_fn,
-                             num_workers=args.num_workers)
+                             num_workers=args.num_workers,
+                             use_shared_memory=False)
     # 获取解码器，用于评估
     greedy_decoder = GreedyDecoder(train_dataset.vocabulary)
     # 获取模型

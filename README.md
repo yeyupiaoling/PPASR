@@ -15,10 +15,9 @@ pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 
 1. 在`data`目录下是公开数据集的下载和制作训练数据列表和字典的，本项目提供了下载公开的中文普通话语音数据集，分别是Aishell，Free ST-Chinese-Mandarin-Corpus，THCHS-30 这三个数据集，总大小超过28G。下载这三个数据只需要执行一下代码即可，当然如果想快速训练，也可以只下载其中一个。
 ```shell script
-cd data/
-python3 aishell.py
-python3 free_st_chinese_mandarin_corpus.py
-python3 thchs_30.py
+python3 data/aishell.py
+python3 data/free_st_chinese_mandarin_corpus.py
+python3 data/thchs_30.py
 ```
 
  - 如果开发者有自己的数据集，可以使用自己的数据集进行训练，当然也可以跟上面下载的数据集一起训练。自定义的语音数据需要符合一下格式：
