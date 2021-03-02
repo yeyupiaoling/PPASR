@@ -78,7 +78,7 @@ def train(args):
     model = paddle.DataParallel(model)
     # 设置优化方法
     clip = paddle.nn.ClipGradByNorm(clip_norm=0.2)
-    # scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
+    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=args.learning_rate,
                                       grad_clip=clip)
@@ -96,9 +96,8 @@ def train(args):
         if epoch == 1:
             train_loader = train_loader_shuffle
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
-            out = model(inputs)
+            out, out_lens = model(inputs, input_lens)
             out = paddle.transpose(out, perm=[2, 0, 1])
-            out_lens = paddle.to_tensor(input_lens / 2 + 1, dtype='int64')
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens)
             loss.backward()
@@ -118,7 +117,7 @@ def train(args):
             test_step += 1
             model.train()
             # 记录学习率
-            # writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
+            writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
             # 保存模型
             model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
             if epoch == args.num_epoch - 1:
@@ -127,7 +126,7 @@ def train(args):
                 os.makedirs(model_path)
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
-        # scheduler.step()
+        scheduler.step()
 
 
 if __name__ == '__main__':

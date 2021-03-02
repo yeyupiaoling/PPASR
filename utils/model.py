@@ -41,11 +41,13 @@ class PPASR(nn.Layer):
         self.conv4 = ConvBlock(1000, 2000, 1, 1, p=0.3)
         self.out = nn.utils.weight_norm(nn.Conv1D(2000, self.output_units, 1, 1))
 
-    def forward(self, x):
+    def forward(self, x, input_lens=None):
         x = self.conv1(x)
         for i in range(7):
             x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
         x = self.out(x)
+        if input_lens is not None:
+            return x, paddle.to_tensor(input_lens / 2 + 1, dtype='int64')
         return x

@@ -1,4 +1,4 @@
-paddlepaddle-gpu==2.0.0
+paddlepaddle-gpu==2.0.0.post101
 numpy==1.19.3
 scipy==1.6.1
 tqdm

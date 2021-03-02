@@ -2,6 +2,15 @@
 
 PPASR基于PaddlePaddle2实现的端到端自动语音识别，本项目最大的特点简单，在保证准确率不低的情况下，项目尽量做得浅显易懂，能够让每个想入门语音识别的开发者都能够轻松上手。PPASR只使用卷积神经网络，无其他特殊网络结构，模型简单易懂。
 
+
+# 安装环境
+
+ - 安装环境很简单，只需要执行以下一条命令即可。
+```shell
+pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
+```
+
+
 # 数据准备
 
 1. 在`data`目录下是公开数据集的下载和制作训练数据列表和字典的，本项目提供了下载公开的中文普通话语音数据集，分别是Aishell，Free ST-Chinese-Mandarin-Corpus，THCHS-30 这三个数据集，总大小超过28G。下载这三个数据只需要执行一下代码即可，当然如果想快速训练，也可以只下载其中一个。
