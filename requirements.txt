@@ -6,3 +6,4 @@ pytest-runner
 librosa==0.6.3
 python-Levenshtein==0.12.2
 visualdl==2.1.1
+SoundFile==0.9.0.post1

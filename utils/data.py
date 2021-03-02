@@ -32,7 +32,7 @@ class PPASRDataset(Dataset):
         # 获取数据列表
         with open(data_list) as f:
             idx = f.readlines()
-        self.idx = [x.strip().split(",", 1) for x in idx]
+        self.idx = [x.strip().split(",") for x in idx]
         # 加载数据字典
         with open(dict_path) as f:
             labels = eval(f.read())
@@ -40,7 +40,7 @@ class PPASRDataset(Dataset):
 
     def __getitem__(self, idx):
         # 分割音频路径和标签
-        wav_path, transcript = self.idx[idx]
+        wav_path, _, transcript = self.idx[idx]
         # 读取音频并转换为短时傅里叶变换
         wav = load_audio(wav_path)
         stft = audio_to_stft(wav)
