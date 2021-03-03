@@ -5,18 +5,13 @@ import numpy as np
 from paddle.io import Dataset
 
 
-# 加载二进制音频文件，转成numpy值
-def load_audio(wav_path, normalize=True):
+# 加载二进制音频文件，转成短时傅里叶变换
+def load_audio_stft(wav_path, normalize=True):
     with wave.open(wav_path) as wav:
         wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16")
         wav = wav.astype("float")
     if normalize:
         wav = (wav - wav.mean()) / wav.std()
-    return wav
-
-
-# 把音频数据执行短时傅里叶变换
-def audio_to_stft(wav, normalize=True):
     D = librosa.stft(wav, n_fft=320, hop_length=160, win_length=320, window="hamming")
     spec, phase = librosa.magphase(D)
     spec = np.log1p(spec)
@@ -25,29 +20,35 @@ def audio_to_stft(wav, normalize=True):
     return spec
 
 
+# 读取音频文件转成梅尔频率倒谱系数(MFCCs)
+def load_audio_mfcc(wav_path):
+    wav, sr = librosa.load(wav_path, sr=16000)
+    mfccs = librosa.feature.mfcc(y=wav, sr=sr, n_mfcc=128)
+    return mfccs
+
+
 # 音频数据加载器
 class PPASRDataset(Dataset):
     def __init__(self, data_list, dict_path):
         super(PPASRDataset, self).__init__()
         # 获取数据列表
-        with open(data_list) as f:
+        with open(data_list, 'r', encoding='utf-8') as f:
             idx = f.readlines()
         self.idx = [x.strip().split(",") for x in idx]
         # 加载数据字典
-        with open(dict_path) as f:
+        with open(dict_path, 'r', encoding='utf-8') as f:
             labels = eval(f.read())
         self.vocabulary = dict([(labels[i], i) for i in range(len(labels))])
 
     def __getitem__(self, idx):
         # 分割音频路径和标签
         wav_path, _, transcript = self.idx[idx]
-        # 读取音频并转换为短时傅里叶变换
-        wav = load_audio(wav_path)
-        stft = audio_to_stft(wav)
+        # 读取音频并转换为梅尔频率倒谱系数(MFCCs)
+        mfccs = load_audio_mfcc(wav_path)
         # 将字符标签转换为int数据
         transcript = list(filter(None, [self.vocabulary.get(x) for x in transcript]))
         transcript = np.array(transcript, dtype='int32')
-        return stft, transcript
+        return mfccs, transcript
 
     def __len__(self):
         return len(self.idx)

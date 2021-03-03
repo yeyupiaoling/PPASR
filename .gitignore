@@ -3,6 +3,7 @@ __pycache__/
 models/
 dataset/*
 !dataset/test.wav
+log/
 data/__pycache__/
 utils/__pycache__/
 lm/

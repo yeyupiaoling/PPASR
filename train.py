@@ -1,6 +1,7 @@
 import argparse
 import functools
 import os
+from datetime import datetime
 
 import numpy as np
 import paddle
@@ -15,7 +16,7 @@ from utils.model import PPASR
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,  32,                       '训练的批量大小')
+add_arg('batch_size',       int,  32,                      '训练的批量大小')
 add_arg('num_workers',      int,  8,                        '读取数据的线程数量')
 add_arg('num_epoch',        int,  200,                      '训练的轮数')
 add_arg('learning_rate',    int,  1e-3,                     '初始学习率的大小')
@@ -80,7 +81,7 @@ def train(args):
     model = paddle.DataParallel(model)
     # 设置优化方法
     clip = paddle.nn.ClipGradByNorm(clip_norm=0.2)
-    # scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
+    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=args.learning_rate,
                                       grad_clip=clip)
@@ -107,7 +108,7 @@ def train(args):
             optimizer.clear_grad()
             # 多卡训练只使用一个进程打印
             if batch_id % 100 == 0 and dist.get_rank() == 0:
-                print('epoch %d, batch %d, loss: %f' % (epoch, batch_id, loss))
+                print('[%s] Train epoch %d, batch %d, loss: %f' % (datetime.now(), epoch, batch_id, loss))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
         # 多卡训练只使用一个进程执行评估和保存模型
@@ -115,11 +116,12 @@ def train(args):
             # 执行评估
             model.eval()
             cer = evaluate(model, test_loader, greedy_decoder)
+            print('[%s] Test epoch %d, cer: %f' % (datetime.now(), epoch, cer))
             writer.add_scalar('Test cer', cer, test_step)
             test_step += 1
             model.train()
             # 记录学习率
-            # writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
+            writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
             # 保存模型
             model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
             if epoch == args.num_epoch - 1:
@@ -128,7 +130,7 @@ def train(args):
                 os.makedirs(model_path)
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
-        # scheduler.step()
+        scheduler.step()
 
 
 if __name__ == '__main__':

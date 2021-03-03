@@ -1,5 +1,4 @@
 import argparse
-import codecs
 import os
 import functools
 from utility import download, unpack
@@ -26,10 +25,10 @@ def create_annotation_text(data_dir, annotation_path):
     print('Create Aishell annotation text ...')
     if not os.path.exists(annotation_path):
         os.makedirs(annotation_path)
-    f_a = codecs.open(os.path.join(annotation_path, 'aishell.txt'), 'w', encoding='utf-8')
+    f_a = open(os.path.join(annotation_path, 'aishell.txt'), 'w', encoding='utf-8')
     transcript_path = os.path.join(data_dir, 'transcript', 'aishell_transcript_v0.8.txt')
     transcript_dict = {}
-    for line in codecs.open(transcript_path, 'r', 'utf-8'):
+    for line in open(transcript_path, 'r', encoding='utf-8'):
         line = line.strip()
         if line == '': continue
         audio_id, text = line.split(' ', 1)
@@ -47,7 +46,7 @@ def create_annotation_text(data_dir, annotation_path):
                 if audio_id not in transcript_dict:
                     continue
                 text = transcript_dict[audio_id]
-                f_a.write(audio_path[3:] + '\t' + text + '\n')
+                f_a.write(audio_path + '\t' + text + '\n')
     f_a.close()
 
 

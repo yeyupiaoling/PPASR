@@ -6,7 +6,7 @@ import time
 import paddle
 
 from data.utility import add_arguments, print_arguments
-from utils.data import load_audio, audio_to_stft
+from utils.data import load_audio_mfcc
 from utils.decoder import GreedyDecoder
 from utils.model import PPASR
 
@@ -35,13 +35,12 @@ model.eval()
 
 def infer():
     # 加载音频文件并执行短时傅里叶变换
-    wav = load_audio(args.audio_path)
-    stft = audio_to_stft(wav)
+    mfccs = load_audio_mfcc(args.audio_path)
 
-    stft = paddle.to_tensor(stft, dtype='float32')
-    stft = paddle.unsqueeze(stft, axis=0)
+    mfccs = paddle.to_tensor(mfccs, dtype='float32')
+    mfccs = paddle.unsqueeze(mfccs, axis=0)
     # 执行识别
-    out = model(stft)
+    out = model(mfccs)
     out = paddle.nn.functional.softmax(out, 1)
     out = paddle.transpose(out, perm=[0, 2, 1])
     # 执行解码

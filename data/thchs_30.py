@@ -1,5 +1,4 @@
 import argparse
-import codecs
 import os
 import functools
 from utility import download, unpack
@@ -26,15 +25,15 @@ def create_annotation_text(data_dir, annotation_path):
     if not os.path.exists(annotation_path):
         os.makedirs(annotation_path)
     print('Create THCHS-30 annotation text ...')
-    f_a = codecs.open(os.path.join(annotation_path, 'thchs_30.txt'), 'w', 'utf-8')
+    f_a = open(os.path.join(annotation_path, 'thchs_30.txt'), 'w', encoding='utf-8')
     data_path = 'data'
     for file in os.listdir(os.path.join(data_dir, data_path)):
         if '.trn' in file:
             file = os.path.join(data_dir, data_path, file)
-            with codecs.open(file, 'r', 'utf-8') as f:
+            with open(file, 'r', encoding='utf-8') as f:
                 line = f.readline()
                 line = ''.join(line.split())
-            f_a.write(file[3:-4] + '\t' + line + '\n')
+            f_a.write(file[:-4] + '\t' + line + '\n')
     f_a.close()
 
 
