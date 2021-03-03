@@ -22,7 +22,7 @@ add_arg('min_duration',         int,  0,                       '过滤最短的�
 add_arg('max_duration',         int,  20,                      '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('count_threshold',      int,  0,                       '字符计数的截断阈值，0为不做限制')
 add_arg('vocab_path',           str,  'dataset/zh_vocab.json',  '生成的数据字典文件')
-add_arg('manifest_path',        str,  'dataset/manifest.train', 'manifest path')
+add_arg('manifest_path',        str,  'dataset/manifest.train', '数据列表路径')
 args = parser.parse_args()
 
 

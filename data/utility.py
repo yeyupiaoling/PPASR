@@ -16,7 +16,7 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
     argparser.add_argument("--" + argname,
                            default=default,
                            type=type,
-                           help=help + ' Default: %(default)s.',
+                           help=help + ' 默认: %(default)s.',
                            **kwargs)
 
 

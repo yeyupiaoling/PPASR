@@ -30,11 +30,64 @@ dataset/audio/wav/0175/H0175A0470.wav 据克而瑞研究中心监测
 dataset/audio/wav/0175/H0175A0180.wav 把温度加大到十八
 ```
 
- - 执行下面的命令，创建数据列表，以及建立词表，也就是数据字典，把所有出现的字符都存放子在`zh_vocab.json`文件中，生成的文件都存放在`dataset/`目录下。
+ - 执行下面的命令，创建数据列表，以及建立词表，也就是数据字典，把所有出现的字符都存放子在`zh_vocab.json`文件中，生成的文件都存放在`dataset/`目录下。最最最重要的是还计算了数据集的均值和标准值，因为每个数据的分布不一样，不同图像，最大最小值都是确定的，计算得到的均值和标准值需要更新在训练参数`data_mean`和`data_std`中，之后的评估和预测同样需要用到。
 ```shell script
 python3 create_manifest.py
 ```
 
+输出结果如下：
+```shell
+-----------  Configuration Arguments -----------
+annotation_path: dataset/annotation/
+count_threshold: 0
+is_change_frame_rate: False
+manifest_path: dataset/manifest.train
+manifest_prefix: dataset/
+max_duration: 20
+min_duration: 0
+vocab_path: dataset/zh_vocab.json
+------------------------------------------------
+开始生成数据列表...
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 141600/141600 [00:17<00:00, 8321.22it/s]
+完成生成数据列表，数据集总长度为178.97小时！
+开始生成数据字典...
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 140184/140184 [00:01<00:00, 89476.12it/s]
+数据字典生成完成！
+开始抽取1%的数据计算均值和标准值...
+100%|█████████████████████████████████████████████████████████████████████████████████████████████████████████████| 140184/140184 [01:33<00:00, 1507.15it/s]
+【特别重要】：均值：1.424120, 标准值：0.947314, 请根据这两个值修改训练参数！
+```
+
+可以用使用`python create_manifest.py --help`命令查看各个参数的说明和默认值。
+```shell
+usage: create_manifest.py [-h] [----annotation_path ANNOTATION_PATH]
+                          [--manifest_prefix MANIFEST_PREFIX]
+                          [--is_change_frame_rate IS_CHANGE_FRAME_RATE]
+                          [--min_duration MIN_DURATION]
+                          [--max_duration MAX_DURATION]
+                          [--count_threshold COUNT_THRESHOLD]
+                          [--vocab_path VOCAB_PATH]
+                          [--manifest_path MANIFEST_PATH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  ----annotation_path ANNOTATION_PATH
+                        标注文件的路径 默认: dataset/annotation/.
+  --manifest_prefix MANIFEST_PREFIX
+                        训练数据清单，包括音频路径和标注信息 默认: dataset/.
+  --is_change_frame_rate IS_CHANGE_FRAME_RATE
+                        是否统一改变音频为16000Hz，这会消耗大量的时间 默认: False.
+  --min_duration MIN_DURATION
+                        过滤最短的音频长度 默认: 0.
+  --max_duration MAX_DURATION
+                        过滤最长的音频长度，当为-1的时候不限制长度 默认: 20.
+  --count_threshold COUNT_THRESHOLD
+                        字符计数的截断阈值，0为不做限制 默认: 0.
+  --vocab_path VOCAB_PATH
+                        生成的数据字典文件 默认: dataset/zh_vocab.json.
+  --manifest_path MANIFEST_PATH
+                        数据列表路径 默认: dataset/manifest.train.
+```
 
 # 训练模型
 
@@ -46,32 +99,66 @@ CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 训练输出结果如下：
 ```shell
 -----------  Configuration Arguments -----------
-batch_size: 32
+batch_size: 50
+data_mean: 1.424366
+data_std: 0.944142
 dataset_vocab: dataset/zh_vocab.json
 learning_rate: 0.001
 num_epoch: 200
-num_workers: 8
+num_workers: 16
 pretrained_model: None
 save_model: models/
 test_manifest: dataset/manifest.test
 train_manifest: dataset/manifest.train
 ------------------------------------------------
-I0302 09:24:11.613675 15693 nccl_context.cc:189] init nccl context nranks: 2 local rank: 1 gpu id: 1 ring id: 0
-I0302 09:24:11.613677 15692 nccl_context.cc:189] init nccl context nranks: 2 local rank: 0 gpu id: 0 ring id: 0
-W0302 09:24:11.791157 15692 device_context.cc:362] Please NOTE: device: 0, GPU Compute Capability: 7.5, Driver API Version: 11.0, Runtime API Version: 10.2
-W0302 09:24:11.791216 15693 device_context.cc:362] Please NOTE: device: 1, GPU Compute Capability: 7.5, Driver API Version: 11.0, Runtime API Version: 10.2
-W0302 09:24:11.793020 15693 device_context.cc:372] device: 1, cuDNN Version: 7.6.
-W0302 09:24:11.793021 15692 device_context.cc:372] device: 0, cuDNN Version: 7.6.
-epoch 0, batch 0, loss: 155.009735
-epoch 0, batch 100, loss: 9.400544
-epoch 0, batch 200, loss: 8.898541
-epoch 0, batch 300, loss: 8.006586
-epoch 0, batch 400, loss: 8.478329
-epoch 0, batch 500, loss: 7.810921
-epoch 0, batch 600, loss: 7.690178
-epoch 0, batch 700, loss: 7.705078
-epoch 0, batch 800, loss: 7.515574
-epoch 0, batch 900, loss: 7.738822
+I0303 16:55:39.645823 16572 nccl_context.cc:189] init nccl context nranks: 2 local rank: 0 gpu id: 0 ring id: 0
+I0303 16:55:39.645821 16573 nccl_context.cc:189] init nccl context nranks: 2 local rank: 1 gpu id: 1 ring id: 0
+W0303 16:55:39.905000 16572 device_context.cc:362] Please NOTE: device: 0, GPU Compute Capability: 7.5, Driver API Version: 11.0, Runtime API Version: 10.2
+W0303 16:55:39.905090 16573 device_context.cc:362] Please NOTE: device: 1, GPU Compute Capability: 7.5, Driver API Version: 11.0, Runtime API Version: 10.2
+W0303 16:55:39.907197 16572 device_context.cc:372] device: 0, cuDNN Version: 7.6.
+W0303 16:55:39.907199 16573 device_context.cc:372] device: 1, cuDNN Version: 7.6.
+Epoch 0: ExponentialDecay set learning rate to 0.001.
+Epoch 0: ExponentialDecay set learning rate to 0.001.
+[2021-03-03 16:56:01.754491] Train epoch 0, batch 0, loss: 269.343811
+[2021-03-03 16:58:08.436214] Train epoch 0, batch 100, loss: 7.195621
+[2021-03-03 16:59:54.781490] Train epoch 0, batch 200, loss: 6.914866
+[2021-03-03 17:01:34.841955] Train epoch 0, batch 300, loss: 6.824973
+[2021-03-03 17:03:09.492905] Train epoch 0, batch 400, loss: 6.905243
+```
+
+可以用使用`python train.py --help`命令查看各个参数的说明和默认值。
+```shell
+usage: train.py [-h] [--batch_size BATCH_SIZE] [--num_workers NUM_WORKERS]
+                [--num_epoch NUM_EPOCH] [--learning_rate LEARNING_RATE]
+                [--data_mean DATA_MEAN] [--data_std DATA_STD]
+                [--train_manifest TRAIN_MANIFEST]
+                [--test_manifest TEST_MANIFEST]
+                [--dataset_vocab DATASET_VOCAB] [--save_model SAVE_MODEL]
+                [--pretrained_model PRETRAINED_MODEL]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --batch_size BATCH_SIZE
+                        训练的批量大小 默认: 32.
+  --num_workers NUM_WORKERS
+                        读取数据的线程数量 默认: 8.
+  --num_epoch NUM_EPOCH
+                        训练的轮数 默认: 200.
+  --learning_rate LEARNING_RATE
+                        初始学习率的大小 默认: 0.001.
+  --data_mean DATA_MEAN
+                        数据集的均值 默认: 1.424366.
+  --data_std DATA_STD   数据集的标准值 默认: 0.944142.
+  --train_manifest TRAIN_MANIFEST
+                        训练数据的数据列表路径 默认: dataset/manifest.train.
+  --test_manifest TEST_MANIFEST
+                        测试数据的数据列表路径 默认: dataset/manifest.test.
+  --dataset_vocab DATASET_VOCAB
+                        数据字典的路径 默认: dataset/zh_vocab.json.
+  --save_model SAVE_MODEL
+                        模型保存的路径 默认: models/.
+  --pretrained_model PRETRAINED_MODEL
+                        预训练模型的路径，当为None则不使用预训练模型 默认: None.
 ```
 
  - 在训练过程中，程序会使用VisualDL记录训练结果，可以通过以下的命令启动VisualDL。
@@ -92,7 +179,53 @@ visualdl --logdir=log --host 0.0.0.0
 python3 eval.py --model_path=models/step_final/
 ```
 
+可以用使用`python eval.py --help`命令查看各个参数的说明和默认值。
+```shell
+usage: eval.py [-h] [--batch_size BATCH_SIZE] [--num_workers NUM_WORKERS]
+               [--data_mean DATA_MEAN] [--data_std DATA_STD]
+               [--test_manifest TEST_MANIFEST] [--dataset_vocab DATASET_VOCAB]
+               [--model_path MODEL_PATH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --batch_size BATCH_SIZE
+                        训练的批量大小 默认: 32.
+  --num_workers NUM_WORKERS
+                        读取数据的线程数量 默认: 8.
+  --data_mean DATA_MEAN
+                        数据集的均值 默认: 1.424366.
+  --data_std DATA_STD   数据集的标准值 默认: 0.944142.
+  --test_manifest TEST_MANIFEST
+                        测试数据的数据列表路径 默认: dataset/manifest.test.
+  --dataset_vocab DATASET_VOCAB
+                        数据字典的路径 默认: dataset/zh_vocab.json.
+  --model_path MODEL_PATH
+                        模型的路径 默认: models/step_final/.
+```
+
  - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。
 ```shell script
-python3 infer_path.py --wav_path=./dataset/test.wav
+python3 infer.py --wav_path=./dataset/test.wav
+```
+<audio controls>
+  <source src="/dataset/test.wav" type="audio/wav">
+</audio>
+
+可以用使用`python infer.py --help`命令查看各个参数的说明和默认值。
+```shell
+usage: infer.py [-h] [--audio_path AUDIO_PATH] [--data_mean DATA_MEAN]
+                [--data_std DATA_STD] [--dataset_vocab DATASET_VOCAB]
+                [--model_path MODEL_PATH]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --audio_path AUDIO_PATH
+                        用于识别的音频路径 默认: dataset/test.wav.
+  --data_mean DATA_MEAN
+                        数据集的均值 默认: 1.424366.
+  --data_std DATA_STD   数据集的标准值 默认: 0.944142.
+  --dataset_vocab DATASET_VOCAB
+                        数据字典的路径 默认: dataset/zh_vocab.json.
+  --model_path MODEL_PATH
+                        模型的路径 默认: models/step_final/.
 ```
