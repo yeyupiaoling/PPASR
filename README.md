@@ -1,11 +1,11 @@
 # PPASR
 
-PPASR基于PaddlePaddle2实现的端到端自动语音识别，本项目最大的特点简单，在保证准确率不低的情况下，项目尽量做得浅显易懂，能够让每个想入门语音识别的开发者都能够轻松上手。PPASR只使用卷积神经网络，无其他特殊网络结构，模型简单易懂。
+PPASR基于PaddlePaddle2实现的端到端自动语音识别，本项目最大的特点简单，在保证准确率不低的情况下，项目尽量做得浅显易懂，能够让每个想入门语音识别的开发者都能够轻松上手。PPASR只使用卷积神经网络，无其他特殊网络结构，模型简单易懂。在数据预处理方便，本项目主要是将音频执行梅尔频率倒谱系数(MFCCs)处理，然后在使用出来的数据进行训练，在读取音频时，使用`wave.open()`库读取文件，再使用`librosa.feature.mfcc()`执行数据处理，这样可以加快数据的读取，因为使用`librosa.load()`读取音频文件比较慢。本项目使用的全部音频的采样率都是16000Hz，如果其他采样率的音频都需要转为16000Hz，`create_manifest.py`程序也提供了把音频转为16000Hz。
 
 
 # 安装环境
 
- - 安装环境很简单，只需要执行以下一条命令即可。
+ - 本项目可以在Windows或者Ubuntu都可以运行，安装环境很简单，只需要执行以下一条命令即可。
 ```shell
 pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
@@ -30,17 +30,19 @@ dataset/audio/wav/0175/H0175A0470.wav 据克而瑞研究中心监测
 dataset/audio/wav/0175/H0175A0180.wav 把温度加大到十八
 ```
 
- - 执行下面的命令，创建数据列表，以及建立词表，也就是数据字典，把所有出现的字符都存放子在`zh_vocab.json`文件中，生成的文件都存放在`dataset/`目录下。最最最重要的是还计算了数据集的均值和标准值，因为每个数据的分布不一样，不同图像，最大最小值都是确定的，计算得到的均值和标准值需要更新在训练参数`data_mean`和`data_std`中，之后的评估和预测同样需要用到。
+ - 执行下面的命令，创建数据列表，以及建立词表，也就是数据字典，把所有出现的字符都存放子在`zh_vocab.json`文件中，生成的文件都存放在`dataset/`目录下。最最最重要的是还计算了数据集的均值和标准值，计算得到的均值和标准值需要更新在训练参数`data_mean`和`data_std`中，之后的评估和预测同样需要用到。有几个参数需要注意，参数`is_change_frame_rate`是指定在生成数据集的时候，是否要把音频的采样率转换为16000Hz，最好是使用默认值。参数`min_duration`和`max_duration`限制音频的长度，特别是有些音频太长，会导致显存不足，训练直接崩掉。
 ```shell script
 python3 create_manifest.py
 ```
+
+我们来说说这些文件和数据的具体作用，创建数据列表是为了在训练是读取数据，读取数据程序通过读取图像列表的每一行都能得到音频的文件路径、音频长度以及这句话的内容。通过路径读取音频文件并进行预处理，音频长度用于统计数据总长度，文字内容就是输入数据的标签，在训练是还需要数据字典把这些文字内容转置整型的数字，比如`是`这个字在数据字典中排在第5，那么它的标签就是4，标签从0开始。至于最后生成的均值和标准值，因为我们的数据在训练之前还需要归一化，因为每个数据的分布不一样，不同图像，最大最小值都是确定的，所以我们要统计一批数据来计算均值和标准值，之后的数据的归一化都使用这个均值和标准值。
 
 输出结果如下：
 ```shell
 -----------  Configuration Arguments -----------
 annotation_path: dataset/annotation/
 count_threshold: 0
-is_change_frame_rate: False
+is_change_frame_rate: True
 manifest_path: dataset/manifest.train
 manifest_prefix: dataset/
 max_duration: 20
@@ -76,7 +78,7 @@ optional arguments:
   --manifest_prefix MANIFEST_PREFIX
                         训练数据清单，包括音频路径和标注信息 默认: dataset/.
   --is_change_frame_rate IS_CHANGE_FRAME_RATE
-                        是否统一改变音频为16000Hz，这会消耗大量的时间 默认: False.
+                        是否统一改变音频为16000Hz，这会消耗大量的时间 默认: True.
   --min_duration MIN_DURATION
                         过滤最短的音频长度 默认: 0.
   --max_duration MAX_DURATION
@@ -91,7 +93,7 @@ optional arguments:
 
 # 训练模型
 
- - 执行训练脚本，开始训练语音识别模型， 每训练一轮保存一次模型，模型保存在`models/`目录下，测试使用的是最优解码路径解码方法。
+ - 执行训练脚本，开始训练语音识别模型， 每训练一轮保存一次模型，模型保存在`models/`目录下，测试使用的是最优解码路径解码方法。本项目支持多卡训练，在没有指定`CUDA_VISIBLE_DEVICES`时，会使用全部的GPU进行执行训练，也可以指定某几个GPU训练，如`CUDA_VISIBLE_DEVICES=0,1`指定使用第1张和第2张显卡训练。除了参数`data_mean`和`data_std`需要根据计算的结果修改，其他的参数一般不需要改动，参数`num_workers`可以更加CPU的核数修改，这个参数是指定使用多少个线程读取数据。参数`pretrained_model`是指定预训练模型所在的文件夹，如果使用训练模型，必须使用跟预训练配套的数据字典，原因是，其一，数据字典的大小指定了模型的输出大小，如果使用了其他更大的数据字典，预训练模型就无法完全加载。其二，数值字典定义了文字的ID，不同的数据字典文字的ID可能不一样，这样预训练模型的作用就不是那么大了。
 ```shell script
 CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 ```
@@ -99,13 +101,13 @@ CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 训练输出结果如下：
 ```shell
 -----------  Configuration Arguments -----------
-batch_size: 50
+batch_size: 32
 data_mean: 1.424366
 data_std: 0.944142
 dataset_vocab: dataset/zh_vocab.json
 learning_rate: 0.001
 num_epoch: 200
-num_workers: 16
+num_workers: 8
 pretrained_model: None
 save_model: models/
 test_manifest: dataset/manifest.test
@@ -174,7 +176,7 @@ visualdl --logdir=log --host 0.0.0.0
 
 # 评估和预测
 
- - 我们可以使用这个脚本对模型进行评估，通过字符错误率来评价模型的性能。目前只支持最优解码路径解码方法。
+ - 我们可以使用这个脚本对模型进行评估，通过字符错误率来评价模型的性能。目前只支持最优解码路径解码方法。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径。
 ```shell script
 python3 eval.py --model_path=models/step_final/
 ```
@@ -203,7 +205,7 @@ optional arguments:
                         模型的路径 默认: models/step_final/.
 ```
 
- - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。
+ - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径，注意这个音频的采样率必须是16000Hz，如果不是，需要要转换在执行预测。
 ```shell script
 python3 infer.py --wav_path=./dataset/test.wav
 ```
