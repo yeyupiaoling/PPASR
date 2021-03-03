@@ -16,10 +16,12 @@ from utils.model import PPASR
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,  32,                      '训练的批量大小')
-add_arg('num_workers',      int,  8,                        '读取数据的线程数量')
+add_arg('batch_size',       int,  64,                       '训练的批量大小')
+add_arg('num_workers',      int,  16,                       '读取数据的线程数量')
 add_arg('num_epoch',        int,  200,                      '训练的轮数')
 add_arg('learning_rate',    int,  1e-3,                     '初始学习率的大小')
+add_arg('data_mean',        int,  1.424366,                 '数据集的均值')
+add_arg('data_std',         int,  0.944142,                 '数据集的标准值')
 add_arg('train_manifest',   str,  'dataset/manifest.train', '训练数据的数据列表路径')
 add_arg('test_manifest',    str,  'dataset/manifest.test',  '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,  'dataset/zh_vocab.json',  '数据字典的路径')
@@ -54,7 +56,7 @@ def train(args):
     # 设置支持多卡训练
     dist.init_parallel_env()
     # 获取训练数据
-    train_dataset = PPASRDataset(args.train_manifest, args.dataset_vocab)
+    train_dataset = PPASRDataset(args.train_manifest, args.dataset_vocab, mean=args.data_mean, std=args.data_std)
     train_loader = DataLoader(dataset=train_dataset,
                               batch_size=args.batch_size,
                               collate_fn=collate_fn,

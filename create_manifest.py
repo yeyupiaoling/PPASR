@@ -1,7 +1,11 @@
 import argparse
 import functools
 import os
+import random
 import wave
+
+import librosa
+import numpy as np
 from tqdm import tqdm
 from collections import Counter
 
@@ -25,6 +29,7 @@ args = parser.parse_args()
 # 创建数据列表
 def create_manifest(annotation_path, manifest_path_prefix):
     data_list = []
+    duration_sum = 0
     for annotation_text in os.listdir(annotation_path):
         annotation_text = os.path.join(annotation_path, annotation_text)
         with open(annotation_text, 'r', encoding='utf-8') as f:
@@ -49,8 +54,10 @@ def create_manifest(annotation_path, manifest_path_prefix):
                 continue
             if args.max_duration != -1 and duration > args.max_duration:
                 continue
-            # 加入数据列表中
+            duration_sum += duration
+            # 过滤非法的字符
             text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', ''))
+            # 加入数据列表中
             data_list.append(audio_path + ',' + str(duration) + ',' + text)
 
     # 按照音频长度降序
@@ -65,8 +72,10 @@ def create_manifest(annotation_path, manifest_path_prefix):
             f_train.write(line + '\n')
     f_train.close()
     f_test.close()
+    print("完成生成数据列表，数据集总长度为{:.2f}小时！".format(duration_sum / 3600.))
 
 
+# 过滤非法的字符
 def is_ustr(in_str):
     out_str = ''
     for i in range(len(in_str)):
@@ -77,6 +86,7 @@ def is_ustr(in_str):
     return ''.join(out_str.split())
 
 
+# 判断是否为中文文字字符
 def is_uchar(uchar):
     if u'\u4e00' <= uchar <= u'\u9fa5':
         return True
@@ -89,18 +99,40 @@ def is_uchar(uchar):
     return False
 
 
+# 计算数据集的均值和标准值
+def compute_mean_std(manifest_path):
+    data = []
+    with open(manifest_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+        random.shuffle(lines)
+        for i, line in enumerate(tqdm(lines)):
+            if i % 10 == 0:
+                wav_path = line.split(',')[0]
+                with wave.open(wav_path) as wav:
+                    wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16").astype("float32")
+                mfccs = librosa.feature.mfcc(y=wav, sr=16000, n_mfcc=128, n_fft=512, hop_length=128).astype("float32")
+                spec, phase = librosa.magphase(mfccs)
+                spec = np.log1p(spec)
+                data.append(spec)
+    data = np.array(spec, dtype='float32')
+    return data.mean(), data.std()
+
+
+# 获取全部字符
 def count_manifest(counter, manifest_path):
     with open(manifest_path, 'r', encoding='utf-8') as f:
-        for line in f.readlines():
+        for line in tqdm(f.readlines()):
             for char in line.split(',')[2].replace('\n', ''):
                 counter.update(char)
 
 
 def main():
     print_arguments(args)
+    print('开始生成数据列表...')
     create_manifest(annotation_path=args.annotation_path,
                     manifest_path_prefix=args.manifest_prefix)
 
+    print('开始生成数据字典...')
     counter = Counter()
     count_manifest(counter, args.manifest_path)
 
@@ -111,7 +143,11 @@ def main():
             if count < args.count_threshold: break
             labels.append(char)
         fout.write(str(labels).replace("'", '"'))
-    print('完成！')
+    print('数据字典生成完成！')
+
+    print('开始抽取10%的数据计算均值和标准值...')
+    mean, std = compute_mean_std(args.manifest_path)
+    print('【特别重要】：均值：%f, 标准值：%f, 请根据这两个值修改训练参数！' % (mean, std))
 
 
 if __name__ == '__main__':

@@ -17,6 +17,8 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('batch_size',     int,  32,                      '训练的批量大小')
 add_arg('num_workers',    int,  8,                       '读取数据的线程数量')
+add_arg('data_mean',      int,  1.424366,                '数据集的均值')
+add_arg('data_std',       int,  0.944142,                '数据集的标准值')
 add_arg('test_manifest',  str,  'dataset/manifest.test', '测试数据的数据列表路径')
 add_arg('dataset_vocab',  str,  'dataset/zh_vocab.json', '数据字典的路径')
 add_arg('model_path',     str,  'models/step_final/',    '模型的路径')
@@ -25,7 +27,7 @@ args = parser.parse_args()
 
 print_arguments(args)
 # 获取测试数据
-test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab)
+test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean=args.data_mean, std=args.data_std)
 test_loader = DataLoader(dataset=test_dataset,
                          batch_size=args.batch_size,
                          collate_fn=collate_fn,

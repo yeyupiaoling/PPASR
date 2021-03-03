@@ -6,31 +6,35 @@ from paddle.io import Dataset
 
 
 # 加载二进制音频文件，转成短时傅里叶变换
-def load_audio_stft(wav_path, normalize=True):
+def load_audio_stft(wav_path, mean=None, std=None):
     with wave.open(wav_path) as wav:
-        wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16")
-        wav = wav.astype("float")
-    if normalize:
-        wav = (wav - wav.mean()) / wav.std()
-    D = librosa.stft(wav, n_fft=320, hop_length=160, win_length=320, window="hamming")
-    spec, phase = librosa.magphase(D)
+        wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16").astype("float32")
+    stft = librosa.stft(wav, n_fft=320, hop_length=160, win_length=320, window="hamming")
+    spec, phase = librosa.magphase(stft)
     spec = np.log1p(spec)
-    if normalize:
-        spec = (spec - spec.mean()) / spec.std()
+    if mean is not None and std is not None:
+        spec = (spec - mean) / std
     return spec
 
 
 # 读取音频文件转成梅尔频率倒谱系数(MFCCs)
-def load_audio_mfcc(wav_path):
-    wav, sr = librosa.load(wav_path, sr=16000)
-    mfccs = librosa.feature.mfcc(y=wav, sr=sr, n_mfcc=128)
-    return mfccs
+def load_audio_mfcc(wav_path, mean=None, std=None):
+    with wave.open(wav_path) as wav:
+        wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16").astype("float32")
+    mfccs = librosa.feature.mfcc(y=wav, sr=16000, n_mfcc=128, n_fft=512, hop_length=128).astype("float32")
+    spec, phase = librosa.magphase(mfccs)
+    spec = np.log1p(spec)
+    if mean is not None and std is not None:
+        spec = (spec - mean) / std
+    return spec
 
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, dict_path):
+    def __init__(self, data_list, dict_path, mean=None, std=None):
         super(PPASRDataset, self).__init__()
+        self.mean = mean
+        self.std = std
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
             idx = f.readlines()
@@ -44,7 +48,7 @@ class PPASRDataset(Dataset):
         # 分割音频路径和标签
         wav_path, _, transcript = self.idx[idx]
         # 读取音频并转换为梅尔频率倒谱系数(MFCCs)
-        mfccs = load_audio_mfcc(wav_path)
+        mfccs = load_audio_mfcc(wav_path, self.mean, self.std)
         # 将字符标签转换为int数据
         transcript = list(filter(None, [self.vocabulary.get(x) for x in transcript]))
         transcript = np.array(transcript, dtype='int32')
