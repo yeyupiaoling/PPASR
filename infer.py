@@ -2,6 +2,7 @@ import argparse
 import functools
 import os
 import time
+import wave
 
 import paddle
 
@@ -35,7 +36,22 @@ model.set_state_dict(paddle.load(os.path.join(args.model_path, 'model.pdparams')
 model.eval()
 
 
+# 改变音频采样率为16000Hz
+def change_rate(audio_path):
+    f = wave.open(audio_path, 'rb')
+    if args.is_change_frame_rate and f.getframerate() != 16000:
+        str_data = f.readframes(f.getnframes())
+        file = wave.open(audio_path, 'wb')
+        file.setnchannels(1)
+        file.setsampwidth(4)
+        file.setframerate(16000)
+        file.writeframes(str_data)
+        file.close()
+    f.close()
+
 def infer():
+    # 改变音频采样率为16000Hz
+    change_rate(args.audio_path)
     # 加载音频文件并执行短时傅里叶变换
     mfccs = load_audio_mfcc(args.audio_path, mean=args.data_mean, std=args.data_std)
 

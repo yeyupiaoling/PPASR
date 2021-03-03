@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('--annotation_path',    str,  'dataset/annotation/',   '标注文件的路径')
 add_arg('manifest_prefix',      str,  'dataset/',              '训练数据清单，包括音频路径和标注信息')
-add_arg('is_change_frame_rate', bool, False,                   '是否统一改变音频为16000Hz，这会消耗大量的时间')
+add_arg('is_change_frame_rate', bool, True,                    '是否统一改变音频为16000Hz，这会消耗大量的时间')
 add_arg('min_duration',         int,  0,                       '过滤最短的音频长度')
 add_arg('max_duration',         int,  20,                      '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('count_threshold',      int,  0,                       '字符计数的截断阈值，0为不做限制')
@@ -37,16 +37,16 @@ def create_manifest(annotation_path, manifest_path_prefix):
         for line in tqdm(lines):
             audio_path = line.split('\t')[0]
             # 重新调整音频格式并保存
-            if args.is_change_frame_rate:
-                f = wave.open(audio_path, 'rb')
+            f = wave.open(audio_path, 'rb')
+            if args.is_change_frame_rate and f.getframerate() != 16000:
                 str_data = f.readframes(f.getnframes())
-                f.close()
                 file = wave.open(audio_path, 'wb')
                 file.setnchannels(1)
                 file.setsampwidth(4)
                 file.setframerate(16000)
                 file.writeframes(str_data)
                 file.close()
+            f.close()
             # 获取音频长度
             audio_data, samplerate = soundfile.read(audio_path)
             duration = float(len(audio_data) / samplerate)

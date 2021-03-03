@@ -205,7 +205,7 @@ optional arguments:
                         模型的路径 默认: models/step_final/.
 ```
 
- - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径，注意这个音频的采样率必须是16000Hz，如果不是，需要要转换在执行预测。
+ - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径，如果该音频的采样率不是16000Hz，就会修改音频的采样率为16000Hz。
 ```shell script
 python3 infer.py --wav_path=./dataset/test.wav
 ```
