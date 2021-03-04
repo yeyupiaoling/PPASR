@@ -20,8 +20,8 @@ add_arg('batch_size',       int,  32,                       '训练的批量大�
 add_arg('num_workers',      int,  8,                        '读取数据的线程数量')
 add_arg('num_epoch',        int,  200,                      '训练的轮数')
 add_arg('learning_rate',    int,  1e-3,                     '初始学习率的大小')
-add_arg('data_mean',        int,  1.414045,                 '数据集的均值')
-add_arg('data_std',         int,  0.988148,                 '数据集的标准值')
+add_arg('data_mean',        int,  -3.831144,                '数据集的均值')
+add_arg('data_std',         int,  49.160229,                '数据集的标准值')
 add_arg('min_duration',     int,  0,                        '过滤最短的音频长度')
 add_arg('max_duration',     int,  20,                       '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('train_manifest',   str,  'dataset/manifest.train', '训练数据的数据列表路径')
@@ -30,9 +30,6 @@ add_arg('dataset_vocab',    str,  'dataset/zh_vocab.json',  '数据字典的路�
 add_arg('save_model',       str,  'models/',                '模型保存的路径')
 add_arg('pretrained_model', str,  None,                     '预训练模型的路径，当为None则不使用预训练模型')
 args = parser.parse_args()
-
-# 日志记录器
-writer = LogWriter(logdir='log')
 
 
 # 评估模型
@@ -55,6 +52,9 @@ def evaluate(model, test_loader, greedy_decoder):
 
 
 def train(args):
+    if dist.get_rank() == 0:
+        # 日志记录器
+        writer = LogWriter(logdir='log')
     # 设置支持多卡训练
     dist.init_parallel_env()
     # 获取训练数据

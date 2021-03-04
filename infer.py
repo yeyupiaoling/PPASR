@@ -14,8 +14,8 @@ from utils.model import PPASR
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('audio_path',    str,  'dataset/test.wav',       '用于识别的音频路径')
-add_arg('data_mean',     int,  1.414045,                 '数据集的均值')
-add_arg('data_std',      int,  0.988148,                 '数据集的标准值')
+add_arg('data_mean',     int,  -3.831144,                '数据集的均值')
+add_arg('data_std',      int,  49.160229,                '数据集的标准值')
 add_arg('dataset_vocab', str,  'dataset/zh_vocab.json',  '数据字典的路径')
 add_arg('model_path',    str,  'models/step_final/',     '模型的路径')
 args = parser.parse_args()
@@ -36,8 +36,6 @@ model.eval()
 
 
 def infer():
-    # 改变音频采样率为16000Hz
-    change_rate(args.audio_path)
     # 加载音频文件并执行短时傅里叶变换
     mfccs = load_audio_mfcc(args.audio_path, mean=args.data_mean, std=args.data_std)
 

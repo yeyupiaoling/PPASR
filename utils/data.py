@@ -22,11 +22,9 @@ def load_audio_stft(wav_path, mean=None, std=None):
 def load_audio_mfcc(wav_path, mean=None, std=None):
     wav, sr = librosa.load(wav_path, sr=16000)
     mfccs = librosa.feature.mfcc(y=wav, sr=sr, n_mfcc=128, n_fft=512, hop_length=128).astype("float32")
-    spec, phase = librosa.magphase(mfccs)
-    spec = np.log1p(spec)
     if mean is not None and std is not None:
-        spec = (spec - mean) / std
-    return spec
+        mfccs = (mfccs - mean) / std
+    return mfccs
 
 
 # 改变音频采样率为16000Hz

@@ -102,8 +102,8 @@ CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 ```shell
 -----------  Configuration Arguments -----------
 batch_size: 32
-data_mean: 1.414045
-data_std: 0.988148
+data_mean: -3.831144
+data_std: 49.160229
 dataset_vocab: dataset/zh_vocab.json
 learning_rate: 0.001
 num_epoch: 200
@@ -149,8 +149,8 @@ optional arguments:
   --learning_rate LEARNING_RATE
                         初始学习率的大小 默认: 0.001.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: 1.414045.
-  --data_std DATA_STD   数据集的标准值 默认: 0.988148.
+                        数据集的均值 默认: -3.831144.
+  --data_std DATA_STD   数据集的标准值 默认: 49.160229.
   --train_manifest TRAIN_MANIFEST
                         训练数据的数据列表路径 默认: dataset/manifest.train.
   --test_manifest TEST_MANIFEST
@@ -195,8 +195,8 @@ optional arguments:
   --num_workers NUM_WORKERS
                         读取数据的线程数量 默认: 8.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: 1.414045.
-  --data_std DATA_STD   数据集的标准值 默认: 0.988148.
+                        数据集的均值 默认: -3.831144.
+  --data_std DATA_STD   数据集的标准值 默认: 49.160229.
   --test_manifest TEST_MANIFEST
                         测试数据的数据列表路径 默认: dataset/manifest.test.
   --dataset_vocab DATASET_VOCAB
@@ -205,7 +205,7 @@ optional arguments:
                         模型的路径 默认: models/step_final/.
 ```
 
- - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径，如果该音频的采样率不是16000Hz，就会修改音频的采样率为16000Hz。
+ - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径。
 ```shell script
 python3 infer.py --wav_path=./dataset/test.wav
 ```
@@ -224,8 +224,8 @@ optional arguments:
   --audio_path AUDIO_PATH
                         用于识别的音频路径 默认: dataset/test.wav.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: 1.414045.
-  --data_std DATA_STD   数据集的标准值 默认: 0.988148.
+                        数据集的均值 默认: -3.831144.
+  --data_std DATA_STD   数据集的标准值 默认: 49.160229.
   --dataset_vocab DATASET_VOCAB
                         数据字典的路径 默认: dataset/zh_vocab.json.
   --model_path MODEL_PATH
