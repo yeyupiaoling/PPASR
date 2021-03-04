@@ -7,7 +7,7 @@ import wave
 import paddle
 
 from data.utility import add_arguments, print_arguments
-from utils.data import load_audio_mfcc
+from utils.data import load_audio_mfcc, change_rate
 from utils.decoder import GreedyDecoder
 from utils.model import PPASR
 
@@ -35,19 +35,6 @@ model = PPASR(vocabulary)
 model.set_state_dict(paddle.load(os.path.join(args.model_path, 'model.pdparams')))
 model.eval()
 
-
-# 改变音频采样率为16000Hz
-def change_rate(audio_path):
-    f = wave.open(audio_path, 'rb')
-    if args.is_change_frame_rate and f.getframerate() != 16000:
-        str_data = f.readframes(f.getnframes())
-        file = wave.open(audio_path, 'wb')
-        file.setnchannels(1)
-        file.setsampwidth(4)
-        file.setframerate(16000)
-        file.writeframes(str_data)
-        file.close()
-    f.close()
 
 def infer():
     # 改变音频采样率为16000Hz

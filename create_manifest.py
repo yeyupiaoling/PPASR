@@ -2,15 +2,12 @@ import argparse
 import functools
 import os
 import random
-import wave
-
-import librosa
 import numpy as np
 from tqdm import tqdm
 from collections import Counter
 
 import soundfile
-
+from utils.data import change_rate, load_audio_mfcc
 from data.utility import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -37,16 +34,8 @@ def create_manifest(annotation_path, manifest_path_prefix):
         for line in tqdm(lines):
             audio_path = line.split('\t')[0]
             # 重新调整音频格式并保存
-            f = wave.open(audio_path, 'rb')
-            if args.is_change_frame_rate and f.getframerate() != 16000:
-                str_data = f.readframes(f.getnframes())
-                file = wave.open(audio_path, 'wb')
-                file.setnchannels(1)
-                file.setsampwidth(4)
-                file.setframerate(16000)
-                file.writeframes(str_data)
-                file.close()
-            f.close()
+            if args.is_change_frame_rate:
+                change_rate(audio_path)
             # 获取音频长度
             audio_data, samplerate = soundfile.read(audio_path)
             duration = float(len(audio_data) / samplerate)
@@ -108,11 +97,8 @@ def compute_mean_std(manifest_path):
         for i, line in enumerate(tqdm(lines)):
             if i % 10 == 0:
                 wav_path = line.split(',')[0]
-                with wave.open(wav_path) as wav:
-                    wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16").astype("float32")
-                mfccs = librosa.feature.mfcc(y=wav, sr=16000, n_mfcc=128, n_fft=512, hop_length=128).astype("float32")
-                spec, phase = librosa.magphase(mfccs)
-                spec = np.log1p(spec)
+                # 计算音频的梅尔频率倒谱系数(MFCCs)
+                spec = load_audio_mfcc(wav_path)
                 data.append(spec)
     data = np.array(spec, dtype='float32')
     return data.mean(), data.std()

@@ -9,7 +9,7 @@ from paddle.io import Dataset
 def load_audio_stft(wav_path, mean=None, std=None):
     with wave.open(wav_path) as wav:
         wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16").astype("float32")
-    stft = librosa.stft(wav, n_fft=320, hop_length=160, win_length=320, window="hamming")
+    stft = librosa.stft(wav, n_fft=255, hop_length=160, win_length=200, window="hamming")
     spec, phase = librosa.magphase(stft)
     spec = np.log1p(spec)
     if mean is not None and std is not None:
@@ -27,6 +27,20 @@ def load_audio_mfcc(wav_path, mean=None, std=None):
     if mean is not None and std is not None:
         spec = (spec - mean) / std
     return spec
+
+
+# 改变音频采样率为16000Hz
+def change_rate(audio_path):
+    f = wave.open(audio_path, 'rb')
+    if f.getframerate() != 16000:
+        str_data = f.readframes(f.getnframes())
+        file = wave.open(audio_path, 'wb')
+        file.setnchannels(1)
+        file.setsampwidth(4)
+        file.setframerate(16000)
+        file.writeframes(str_data)
+        file.close()
+    f.close()
 
 
 # 音频数据加载器
