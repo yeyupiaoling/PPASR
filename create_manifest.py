@@ -2,11 +2,12 @@ import argparse
 import functools
 import os
 import random
+import wave
+
 import numpy as np
 from tqdm import tqdm
 from collections import Counter
 
-import soundfile
 from utils.data import change_rate, load_audio_mfcc
 from data.utility import add_arguments, print_arguments
 
@@ -15,8 +16,6 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('--annotation_path',    str,  'dataset/annotation/',   '标注文件的路径')
 add_arg('manifest_prefix',      str,  'dataset/',              '训练数据清单，包括音频路径和标注信息')
 add_arg('is_change_frame_rate', bool, True,                    '是否统一改变音频为16000Hz，这会消耗大量的时间')
-add_arg('min_duration',         int,  0,                       '过滤最短的音频长度')
-add_arg('max_duration',         int,  20,                      '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('count_threshold',      int,  0,                       '字符计数的截断阈值，0为不做限制')
 add_arg('vocab_path',           str,  'dataset/zh_vocab.json',  '生成的数据字典文件')
 add_arg('manifest_path',        str,  'dataset/manifest.train', '数据列表路径')
@@ -26,7 +25,7 @@ args = parser.parse_args()
 # 创建数据列表
 def create_manifest(annotation_path, manifest_path_prefix):
     data_list = []
-    duration_sum = 0
+    durations = []
     for annotation_text in os.listdir(annotation_path):
         annotation_text = os.path.join(annotation_path, annotation_text)
         with open(annotation_text, 'r', encoding='utf-8') as f:
@@ -37,13 +36,9 @@ def create_manifest(annotation_path, manifest_path_prefix):
             if args.is_change_frame_rate:
                 change_rate(audio_path)
             # 获取音频长度
-            audio_data, samplerate = soundfile.read(audio_path)
-            duration = float(len(audio_data) / samplerate)
-            if duration < args.min_duration:
-                continue
-            if args.max_duration != -1 and duration > args.max_duration:
-                continue
-            duration_sum += duration
+            f_wave = wave.open(audio_path, "rb")
+            duration = f_wave.getnframes() / f_wave.getframerate()
+            durations.append(duration)
             # 过滤非法的字符
             text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', ''))
             # 加入数据列表中
@@ -61,7 +56,7 @@ def create_manifest(annotation_path, manifest_path_prefix):
             f_train.write(line + '\n')
     f_train.close()
     f_test.close()
-    print("完成生成数据列表，数据集总长度为{:.2f}小时！".format(duration_sum / 3600.))
+    print("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
 
 
 # 过滤非法的字符
@@ -88,6 +83,14 @@ def is_uchar(uchar):
     return False
 
 
+# 获取全部字符
+def count_manifest(counter, manifest_path):
+    with open(manifest_path, 'r', encoding='utf-8') as f:
+        for line in tqdm(f.readlines()):
+            for char in line.split(',')[2].replace('\n', ''):
+                counter.update(char)
+
+
 # 计算数据集的均值和标准值
 def compute_mean_std(manifest_path):
     data = []
@@ -102,14 +105,6 @@ def compute_mean_std(manifest_path):
                 data.append(spec)
     data = np.array(spec, dtype='float32')
     return data.mean(), data.std()
-
-
-# 获取全部字符
-def count_manifest(counter, manifest_path):
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        for line in tqdm(f.readlines()):
-            for char in line.split(',')[2].replace('\n', ''):
-                counter.update(char)
 
 
 def main():

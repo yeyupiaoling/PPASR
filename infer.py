@@ -2,7 +2,6 @@ import argparse
 import functools
 import os
 import time
-import wave
 
 import paddle
 
@@ -15,8 +14,8 @@ from utils.model import PPASR
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('audio_path',    str,  'dataset/test.wav',       '用于识别的音频路径')
-add_arg('data_mean',     int,  1.424366,                 '数据集的均值')
-add_arg('data_std',      int,  0.944142,                 '数据集的标准值')
+add_arg('data_mean',     int,  1.414045,                 '数据集的均值')
+add_arg('data_std',      int,  0.988148,                 '数据集的标准值')
 add_arg('dataset_vocab', str,  'dataset/zh_vocab.json',  '数据字典的路径')
 add_arg('model_path',    str,  'models/step_final/',     '模型的路径')
 args = parser.parse_args()

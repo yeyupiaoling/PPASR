@@ -2,6 +2,7 @@ import wave
 
 import librosa
 import numpy as np
+import soundfile
 from paddle.io import Dataset
 
 
@@ -19,9 +20,8 @@ def load_audio_stft(wav_path, mean=None, std=None):
 
 # 读取音频文件转成梅尔频率倒谱系数(MFCCs)
 def load_audio_mfcc(wav_path, mean=None, std=None):
-    with wave.open(wav_path) as wav:
-        wav = np.frombuffer(wav.readframes(wav.getnframes()), dtype="int16").astype("float32")
-    mfccs = librosa.feature.mfcc(y=wav, sr=16000, n_mfcc=128, n_fft=512, hop_length=128).astype("float32")
+    wav, sr = librosa.load(wav_path, sr=16000)
+    mfccs = librosa.feature.mfcc(y=wav, sr=sr, n_mfcc=128, n_fft=512, hop_length=128).astype("float32")
     spec, phase = librosa.magphase(mfccs)
     spec = np.log1p(spec)
     if mean is not None and std is not None:
@@ -31,28 +31,31 @@ def load_audio_mfcc(wav_path, mean=None, std=None):
 
 # 改变音频采样率为16000Hz
 def change_rate(audio_path):
-    f = wave.open(audio_path, 'rb')
-    if f.getframerate() != 16000:
-        str_data = f.readframes(f.getnframes())
-        file = wave.open(audio_path, 'wb')
-        file.setnchannels(1)
-        file.setsampwidth(4)
-        file.setframerate(16000)
-        file.writeframes(str_data)
-        file.close()
-    f.close()
+    data, sr = soundfile.read(audio_path)
+    if sr != 16000:
+        data = librosa.resample(data, sr, target_sr=16000)
+        soundfile.write(audio_path, data, samplerate=16000)
 
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, dict_path, mean=None, std=None):
+    def __init__(self, data_list, dict_path, mean=None, std=None, min_duration=0, max_duration=-1):
         super(PPASRDataset, self).__init__()
         self.mean = mean
         self.std = std
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
             idx = f.readlines()
-        self.idx = [x.strip().split(",") for x in idx]
+        self.idx = []
+        for x in idx:
+            x = x.strip().split(",")
+            duration = float(x[1])
+            # 跳过超出长度限制的音频
+            if duration < min_duration:
+                continue
+            if max_duration != -1 and duration > max_duration:
+                continue
+            self.idx.append(x)
         # 加载数据字典
         with open(dict_path, 'r', encoding='utf-8') as f:
             labels = eval(f.read())

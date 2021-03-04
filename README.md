@@ -102,8 +102,8 @@ CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 ```shell
 -----------  Configuration Arguments -----------
 batch_size: 32
-data_mean: 1.424366
-data_std: 0.944142
+data_mean: 1.414045
+data_std: 0.988148
 dataset_vocab: dataset/zh_vocab.json
 learning_rate: 0.001
 num_epoch: 200
@@ -149,8 +149,8 @@ optional arguments:
   --learning_rate LEARNING_RATE
                         初始学习率的大小 默认: 0.001.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: 1.424366.
-  --data_std DATA_STD   数据集的标准值 默认: 0.944142.
+                        数据集的均值 默认: 1.414045.
+  --data_std DATA_STD   数据集的标准值 默认: 0.988148.
   --train_manifest TRAIN_MANIFEST
                         训练数据的数据列表路径 默认: dataset/manifest.train.
   --test_manifest TEST_MANIFEST
@@ -195,8 +195,8 @@ optional arguments:
   --num_workers NUM_WORKERS
                         读取数据的线程数量 默认: 8.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: 1.424366.
-  --data_std DATA_STD   数据集的标准值 默认: 0.944142.
+                        数据集的均值 默认: 1.414045.
+  --data_std DATA_STD   数据集的标准值 默认: 0.988148.
   --test_manifest TEST_MANIFEST
                         测试数据的数据列表路径 默认: dataset/manifest.test.
   --dataset_vocab DATASET_VOCAB
@@ -224,8 +224,8 @@ optional arguments:
   --audio_path AUDIO_PATH
                         用于识别的音频路径 默认: dataset/test.wav.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: 1.424366.
-  --data_std DATA_STD   数据集的标准值 默认: 0.944142.
+                        数据集的均值 默认: 1.414045.
+  --data_std DATA_STD   数据集的标准值 默认: 0.988148.
   --dataset_vocab DATASET_VOCAB
                         数据字典的路径 默认: dataset/zh_vocab.json.
   --model_path MODEL_PATH
