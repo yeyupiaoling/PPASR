@@ -6,7 +6,7 @@ import time
 import numpy as np
 import paddle
 from paddle.io import DataLoader
-
+from tqdm import tqdm
 from data.utility import add_arguments, print_arguments
 from utils.data import PPASRDataset, collate_fn
 from utils.decoder import GreedyDecoder
@@ -17,8 +17,6 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('batch_size',     int,  32,                      '训练的批量大小')
 add_arg('num_workers',    int,  8,                       '读取数据的线程数量')
-add_arg('data_mean',      int,  -3.146301,               '数据集的均值')
-add_arg('data_std',       int,  52.998405,               '数据集的标准值')
 add_arg('test_manifest',  str,  'dataset/manifest.test', '测试数据的数据列表路径')
 add_arg('dataset_vocab',  str,  'dataset/zh_vocab.json', '数据字典的路径')
 add_arg('model_path',     str,  'models/step_final/',    '模型的路径')
@@ -27,7 +25,7 @@ args = parser.parse_args()
 
 print_arguments(args)
 # 获取测试数据
-test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean=args.data_mean, std=args.data_std)
+test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab)
 test_loader = DataLoader(dataset=test_dataset,
                          batch_size=args.batch_size,
                          collate_fn=collate_fn,
@@ -37,13 +35,16 @@ greedy_decoder = GreedyDecoder(test_dataset.vocabulary)
 # 获取模型
 model = PPASR(test_dataset.vocabulary)
 model.set_state_dict(paddle.load(os.path.join(args.model_path, 'model.pdparams')))
+# 获取保存在模型中的数据均值和标准值，设置数据处理器
+test_dataset.mean = model.data_mean.numpy()[0]
+test_dataset.std = model.data_std.numpy()[0]
 model.eval()
 
 
 # 评估模型
 def evaluate():
     cer = []
-    for batch_id, (inputs, labels, _, _) in enumerate(test_loader()):
+    for batch_id, (inputs, labels, _, _) in enumerate(tqdm(test_loader())):
         # 执行识别
         outs = model(inputs)
         outs = paddle.nn.functional.softmax(outs, 1)

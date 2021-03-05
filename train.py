@@ -94,8 +94,8 @@ def train(args):
                              use_shared_memory=False)
     # 获取解码器，用于评估
     greedy_decoder = GreedyDecoder(train_dataset.vocabulary)
-    # 获取模型
-    model = PPASR(train_dataset.vocabulary)
+    # 获取模型，同时数据均值和标准值到模型中，方便以后推理使用
+    model = PPASR(train_dataset.vocabulary, data_mean=paddle.to_tensor(args.data_mean), data_std=paddle.to_tensor(args.data_std))
     # 设置支持多卡训练
     model = paddle.DataParallel(model)
     # 设置优化方法
@@ -131,7 +131,7 @@ def train(args):
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
             # 固定步数也要保存一次模型
-            if batch_id % 2000 == 0 and dist.get_rank() == 0:
+            if batch_id % 2000 == 0 and batch_id != 0 and dist.get_rank() == 0:
                 # 保存模型
                 save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
         # 多卡训练只使用一个进程执行评估和保存模型
