@@ -35,9 +35,13 @@ class ConvBlock(nn.Layer):
 
 # PPASR模型
 class PPASR(nn.Layer):
-    def __init__(self, vocabulary, data_mean=paddle.to_tensor(1.0), data_std=paddle.to_tensor(1.0), name="PPASR"):
+    def __init__(self, vocabulary, data_mean=None, data_std=None, name="PPASR"):
         super(PPASR, self).__init__(name_scope=name)
         # 数据均值和标准值到模型中，方便以后推理使用
+        if data_mean is None:
+            data_mean = paddle.to_tensor(1.0)
+        if data_std is None:
+            data_std = paddle.to_tensor(1.0)
         self.register_buffer("data_mean", data_mean, persistable=True)
         self.register_buffer("data_std", data_std, persistable=True)
         # 模型的输出大小，字典大小+1
