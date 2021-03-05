@@ -6,7 +6,7 @@ import time
 import paddle
 
 from data.utility import add_arguments, print_arguments
-from utils.data import load_audio_mfcc, change_rate
+from utils.data import load_audio_mfcc
 from utils.decoder import GreedyDecoder
 from utils.model import PPASR
 
@@ -14,8 +14,8 @@ from utils.model import PPASR
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('audio_path',    str,  'dataset/test.wav',       '用于识别的音频路径')
-add_arg('data_mean',     int,  -3.831144,                '数据集的均值')
-add_arg('data_std',      int,  49.160229,                '数据集的标准值')
+add_arg('data_mean',     int,  -3.146301,                '数据集的均值')
+add_arg('data_std',      int,  52.998405,                '数据集的标准值')
 add_arg('dataset_vocab', str,  'dataset/zh_vocab.json',  '数据字典的路径')
 add_arg('model_path',    str,  'models/step_final/',     '模型的路径')
 args = parser.parse_args()
@@ -36,7 +36,7 @@ model.eval()
 
 
 def infer():
-    # 加载音频文件并执行短时傅里叶变换
+    # 读取音频文件转成梅尔频率倒谱系数(MFCCs)
     mfccs = load_audio_mfcc(args.audio_path, mean=args.data_mean, std=args.data_std)
 
     mfccs = paddle.to_tensor(mfccs, dtype='float32')

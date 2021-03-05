@@ -20,8 +20,8 @@ add_arg('batch_size',       int,  32,                       '训练的批量大�
 add_arg('num_workers',      int,  8,                        '读取数据的线程数量')
 add_arg('num_epoch',        int,  200,                      '训练的轮数')
 add_arg('learning_rate',    int,  1e-3,                     '初始学习率的大小')
-add_arg('data_mean',        int,  -3.831144,                '数据集的均值')
-add_arg('data_std',         int,  49.160229,                '数据集的标准值')
+add_arg('data_mean',        int,  -3.146301,                '数据集的均值')
+add_arg('data_std',         int,  52.998405,                '数据集的标准值')
 add_arg('min_duration',     int,  0,                        '过滤最短的音频长度')
 add_arg('max_duration',     int,  20,                       '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('train_manifest',   str,  'dataset/manifest.train', '训练数据的数据列表路径')
@@ -49,6 +49,17 @@ def evaluate(model, test_loader, greedy_decoder):
             cer.append(c)
     cer = float(np.mean(cer))
     return cer
+
+
+# 保存模型
+def save_model(args, epoch, model, optimizer):
+    model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
+    if epoch == args.num_epoch - 1:
+        model_path = os.path.join(args.save_model, 'step_final')
+    if not os.path.exists(model_path):
+        os.makedirs(model_path)
+    paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
+    paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
 
 
 def train(args):
@@ -119,6 +130,10 @@ def train(args):
                 print('[%s] Train epoch %d, batch %d, loss: %f' % (datetime.now(), epoch, batch_id, loss))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
+            # 固定步数也要保存一次模型
+            if batch_id % 2000 == 0 and dist.get_rank() == 0:
+                # 保存模型
+                save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
         # 多卡训练只使用一个进程执行评估和保存模型
         if dist.get_rank() == 0:
             # 执行评估
@@ -131,13 +146,7 @@ def train(args):
             # 记录学习率
             writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
             # 保存模型
-            model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
-            if epoch == args.num_epoch - 1:
-                model_path = os.path.join(args.save_model, 'step_final')
-            if not os.path.exists(model_path):
-                os.makedirs(model_path)
-            paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
-            paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
+            save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
         scheduler.step()
 
 

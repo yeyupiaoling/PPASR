@@ -96,18 +96,17 @@ def count_manifest(counter, manifest_path):
 
 # 计算数据集的均值和标准值
 def compute_mean_std(manifest_path):
-    data = []
     with open(manifest_path, 'r', encoding='utf-8') as f:
         lines = f.readlines()
         random.shuffle(lines)
-        for i, line in enumerate(tqdm(lines)):
-            if i % 10 == 0:
-                line = json.loads(line)
-                wav_path = line["audio_path"]
-                # 计算音频的梅尔频率倒谱系数(MFCCs)
-                spec = load_audio_mfcc(wav_path)
-                data.append(spec)
-    data = np.array(spec, dtype='float32')
+    data = np.array(load_audio_mfcc(json.loads(lines[0])["audio_path"]), dtype='float32')
+    for i, line in enumerate(tqdm(lines)):
+        if i % 10 == 0:
+            line = json.loads(line)
+            wav_path = line["audio_path"]
+            # 计算音频的梅尔频率倒谱系数(MFCCs)
+            spec = load_audio_mfcc(wav_path)
+            data = np.hstack((data, spec))
     return data.mean(), data.std()
 
 
