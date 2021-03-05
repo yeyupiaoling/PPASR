@@ -1,5 +1,6 @@
 import argparse
 import functools
+import json
 import os
 import random
 import wave
@@ -42,10 +43,11 @@ def create_manifest(annotation_path, manifest_path_prefix):
             # 过滤非法的字符
             text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', ''))
             # 加入数据列表中
-            data_list.append(audio_path + ',' + str(duration) + ',' + text)
+            line = '{"audio_path":"%s", "duration":%.2f, "text":"%s"}' % (audio_path.replace('\\', '/'), duration, text)
+            data_list.append(line)
 
     # 按照音频长度降序
-    data_list.sort(key=lambda x: float(x.strip().split(",")[1]), reverse=True)
+    data_list.sort(key=lambda x: json.loads(x)["duration"], reverse=True)
     # 数据写入到文件中
     f_train = open(os.path.join(manifest_path_prefix, 'manifest.train'), 'w', encoding='utf-8')
     f_test = open(os.path.join(manifest_path_prefix, 'manifest.test'), 'w', encoding='utf-8')
@@ -87,7 +89,8 @@ def is_uchar(uchar):
 def count_manifest(counter, manifest_path):
     with open(manifest_path, 'r', encoding='utf-8') as f:
         for line in tqdm(f.readlines()):
-            for char in line.split(',')[2].replace('\n', ''):
+            line = json.loads(line)
+            for char in line["text"].replace('\n', ''):
                 counter.update(char)
 
 
@@ -99,7 +102,8 @@ def compute_mean_std(manifest_path):
         random.shuffle(lines)
         for i, line in enumerate(tqdm(lines)):
             if i % 10 == 0:
-                wav_path = line.split(',')[0]
+                line = json.loads(line)
+                wav_path = line["audio_path"]
                 # 计算音频的梅尔频率倒谱系数(MFCCs)
                 spec = load_audio_mfcc(wav_path)
                 data.append(spec)

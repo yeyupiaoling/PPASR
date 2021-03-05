@@ -14,7 +14,7 @@ class GreedyDecoder(object):
         for x in range(len(sequences)):
             seq_len = sizes[x] if sizes is not None else len(sequences[x])
             string, string_offsets = self.process_string(sequences[x], seq_len, remove_repetitions)
-            strings.append([string])  # We only return one path
+            strings.append([string])
             if return_offsets:
                 offsets.append([string_offsets])
         if return_offsets:

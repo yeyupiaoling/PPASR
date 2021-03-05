@@ -35,8 +35,8 @@ class ConvBlock(nn.Layer):
 
 # PPASR模型
 class PPASR(nn.Layer):
-    def __init__(self, vocabulary):
-        super(PPASR, self).__init__()
+    def __init__(self, vocabulary, name="PPASR"):
+        super(PPASR, self).__init__(name_scope=name)
         self.output_units = len(vocabulary) + 1
         self.conv1 = ConvBlock(128, 500, 48, 2, padding=97, p=0.2)
         self.conv2 = ConvBlock(250, 500, 7, 1, p=0.3)

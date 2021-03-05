@@ -1,3 +1,4 @@
+import json
 import wave
 
 import librosa
@@ -43,17 +44,16 @@ class PPASRDataset(Dataset):
         self.std = std
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
-            idx = f.readlines()
-        self.idx = []
-        for x in idx:
-            x = x.strip().split(",")
-            duration = float(x[1])
+            lines = f.readlines()
+        self.data_list = []
+        for line in lines:
+            line = json.loads(line)
             # 跳过超出长度限制的音频
-            if duration < min_duration:
+            if line["duration"] < min_duration:
                 continue
-            if max_duration != -1 and duration > max_duration:
+            if max_duration != -1 and line["duration"] > max_duration:
                 continue
-            self.idx.append(x)
+            self.data_list.append([line["audio_path"], line["text"]])
         # 加载数据字典
         with open(dict_path, 'r', encoding='utf-8') as f:
             labels = eval(f.read())
@@ -61,7 +61,7 @@ class PPASRDataset(Dataset):
 
     def __getitem__(self, idx):
         # 分割音频路径和标签
-        wav_path, _, transcript = self.idx[idx]
+        wav_path, transcript = self.data_list[idx]
         # 读取音频并转换为梅尔频率倒谱系数(MFCCs)
         mfccs = load_audio_mfcc(wav_path, self.mean, self.std)
         # 将字符标签转换为int数据
@@ -70,7 +70,7 @@ class PPASRDataset(Dataset):
         return mfccs, transcript
 
     def __len__(self):
-        return len(self.idx)
+        return len(self.data_list)
 
 
 # 对一个batch的数据处理

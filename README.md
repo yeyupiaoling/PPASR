@@ -93,7 +93,7 @@ optional arguments:
 
 # 训练模型
 
- - 执行训练脚本，开始训练语音识别模型， 每训练一轮保存一次模型，模型保存在`models/`目录下，测试使用的是最优解码路径解码方法。本项目支持多卡训练，在没有指定`CUDA_VISIBLE_DEVICES`时，会使用全部的GPU进行执行训练，也可以指定某几个GPU训练，如`CUDA_VISIBLE_DEVICES=0,1`指定使用第1张和第2张显卡训练。除了参数`data_mean`和`data_std`需要根据计算的结果修改，其他的参数一般不需要改动，参数`num_workers`可以更加CPU的核数修改，这个参数是指定使用多少个线程读取数据。参数`pretrained_model`是指定预训练模型所在的文件夹，如果使用训练模型，必须使用跟预训练配套的数据字典，原因是，其一，数据字典的大小指定了模型的输出大小，如果使用了其他更大的数据字典，预训练模型就无法完全加载。其二，数值字典定义了文字的ID，不同的数据字典文字的ID可能不一样，这样预训练模型的作用就不是那么大了。
+ - 执行训练脚本，开始训练语音识别模型， 每训练一轮保存一次模型，模型保存在`models/`目录下，测试使用的是贪心解码路径解码方法。本项目支持多卡训练，在没有指定`CUDA_VISIBLE_DEVICES`时，会使用全部的GPU进行执行训练，也可以指定某几个GPU训练，如`CUDA_VISIBLE_DEVICES=0,1`指定使用第1张和第2张显卡训练。除了参数`data_mean`和`data_std`需要根据计算的结果修改，其他的参数一般不需要改动，参数`num_workers`可以更加CPU的核数修改，这个参数是指定使用多少个线程读取数据。参数`pretrained_model`是指定预训练模型所在的文件夹，如果使用训练模型，必须使用跟预训练配套的数据字典，原因是，其一，数据字典的大小指定了模型的输出大小，如果使用了其他更大的数据字典，预训练模型就无法完全加载。其二，数值字典定义了文字的ID，不同的数据字典文字的ID可能不一样，这样预训练模型的作用就不是那么大了。
 ```shell script
 CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 ```
@@ -176,7 +176,7 @@ visualdl --logdir=log --host 0.0.0.0
 
 # 评估和预测
 
- - 我们可以使用这个脚本对模型进行评估，通过字符错误率来评价模型的性能。目前只支持最优解码路径解码方法。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径。
+ - 我们可以使用这个脚本对模型进行评估，通过字符错误率来评价模型的性能。目前只支持贪心解码路径解码方法。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径。
 ```shell script
 python3 eval.py --model_path=models/step_final/
 ```
@@ -207,11 +207,8 @@ optional arguments:
 
  - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径。
 ```shell script
-python3 infer.py --wav_path=./dataset/test.wav
+python3 infer.py --audio_path=./dataset/test.wav
 ```
-<audio controls>
-  <source src="/dataset/test.wav" type="audio/wav">
-</audio>
 
 可以用使用`python infer.py --help`命令查看各个参数的说明和默认值。
 ```shell
@@ -231,3 +228,8 @@ optional arguments:
   --model_path MODEL_PATH
                         模型的路径 默认: models/step_final/.
 ```
+
+## 模型下载
+| 数据集 | 字错率 | 下载地址 |
+| :---: | :---: | :---: |
+| AISHELL | 0.08 | [点击下载]() |
