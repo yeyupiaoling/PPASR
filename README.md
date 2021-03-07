@@ -1,6 +1,8 @@
 # PPASR
 
-PPASR基于PaddlePaddle2实现的端到端自动语音识别，本项目最大的特点简单，在保证准确率不低的情况下，项目尽量做得浅显易懂，能够让每个想入门语音识别的开发者都能够轻松上手。PPASR只使用卷积神经网络，无其他特殊网络结构，模型简单易懂。在数据预处理方便，本项目主要是将音频执行梅尔频率倒谱系数(MFCCs)处理，然后在使用出来的数据进行训练，在读取音频时，使用`wave.open()`库读取文件，再使用`librosa.feature.mfcc()`执行数据处理，这样可以加快数据的读取，因为使用`librosa.load()`读取音频文件比较慢。本项目使用的全部音频的采样率都是16000Hz，如果其他采样率的音频都需要转为16000Hz，`create_manifest.py`程序也提供了把音频转为16000Hz。
+PPASR基于PaddlePaddle2实现的端到端自动语音识别，本项目最大的特点简单，在保证准确率不低的情况下，项目尽量做得浅显易懂，能够让每个想入门语音识别的开发者都能够轻松上手。PPASR只使用卷积神经网络，无其他特殊网络结构，模型简单易懂，且是端到端的，不需要音频对齐，因为本项目使用了CTC Loss作为损失函数。在传统的语音识别的模型中，我们对语音模型进行训练之前，往往都要将文本与语音进行严格的对齐操作。在传统的语音识别的模型中，我们对语音模型进行训练之前，往往都要将文本与语音进行严格的对齐操作，这种对齐非常浪费时间，而且对齐之后，模型预测出的label只是局部分类的结果，而无法给出整个序列的输出结果，往往要对预测出的label做一些后处理才可以得到我们最终想要的结果。基于这种情况，就出现了CTC（Connectionist temporal classification），使用CTC Loss就不需要进行音频对齐，直接输入是一句完整的语音数据，输出的是整个序列结果，这种情况OCR也是同样的情况。
+
+在数据预处理方便，本项目主要是将音频执行梅尔频率倒谱系数(MFCCs)处理，然后在使用出来的数据进行训练，在读取音频时，使用`librosa.load(wav_path, sr=16000)`函数读取音频文件，再使用`librosa.feature.mfcc()`执行数据处理。本项目使用的全部音频的采样率都是16000Hz，如果其他采样率的音频都需要转为16000Hz，`create_manifest.py`程序也提供了把音频转为16000Hz。
 
 
 # 安装环境
@@ -102,8 +104,8 @@ CUDA_VISIBLE_DEVICES=0,1 python3 train.py
 ```shell
 -----------  Configuration Arguments -----------
 batch_size: 32
-data_mean: -3.831144
-data_std: 49.160229
+data_mean: -3.146301
+data_std: 52.998405
 dataset_vocab: dataset/zh_vocab.json
 learning_rate: 0.001
 num_epoch: 200
@@ -149,8 +151,8 @@ optional arguments:
   --learning_rate LEARNING_RATE
                         初始学习率的大小 默认: 0.001.
   --data_mean DATA_MEAN
-                        数据集的均值 默认: -3.831144.
-  --data_std DATA_STD   数据集的标准值 默认: 49.160229.
+                        数据集的均值 默认: -3.146301.
+  --data_std DATA_STD   数据集的标准值 默认: 52.998405.
   --train_manifest TRAIN_MANIFEST
                         训练数据的数据列表路径 默认: dataset/manifest.train.
   --test_manifest TEST_MANIFEST
@@ -175,7 +177,9 @@ visualdl --logdir=log --host 0.0.0.0
 
 # 评估和预测
 
- - 我们可以使用这个脚本对模型进行评估，通过字符错误率来评价模型的性能。目前只支持贪心解码路径解码方法。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径。
+在评估和预测中，对结果解码的贪心策略解码方法，贪心策略是在每一步选择概率最大的输出值，这样就可以得到最终解码的输出序列。然而，CTC网络的输出序列只对应了搜索空间的一条路径，一个最终标签可对应搜索空间的N条路径，所以概率最大的路径并不等于最终标签的概率最大，即不是最优解。但贪心策略是最简单易懂且快速地一种方法。在语音识别上使用最多的解码方法还有定向搜索策略，这种策略准确率更高，同时也相对复杂，解码速度也相对慢很多。
+
+ - 我们可以使用这个脚本对模型进行评估，通过字符错误率来评价模型的性能。目前只支持贪心策略解码方法。在评估中音频预处理的`mean`和`std`需要跟训练时一样，但这里不需要开发者手动指定，因为这两个参数在训练的时候就已经保持在模型中，这时只需从模型中读取这两个参数的值就可以。参数`model_path`指定模型所在的文件夹的路径。
 ```shell script
 python3 eval.py --model_path=models/step_final/
 ```
@@ -183,7 +187,6 @@ python3 eval.py --model_path=models/step_final/
 可以用使用`python eval.py --help`命令查看各个参数的说明和默认值。
 ```shell
 usage: eval.py [-h] [--batch_size BATCH_SIZE] [--num_workers NUM_WORKERS]
-               [--data_mean DATA_MEAN] [--data_std DATA_STD]
                [--test_manifest TEST_MANIFEST] [--dataset_vocab DATASET_VOCAB]
                [--model_path MODEL_PATH]
 
@@ -193,9 +196,6 @@ optional arguments:
                         训练的批量大小 默认: 32.
   --num_workers NUM_WORKERS
                         读取数据的线程数量 默认: 8.
-  --data_mean DATA_MEAN
-                        数据集的均值 默认: -3.831144.
-  --data_std DATA_STD   数据集的标准值 默认: 49.160229.
   --test_manifest TEST_MANIFEST
                         测试数据的数据列表路径 默认: dataset/manifest.test.
   --dataset_vocab DATASET_VOCAB
@@ -204,24 +204,20 @@ optional arguments:
                         模型的路径 默认: models/step_final/.
 ```
 
- - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`data_mean`和`data_std`需要跟训练时一样，参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径。
+ - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。在预测中音频预处理的`mean`和`std`需要跟训练时一样，但这里不需要开发者手动指定，因为这两个参数在训练的时候就已经保持在模型中，这时只需从模型中读取这两个参数的值就可以。参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径。
 ```shell script
 python3 infer.py --audio_path=./dataset/test.wav
 ```
 
 可以用使用`python infer.py --help`命令查看各个参数的说明和默认值。
 ```shell
-usage: infer.py [-h] [--audio_path AUDIO_PATH] [--data_mean DATA_MEAN]
-                [--data_std DATA_STD] [--dataset_vocab DATASET_VOCAB]
+usage: infer.py [-h] [--audio_path AUDIO_PATH] [--dataset_vocab DATASET_VOCAB]
                 [--model_path MODEL_PATH]
 
 optional arguments:
   -h, --help            show this help message and exit
   --audio_path AUDIO_PATH
                         用于识别的音频路径 默认: dataset/test.wav.
-  --data_mean DATA_MEAN
-                        数据集的均值 默认: -3.831144.
-  --data_std DATA_STD   数据集的标准值 默认: 49.160229.
   --dataset_vocab DATASET_VOCAB
                         数据字典的路径 默认: dataset/zh_vocab.json.
   --model_path MODEL_PATH
