@@ -96,13 +96,18 @@ def train(args):
     greedy_decoder = GreedyDecoder(train_dataset.vocabulary)
     # 获取模型，同时数据均值和标准值到模型中，方便以后推理使用
     model = PPASR(train_dataset.vocabulary, data_mean=paddle.to_tensor(args.data_mean), data_std=paddle.to_tensor(args.data_std))
+    if dist.get_rank() == 0:
+        print('input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！')
+        paddle.summary(model, input_size=(args.batch_size, 128, 500))
     # 设置支持多卡训练
     model = paddle.DataParallel(model)
     # 设置优化方法
-    clip = paddle.nn.ClipGradByNorm(clip_norm=0.2)
-    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, verbose=True)
+    clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
+    boundaries = [10, 20, 50]
+    lr = [0.1 ** l * args.learning_rate for l in range(len(boundaries) + 1)]
+    scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries, values=lr, verbose=True)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
-                                      learning_rate=args.learning_rate,
+                                      learning_rate=scheduler,
                                       grad_clip=clip)
     # 获取损失函数
     ctc_loss = paddle.nn.CTCLoss()
