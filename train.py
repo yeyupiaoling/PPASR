@@ -1,6 +1,7 @@
 import argparse
 import functools
 import os
+import re
 from datetime import datetime
 
 import numpy as np
@@ -103,12 +104,13 @@ def train(args):
     model = paddle.DataParallel(model)
     # 设置优化方法
     clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
-    boundaries = [10, 20, 50]
+    # 分段学习率
+    boundaries = [10, 20, 50, 100]
     lr = [0.1 ** l * args.learning_rate for l in range(len(boundaries) + 1)]
-    scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries, values=lr, verbose=True)
-    optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
-                                      learning_rate=scheduler,
-                                      grad_clip=clip)
+    # 获取预训练的epoch数
+    last_epoch = int(re.findall(r'\d+', args.pretrained_model)[-1]) if args.pretrained_model is not None else -1
+    scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries, values=lr, last_epoch=last_epoch, verbose=True)
+    optimizer = paddle.optimizer.Adam(parameters=model.parameters(), learning_rate=scheduler, grad_clip=clip)
     # 获取损失函数
     ctc_loss = paddle.nn.CTCLoss()
     # 加载预训练模型
@@ -118,7 +120,7 @@ def train(args):
     train_step = 0
     test_step = 0
     # 开始训练
-    for epoch in range(args.num_epoch):
+    for epoch in range(last_epoch, args.num_epoch):
         # 第一个epoch不打乱数据
         if epoch == 1:
             train_loader = train_loader_shuffle
