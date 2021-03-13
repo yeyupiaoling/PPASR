@@ -29,7 +29,8 @@ test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab)
 test_loader = DataLoader(dataset=test_dataset,
                          batch_size=args.batch_size,
                          collate_fn=collate_fn,
-                         num_workers=args.num_workers)
+                         num_workers=args.num_workers,
+                         use_shared_memory=False)
 # 获取解码器，用于评估
 greedy_decoder = GreedyDecoder(test_dataset.vocabulary)
 # 获取模型
