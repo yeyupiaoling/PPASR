@@ -38,7 +38,7 @@ def prepare_dataset(url, md5sum, target_dir, annotation_path):
     """Download, unpack and create manifest file."""
     data_dir = os.path.join(target_dir, 'ST-CMDS-20170001_1-OS')
     if not os.path.exists(data_dir):
-        filepath = download(url, md5sum, target_dir)
+        filepath = 'dataset/audio/ST-CMDS-20170001_1-OS.tar.gz'
         unpack(filepath, target_dir)
         os.remove(filepath)
     else:
