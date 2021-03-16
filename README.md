@@ -209,7 +209,7 @@ visualdl --logdir=log --host 0.0.0.0
 
  - 然后再浏览器上访问`http://localhost:8040`可以查看结果显示，如下。
 
-![Train](https://s3.ax1x.com/2021/03/05/6ehhjK.jpg)
+![Train](https://s3.ax1x.com/2021/03/16/6yd8XV.jpg)
 
 
 # 评估和预测
