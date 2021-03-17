@@ -7,6 +7,9 @@ PPASR基于PaddlePaddle2实现的端到端自动语音识别，本项目最大�
 在数据预处理方便，本项目主要是将音频执行梅尔频率倒谱系数(MFCCs)处理，然后在使用出来的数据进行训练，在读取音频时，使用`librosa.load(wav_path, sr=16000)`函数读取音频文件，再使用`librosa.feature.mfcc()`执行数据处理。MFCC全称梅尔频率倒谱系数。梅尔频率是基于人耳听觉特性提出来的， 它与Hz频率成非线性对应关系。梅尔频率倒谱系数(MFCC)则是利用它们之间的这种关系，计算得到的Hz频谱特征，主要计算方式分别是预加重，分帧，加窗，快速傅里叶变换(FFT)，梅尔滤波器组，离散余弦变换(DCT)，最后提取语音数据特征和降低运算维度。本项目使用的全部音频的采样率都是16000Hz，如果其他采样率的音频都需要转为16000Hz，`create_manifest.py`程序也提供了把音频转为16000Hz。
 
 
+# 在线运行
+项目地址：[https://aistudio.baidu.com/aistudio/projectdetail/1597936](https://aistudio.baidu.com/aistudio/projectdetail/1597936)
+
 # 安装环境
 
  - 本项目可以在Windows或者Ubuntu都可以运行，安装环境很简单，只需要执行以下一条命令即可。
