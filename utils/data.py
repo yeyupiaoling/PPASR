@@ -32,7 +32,7 @@ def load_audio_mfcc(wav_path, mean=None, std=None):
 def change_rate(audio_path):
     data, sr = soundfile.read(audio_path)
     if sr != 16000:
-        data = librosa.resample(data, sr, target_sr=16000)
+        data, sr = librosa.load(audio_path, sr=16000).replace('\\', '/')
         soundfile.write(audio_path, data, samplerate=16000)
 
 
