@@ -269,3 +269,4 @@ optional arguments:
 | :---: | :---: | :---: |
 | AISHELL | 0.151082 | [点击下载](https://download.csdn.net/download/qq_33200967/15780478) |
 | free_st_chinese_mandarin_corpus | 0.214240 | [点击下载](https://download.csdn.net/download/qq_33200967/15833119) |
+| thchs30 | 0.081742 | [点击下载](https://download.csdn.net/download/qq_33200967/16740564) |
