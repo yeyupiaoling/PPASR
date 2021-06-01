@@ -1,23 +1,16 @@
 import json
 
-import librosa
 import numpy as np
 from paddle.io import Dataset
 
-
-# 读取音频文件转成梅尔频率倒谱系数(MFCCs)
-def load_audio_mfcc(wav_path, mean=None, std=None):
-    wav, sr = librosa.load(wav_path, sr=16000)
-    mfccs = librosa.feature.mfcc(y=wav, sr=sr, n_mfcc=128, n_fft=512, hop_length=256).astype("float32")
-    if mean is not None and std is not None:
-        mfccs = (mfccs - mean) / std
-    return mfccs
+from data_utils.audio_featurizer import AudioFeaturizer
 
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
     def __init__(self, data_list, dict_path, mean=None, std=None, min_duration=0, max_duration=-1):
         super(PPASRDataset, self).__init__()
+        self.audio_featurizer = AudioFeaturizer()
         self.mean = mean
         self.std = std
         # 获取数据列表
@@ -42,11 +35,12 @@ class PPASRDataset(Dataset):
         # 分割音频路径和标签
         wav_path, transcript = self.data_list[idx]
         # 读取音频并转换为梅尔频率倒谱系数(MFCCs)
-        mfccs = load_audio_mfcc(wav_path, self.mean, self.std)
+        audio = self.audio_featurizer.load_audio_file(wav_path)
+        feature = self.audio_featurizer.featurize(audio)
         # 将字符标签转换为int数据
         transcript = list(filter(None, [self.vocabulary.get(x) for x in transcript]))
         transcript = np.array(transcript, dtype='int32')
-        return mfccs, transcript
+        return feature, transcript
 
     def __len__(self):
         return len(self.data_list)

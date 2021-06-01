@@ -2,24 +2,26 @@ import argparse
 import functools
 import json
 import os
-import random
 import wave
-
-import numpy as np
-from tqdm import tqdm
 from collections import Counter
 
-from utils.data import change_rate, load_audio_mfcc
+import librosa
+import soundfile
+from tqdm import tqdm
+
 from data.utility import add_arguments, print_arguments
+from data_utils.normalizer import FeatureNormalizer
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('--annotation_path',    str,  'dataset/annotation/',   '标注文件的路径')
-add_arg('manifest_prefix',      str,  'dataset/',              '训练数据清单，包括音频路径和标注信息')
-add_arg('is_change_frame_rate', bool, True,                    '是否统一改变音频为16000Hz，这会消耗大量的时间')
-add_arg('count_threshold',      int,  0,                       '字符计数的截断阈值，0为不做限制')
+add_arg('--annotation_path',    str,  'dataset/annotation/',    '标注文件的路径')
+add_arg('manifest_prefix',      str,  'dataset/',               '训练数据清单，包括音频路径和标注信息')
+add_arg('is_change_frame_rate', bool, True,                     '是否统一改变音频为16000Hz，这会消耗大量的时间')
+add_arg('count_threshold',      int,  0,                        '字符计数的截断阈值，0为不做限制')
 add_arg('vocab_path',           str,  'dataset/zh_vocab.json',  '生成的数据字典文件')
 add_arg('manifest_path',        str,  'dataset/manifest.train', '数据列表路径')
+add_arg('num_samples',          int,  5000,                     '用于计算均值和标准值得音频数量')
+add_arg('output_path',          str,  './dataset/mean_std.npz', '保存均值和标准值得numpy文件路径，后缀 (.npz).')
 args = parser.parse_args()
 
 
@@ -61,6 +63,14 @@ def create_manifest(annotation_path, manifest_path_prefix):
     print("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
 
 
+# 改变音频采样率为16000Hz
+def change_rate(audio_path):
+    data, sr = soundfile.read(audio_path)
+    if sr != 16000:
+        data = librosa.resample(data, sr, target_sr=16000)
+        soundfile.write(audio_path, data, samplerate=16000)
+
+
 # 过滤非法的字符
 def is_ustr(in_str):
     out_str = ''
@@ -95,43 +105,36 @@ def count_manifest(counter, manifest_path):
 
 
 # 计算数据集的均值和标准值
-def compute_mean_std(manifest_path):
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        lines = f.readlines()
-        random.shuffle(lines)
-    data = np.array(load_audio_mfcc(json.loads(lines[0])["audio_path"]), dtype='float32')
-    for i, line in enumerate(tqdm(lines)):
-        if i % 10 == 0:
-            line = json.loads(line)
-            wav_path = line["audio_path"]
-            # 计算音频的梅尔频率倒谱系数(MFCCs)
-            spec = load_audio_mfcc(wav_path)
-            data = np.hstack((data, spec))
-    return data.mean(), data.std()
+def compute_mean_std(manifest_path, num_samples, output_path):
+    normalizer = FeatureNormalizer(mean_std_filepath=None,
+                                   manifest_path=manifest_path,
+                                   num_samples=num_samples)
+    # 将计算的结果保存的文件中
+    normalizer.write_to_file(output_path)
+    print('【特别重要】 计算的均值和标准值已保存在 %s！' % output_path)
 
 
 def main():
     print_arguments(args)
-    print('开始生成数据列表...')
-    create_manifest(annotation_path=args.annotation_path,
-                    manifest_path_prefix=args.manifest_prefix)
+    # print('开始生成数据列表...')
+    # create_manifest(annotation_path=args.annotation_path,
+    #                 manifest_path_prefix=args.manifest_prefix)
+    #
+    # print('开始生成数据字典...')
+    # counter = Counter()
+    # count_manifest(counter, args.manifest_path)
+    #
+    # count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+    # with open(args.vocab_path, 'w', encoding='utf-8') as fout:
+    #     labels = ['?']
+    #     for char, count in count_sorted:
+    #         if count < args.count_threshold: break
+    #         labels.append(char)
+    #     fout.write(str(labels).replace("'", '"'))
+    # print('数据字典生成完成！')
 
-    print('开始生成数据字典...')
-    counter = Counter()
-    count_manifest(counter, args.manifest_path)
-
-    count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-    with open(args.vocab_path, 'w', encoding='utf-8') as fout:
-        labels = ['?']
-        for char, count in count_sorted:
-            if count < args.count_threshold: break
-            labels.append(char)
-        fout.write(str(labels).replace("'", '"'))
-    print('数据字典生成完成！')
-
-    print('开始抽取10%的数据计算均值和标准值...')
-    mean, std = compute_mean_std(args.manifest_path)
-    print('【特别重要】：均值：%f, 标准值：%f, 请根据这两个值修改训练参数！' % (mean, std))
+    print('开始抽取%s的数据计算均值和标准值...' % args.num_samples)
+    compute_mean_std(args.manifest_path, args.num_samples, args.output_path)
 
 
 if __name__ == '__main__':

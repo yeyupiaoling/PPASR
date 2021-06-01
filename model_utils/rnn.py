@@ -1,0 +1,81 @@
+import paddle
+from paddle import nn
+
+from model_utils.utils import make_non_pad_mask
+
+__all__ = ['RNNStack']
+
+
+class BiGRUWithBN(nn.Layer):
+    """具有顺序批标准化的双向gru层。批标准化只对输入状态权值执行。
+
+    :param i_size: GRUCell的输入大小
+    :type i_size: int
+    :param h_size: GRUCell的隐藏大小
+    :type h_size: string
+
+    :return: 双向GRU层
+    :rtype: nn.Layer
+    """
+
+    def __init__(self, i_size: int, h_size: int):
+        super().__init__()
+        hidden_size = h_size * 3
+
+        self.fw_fc = nn.Linear(i_size, hidden_size, bias_attr=False)
+        self.fw_bn = nn.BatchNorm1D(hidden_size, bias_attr=None, data_format='NLC')
+        self.bw_fc = nn.Linear(i_size, hidden_size, bias_attr=False)
+        self.bw_bn = nn.BatchNorm1D(hidden_size, bias_attr=None, data_format='NLC')
+
+        self.fw_cell = nn.GRUCell(input_size=hidden_size, hidden_size=h_size)
+        self.bw_cell = nn.GRUCell(input_size=hidden_size, hidden_size=h_size)
+        self.fw_rnn = nn.RNN(self.fw_cell, is_reverse=False, time_major=False)  # [B, T, D]
+        self.bw_rnn = nn.RNN(self.fw_cell, is_reverse=True, time_major=False)  # [B, T, D]
+
+    def forward(self, x, x_len):
+        # x, shape [B, T, D]
+        fw_x = self.fw_fc(x)
+        fw_x = self.fw_bn(fw_x)
+        bw_x = self.bw_fc(x)
+        bw_x = self.bw_bn(bw_x)
+        fw_x, _ = self.fw_rnn(inputs=fw_x, sequence_length=x_len)
+        bw_x, _ = self.bw_rnn(inputs=bw_x, sequence_length=x_len)
+        x = paddle.concat([fw_x, bw_x], axis=-1)
+        return x, x_len
+
+
+class RNNStack(nn.Layer):
+    """RNN组与堆叠双向简单RNN或GRU层
+
+    :param i_size: GRU层的输入大小
+    :type i_size: int
+    :param h_size: GRU层的隐层大小
+    :type h_size: int
+    :param num_stacks: 堆叠的rnn层数
+    :type num_stacks: int
+
+    :return: RNN组的输出层
+    :rtype: nn.Layer
+    """
+
+    def __init__(self, i_size: int, h_size: int, num_stacks: int):
+        super().__init__()
+        rnn_stacks = []
+        for i in range(num_stacks):
+            rnn_stacks.append(BiGRUWithBN(i_size=i_size, h_size=h_size))
+            i_size = h_size * 2
+
+        self.rnn_stacks = rnn_stacks
+
+    def forward(self, x: paddle.Tensor, x_len: paddle.Tensor):
+        """
+        x: shape [B, T, D]
+        x_len: shpae [B]
+        """
+        for i, rnn in enumerate(self.rnn_stacks):
+            x, x_len = rnn(x, x_len)
+            masks = make_non_pad_mask(x_len)  # [B, T]
+            masks = masks.unsqueeze(-1)  # [B, T, 1]
+            masks = masks.astype(x.dtype)
+            x = x.multiply(masks)
+        return x, x_len
