@@ -41,6 +41,12 @@ class BiGRUWithBN(nn.Layer):
         fw_x, _ = self.fw_rnn(inputs=fw_x, sequence_length=x_len)
         bw_x, _ = self.bw_rnn(inputs=bw_x, sequence_length=x_len)
         x = paddle.concat([fw_x, bw_x], axis=-1)
+
+        # 将填充部分重置为0
+        masks = make_non_pad_mask(x_len)  # [B, T]
+        masks = masks.unsqueeze(-1)  # [B, T, 1]
+        masks = masks.astype(x.dtype)
+        x = x.multiply(masks)
         return x, x_len
 
 
@@ -65,7 +71,7 @@ class RNNStack(nn.Layer):
             rnn_stacks.append(BiGRUWithBN(i_size=i_size, h_size=h_size))
             i_size = h_size * 2
 
-        self.rnn_stacks = rnn_stacks
+        self.rnn_stacks = nn.LayerList(rnn_stacks)
 
     def forward(self, x: paddle.Tensor, x_len: paddle.Tensor):
         """
@@ -74,8 +80,4 @@ class RNNStack(nn.Layer):
         """
         for i, rnn in enumerate(self.rnn_stacks):
             x, x_len = rnn(x, x_len)
-            masks = make_non_pad_mask(x_len)  # [B, T]
-            masks = masks.unsqueeze(-1)  # [B, T, 1]
-            masks = masks.astype(x.dtype)
-            x = x.multiply(masks)
         return x, x_len
