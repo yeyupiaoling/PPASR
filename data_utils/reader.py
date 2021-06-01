@@ -3,16 +3,16 @@ import json
 import numpy as np
 from paddle.io import Dataset
 
-from data_utils.audio_featurizer import AudioFeaturizer
+from .audio_featurizer import AudioFeaturizer
+from .normalizer import FeatureNormalizer
 
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, dict_path, mean=None, std=None, min_duration=0, max_duration=-1):
+    def __init__(self, data_list, dict_path, mean_std_filepath, min_duration=0, max_duration=-1):
         super(PPASRDataset, self).__init__()
-        self.audio_featurizer = AudioFeaturizer()
-        self.mean = mean
-        self.std = std
+        self._audio_featurizer = AudioFeaturizer()
+        self._normalizer = FeatureNormalizer(mean_std_filepath=mean_std_filepath)
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -34,9 +34,11 @@ class PPASRDataset(Dataset):
     def __getitem__(self, idx):
         # 分割音频路径和标签
         wav_path, transcript = self.data_list[idx]
-        # 读取音频并转换为梅尔频率倒谱系数(MFCCs)
-        audio = self.audio_featurizer.load_audio_file(wav_path)
-        feature = self.audio_featurizer.featurize(audio)
+        # 获取音频特征
+        audio = self._audio_featurizer.load_audio_file(wav_path)
+        feature = self._audio_featurizer.featurize(audio)
+        # 对特征归一化
+        feature = self._normalizer.apply(feature)
         # 将字符标签转换为int数据
         transcript = list(filter(None, [self.vocabulary.get(x) for x in transcript]))
         transcript = np.array(transcript, dtype='int32')

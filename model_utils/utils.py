@@ -4,8 +4,8 @@ __all__ = ['brelu', 'make_non_pad_mask']
 
 
 def brelu(x, t_min=0.0, t_max=24.0):
-    t_min = paddle.full(shape=[1], fill_value=t_min, dtype='float32')
-    t_max = paddle.full(shape=[1], fill_value=t_max, dtype='float32')
+    t_min = paddle.full(shape=[1], fill_value=t_min, dtype=paddle.float32)
+    t_max = paddle.full(shape=[1], fill_value=t_max, dtype=paddle.float32)
     return x.maximum(t_min).minimum(t_max)
 
 

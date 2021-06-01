@@ -2,36 +2,38 @@ import argparse
 import functools
 import os
 import re
+import shutil
 from datetime import datetime
 
-import numpy as np
 import paddle
 import paddle.distributed as dist
 from paddle.io import DataLoader
 from visualdl import LogWriter
 
 from data.utility import add_arguments, print_arguments
-from utils.data import PPASRDataset, collate_fn
+from data_utils.reader import PPASRDataset, collate_fn
 from model_utils.deepspeech2 import DeepSpeech2Model
 from utils.decoder import GreedyDecoder
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('gpu',              str,  '0,1',                    '训练使用的GPU序号')
-add_arg('batch_size',       int,  32,                       '训练的批量大小')
-add_arg('num_workers',      int,  8,                        '读取数据的线程数量')
-add_arg('num_epoch',        int,  200,                      '训练的轮数')
-add_arg('learning_rate',    int,  1e-3,                     '初始学习率的大小')
-add_arg('data_mean',        int,  -3.146301,                '数据集的均值')
-add_arg('data_std',         int,  52.998405,                '数据集的标准值')
-add_arg('min_duration',     int,  0,                        '过滤最短的音频长度')
-add_arg('max_duration',     int,  20,                       '过滤最长的音频长度，当为-1的时候不限制长度')
-add_arg('train_manifest',   str,  'dataset/manifest.train', '训练数据的数据列表路径')
-add_arg('test_manifest',    str,  'dataset/manifest.test',  '测试数据的数据列表路径')
-add_arg('dataset_vocab',    str,  'dataset/zh_vocab.json',  '数据字典的路径')
-add_arg('save_model',       str,  'models/',                '模型保存的路径')
-add_arg('resume',           str,    None,                   '恢复训练，当为None则不使用预训练模型')
-add_arg('pretrained_model', str,    None,                   '预训练模型的路径，当为None则不使用预训练模型')
+add_arg('gpus',             str,   '0',                      '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
+add_arg('batch_size',       int,   16,                       '训练的批量大小')
+add_arg('num_workers',      int,   8,                        '读取数据的线程数量')
+add_arg('num_epoch',        int,   200,                      '训练的轮数')
+add_arg('learning_rate',    int,   1e-3,                     '初始学习率的大小')
+add_arg('num_conv_layers',  int,   2,                        '卷积层数量')
+add_arg('num_rnn_layers',   int,   3,                        '循环神经网络的数量')
+add_arg('rnn_layer_size',   int,   1024,                     '循环神经网络的大小')
+add_arg('min_duration',     int,   0,                        '过滤最短的音频长度')
+add_arg('max_duration',     int,   20,                       '过滤最长的音频长度，当为-1的时候不限制长度')
+add_arg('train_manifest',   str,   'dataset/manifest.train', '训练数据的数据列表路径')
+add_arg('test_manifest',    str,   'dataset/manifest.test',  '测试数据的数据列表路径')
+add_arg('dataset_vocab',    str,   'dataset/zh_vocab.json',  '数据字典的路径')
+add_arg('mean_std_path',    str,   'dataset/mean_std.npz',   '数据集的均值和标准值的npy文件路径')
+add_arg('save_model',       str,   'models/',                '模型保存的路径')
+add_arg('resume',           str,    None,                    '恢复训练，当为None则不使用预训练模型')
+add_arg('pretrained_model', str,    None,                    '预训练模型的路径，当为None则不使用预训练模型')
 args = parser.parse_args()
 
 
@@ -63,20 +65,25 @@ def save_model(args, epoch, model, optimizer):
         os.makedirs(model_path)
     paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
     paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
+    # 删除旧的模型
+    old_model_path = os.path.join(args.save_model, 'epoch_%d' % (epoch - 3))
+    if os.path.exists(old_model_path):
+        shutil.rmtree(old_model_path)
 
 
 def train(args):
     if dist.get_rank() == 0:
+        shutil.rmtree('log', ignore_errors=True)
         # 日志记录器
         writer = LogWriter(logdir='log')
 
     # 设置支持多卡训练
-    dist.init_parallel_env()
+    if len(args.gpus.split(',')) > 1:
+        dist.init_parallel_env()
 
     # 获取训练数据
     train_dataset = PPASRDataset(args.train_manifest, args.dataset_vocab,
-                                 mean=args.data_mean,
-                                 std=args.data_std,
+                                 mean_std_filepath=args.mean_std_path,
                                  min_duration=args.min_duration,
                                  max_duration=args.max_duration)
     batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -85,7 +92,7 @@ def train(args):
                               batch_sampler=batch_sampler,
                               num_workers=args.num_workers)
     # 获取测试数据
-    test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean=args.data_mean, std=args.data_std)
+    test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean_std_filepath=args.mean_std_path)
     batch_sampler = paddle.io.BatchSampler(test_dataset, batch_size=args.batch_size)
     test_loader = DataLoader(dataset=test_dataset,
                              collate_fn=collate_fn,
@@ -94,23 +101,29 @@ def train(args):
 
     # 获取解码器，用于评估
     greedy_decoder = GreedyDecoder(train_dataset.vocabulary)
-    # 获取模型，同时数据均值和标准值到模型中，方便以后推理使用
-    model = DeepSpeech2Model(feat_size=128, dict_size=len(train_dataset.vocabulary))
+    # 获取模型
+    model = DeepSpeech2Model(feat_size=39,
+                             dict_size=len(train_dataset.vocabulary),
+                             num_conv_layers=args.num_conv_layers,
+                             num_rnn_layers=args.num_rnn_layers,
+                             rnn_size=args.rnn_layer_size)
     if dist.get_rank() == 0:
         print('input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！')
-        paddle.summary(model, input_size=[(args.batch_size, 128, 500), (None,)], dtypes=[paddle.float32, paddle.int64])
+        paddle.summary(model, input_size=[(args.batch_size, 39, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
+
     # 设置支持多卡训练
-    model = paddle.DataParallel(model)
+    if len(args.gpus.split(',')) > 1:
+        model = paddle.DataParallel(model)
 
     # 设置优化方法
-    clip = paddle.nn.ClipGradByNorm(clip_norm=1.0)
-    # 分段学习率
-    boundaries = [10, 20, 50, 100]
-    lr = [0.1 ** l * args.learning_rate for l in range(len(boundaries) + 1)]
+    clip = paddle.nn.ClipGradByNorm(clip_norm=3.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume)[-1]) if args.resume is not None else 0
-    scheduler = paddle.optimizer.lr.PiecewiseDecay(boundaries=boundaries, values=lr, last_epoch=last_epoch, verbose=True)
-    optimizer = paddle.optimizer.Adam(parameters=model.parameters(), learning_rate=scheduler, grad_clip=clip)
+    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch, verbose=True)
+    optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
+                                      learning_rate=scheduler,
+                                      weight_decay=paddle.regularizer.L2Decay(1e-06),
+                                      grad_clip=clip)
 
     # 获取损失函数
     ctc_loss = paddle.nn.CTCLoss()
@@ -183,4 +196,7 @@ def train(args):
 
 if __name__ == '__main__':
     print_arguments(args)
-    dist.spawn(train, args=(args,), gpus=args.gpu)
+    if len(args.gpus.split(',')) > 1:
+        dist.spawn(train, args=(args,), gpus=args.gpus)
+    else:
+        train(args)

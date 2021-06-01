@@ -10,9 +10,7 @@ from data_utils.audio_featurizer import AudioFeaturizer
 class FeatureNormalizer(object):
     """音频特征归一化类
 
-    if mean_std_filepath is provided (not None), the normalizer will directly
-    initilize from the file. Otherwise, both manifest_path and featurize_func
-    should be given for on-the-fly mean and stddev computing.
+    如果mean_std_filepath不是None，则normalizer将直接从文件初始化。否则，使用manifest_path应该给特征mean和stddev计算
 
     :param mean_std_filepath: 均值和标准值的文件路径
     :type mean_std_filepath: None|str

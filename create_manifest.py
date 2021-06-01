@@ -111,29 +111,29 @@ def compute_mean_std(manifest_path, num_samples, output_path):
                                    num_samples=num_samples)
     # 将计算的结果保存的文件中
     normalizer.write_to_file(output_path)
-    print('【特别重要】 计算的均值和标准值已保存在 %s！' % output_path)
+    print('计算的均值和标准值已保存在 %s！' % output_path)
 
 
 def main():
     print_arguments(args)
-    # print('开始生成数据列表...')
-    # create_manifest(annotation_path=args.annotation_path,
-    #                 manifest_path_prefix=args.manifest_prefix)
-    #
-    # print('开始生成数据字典...')
-    # counter = Counter()
-    # count_manifest(counter, args.manifest_path)
-    #
-    # count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-    # with open(args.vocab_path, 'w', encoding='utf-8') as fout:
-    #     labels = ['?']
-    #     for char, count in count_sorted:
-    #         if count < args.count_threshold: break
-    #         labels.append(char)
-    #     fout.write(str(labels).replace("'", '"'))
-    # print('数据字典生成完成！')
+    print('开始生成数据列表...')
+    create_manifest(annotation_path=args.annotation_path,
+                    manifest_path_prefix=args.manifest_prefix)
 
-    print('开始抽取%s的数据计算均值和标准值...' % args.num_samples)
+    print('开始生成数据字典...')
+    counter = Counter()
+    count_manifest(counter, args.manifest_path)
+
+    count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
+    with open(args.vocab_path, 'w', encoding='utf-8') as fout:
+        labels = ['?']
+        for char, count in count_sorted:
+            if count < args.count_threshold: break
+            labels.append(char)
+        fout.write(str(labels).replace("'", '"'))
+    print('数据字典生成完成！')
+
+    print('开始抽取%s条数据计算均值和标准值...' % args.num_samples)
     compute_mean_std(args.manifest_path, args.num_samples, args.output_path)
 
 

@@ -6,43 +6,27 @@ from python_speech_features import delta
 
 
 class AudioFeaturizer(object):
-    """音频特征器,用于从AudioSegment或SpeechSegment内容中提取特性。
+    """音频特征器
 
-    Currently, it supports feature types of linear spectrogram and mfcc.
-
-    :param stride_ms: Striding size (in milliseconds) for generating frames.
+    :param stride_ms: 用于生成帧的步长大小(单位毫秒)
     :type stride_ms: float
-    :param window_ms: Window size (in milliseconds) for generating frames.
+    :param window_ms: 生成帧的窗口大小(单位毫秒)
     :type window_ms: float
-    :param max_freq: When specgram_type is 'linear', only FFT bins
-                     corresponding to frequencies between [0, max_freq] are
-                     returned; when specgram_type is 'mfcc', max_feq is the
-                     highest band edge of mel filters.
+    :param max_freq: MEL滤波器的最高带边
     :types max_freq: None|float
-    :param target_audio_rate: Audio are resampled (if upsampling or
-                               downsampling is allowed) to this before
-                               extracting spectrogram features.
+    :param target_audio_rate: 指定训练音频的采样率
     :type target_audio_rate: float
-    :param use_dB_normalization: Whether to normalize the audio to a certain
-                                 decibels before extracting the features.
-    :type use_dB_normalization: bool
-    :param target_dB: Target audio decibels for normalization.
-    :type target_dB: float
     """
 
     def __init__(self,
                  stride_ms=10.0,
                  window_ms=20.0,
                  max_freq=None,
-                 target_audio_rate=16000,
-                 use_dB_normalization=True,
-                 target_dB=-20):
+                 target_audio_rate=16000):
         self._stride_ms = stride_ms
         self._window_ms = window_ms
         self._max_freq = max_freq
         self._target_audio_rate = target_audio_rate
-        self._use_dB_normalization = use_dB_normalization
-        self._target_dB = target_dB
 
     def load_audio_file(self, path):
         audio, audio_rate = soundfile.read(path, dtype='float32')
@@ -51,17 +35,47 @@ class AudioFeaturizer(object):
         return audio
 
     def featurize(self, audio):
-        """从AudioSegment或SpeechSegment中提取音频特征
+        """audio中提取音频特征
 
-        :param audio: soundfile to extract features from.
+        :param audio: 使用soundfile读取得到的数据
         :type audio: numpy
 
-        :return: Spectrogram audio feature in 2darray.
+        :return: 经过处理的二维特征
         :rtype: ndarray
-        :raises ValueError: If audio sample rate is not supported.
         """
         # extract spectrogram
-        return self._compute_linear_specgram(audio, self._target_audio_rate, self._stride_ms, self._window_ms, self._max_freq)
+        return self._compute_mfcc(audio, self._target_audio_rate, self._stride_ms, self._window_ms, self._max_freq)
+
+    def _compute_mfcc(self,
+                      audio,
+                      audio_rate,
+                      stride_ms=10.0,
+                      window_ms=20.0,
+                      max_freq=None):
+        """Compute mfcc from audio."""
+        if max_freq is None:
+            max_freq = audio_rate / 2
+        if max_freq > audio_rate / 2:
+            raise ValueError("max_freq must not be greater than half of sample rate.")
+        if stride_ms > window_ms:
+            raise ValueError("Stride size must not be greater than window size.")
+        # compute the 13 cepstral coefficients, and the first one is replaced by log(frame energy)
+        mfcc_feat = mfcc(signal=audio,
+                         samplerate=audio_rate,
+                         winlen=0.001 * window_ms,
+                         winstep=0.001 * stride_ms,
+                         highfreq=max_freq)
+        # Deltas
+        d_mfcc_feat = delta(mfcc_feat, 2)
+        # Deltas-Deltas
+        dd_mfcc_feat = delta(d_mfcc_feat, 2)
+        # transpose
+        mfcc_feat = np.transpose(mfcc_feat)
+        d_mfcc_feat = np.transpose(d_mfcc_feat)
+        dd_mfcc_feat = np.transpose(dd_mfcc_feat)
+        # concat above three features
+        concat_mfcc_feat = np.concatenate((mfcc_feat, d_mfcc_feat, dd_mfcc_feat))
+        return concat_mfcc_feat
 
     def _compute_linear_specgram(self,
                                  samples,
@@ -106,35 +120,3 @@ class AudioFeaturizer(object):
         # prepare fft frequency list
         freqs = float(sample_rate) / window_size * np.arange(fft.shape[0])
         return fft, freqs
-
-    def _compute_mfcc(self,
-                      audio,
-                      audio_rate,
-                      stride_ms=10.0,
-                      window_ms=20.0,
-                      max_freq=None):
-        """Compute mfcc from samples."""
-        if max_freq is None:
-            max_freq = audio_rate / 2
-        if max_freq > audio_rate / 2:
-            raise ValueError("max_freq must not be greater than half of sample rate.")
-        if stride_ms > window_ms:
-            raise ValueError("Stride size must not be greater than window size.")
-        # compute the 13 cepstral coefficients, and the first one is replaced
-        # by log(frame energy)
-        mfcc_feat = mfcc(signal=audio,
-                         samplerate=audio_rate,
-                         winlen=0.001 * window_ms,
-                         winstep=0.001 * stride_ms,
-                         highfreq=max_freq)
-        # Deltas
-        d_mfcc_feat = delta(mfcc_feat, 2)
-        # Deltas-Deltas
-        dd_mfcc_feat = delta(d_mfcc_feat, 2)
-        # transpose
-        mfcc_feat = np.transpose(mfcc_feat)
-        d_mfcc_feat = np.transpose(d_mfcc_feat)
-        dd_mfcc_feat = np.transpose(dd_mfcc_feat)
-        # concat above three features
-        concat_mfcc_feat = np.concatenate((mfcc_feat, d_mfcc_feat, dd_mfcc_feat))
-        return concat_mfcc_feat

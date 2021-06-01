@@ -1,9 +1,11 @@
-paddlepaddle-gpu==2.0.0.post101
-numpy==1.19.3
+paddlepaddle-gpu==2.1.0
+numpy==1.19.2
 scipy==1.6.1
-tqdm
+tqdm==4.59.0
 pytest-runner
-librosa==0.6.3
+librosa==0.8.0
 python-Levenshtein==0.12.2
+python_speech_features==0.6
 visualdl==2.1.1
 SoundFile==0.9.0.post1
+resampy==0.2.2

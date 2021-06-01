@@ -96,12 +96,12 @@ class ConvStack(nn.Layer):
                    kernel_size=(21, 11),
                    stride=(2, 1),
                    padding=(10, 5),
-                   act='brelu') for i in range(num_stacks - 1)
+                   act='brelu') for i in range(self.num_stacks - 1)
         ]
         self.conv_stack = nn.LayerList(convs)
 
         # 卷积层输出的特征大小
-        output_height = (feat_size - 1) // 2 + 1
+        output_height = (self.feat_size - 1) // 2 + 1
         for i in range(self.num_stacks - 1):
             output_height = (output_height - 1) // 2 + 1
         self.output_height = out_channel * output_height
