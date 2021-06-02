@@ -28,7 +28,8 @@ class PPASRDataset(Dataset):
         # 加载数据字典
         with open(dict_path, 'r', encoding='utf-8') as f:
             labels = eval(f.read())
-        self.vocabulary = dict([(labels[i], i) for i in range(len(labels))])
+        self.vocabulary_dict = dict([(labels[i], i) for i in range(len(labels))])
+        self.vocabulary = [labels[i] for i in range(len(labels))]
         self.feature_dim = self._audio_featurizer.feature_dim()
         # random.shuffle(self.data_list)
 
@@ -41,7 +42,7 @@ class PPASRDataset(Dataset):
         # 对特征归一化
         feature = self._normalizer.apply(feature)
         # 将字符标签转换为int数据
-        transcript = list(filter(None, [self.vocabulary.get(x) for x in transcript]))
+        transcript = list(filter(None, [self.vocabulary_dict.get(x) for x in transcript]))
         transcript = np.array(transcript, dtype='int32')
         return feature, transcript
 

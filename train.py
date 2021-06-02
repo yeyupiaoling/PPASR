@@ -8,12 +8,15 @@ from datetime import datetime
 import paddle
 import paddle.distributed as dist
 from paddle.io import DataLoader
+from tqdm import tqdm
 from visualdl import LogWriter
 
 from data.utility import add_arguments, print_arguments
 from data_utils.reader import PPASRDataset, collate_fn
+from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
-from utils.decoder import GreedyDecoder
+from utils.metrics import cer
+from utils.utils import labels_to_string
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -39,21 +42,20 @@ args = parser.parse_args()
 
 # 评估模型
 @paddle.no_grad()
-def evaluate(model, test_loader, greedy_decoder):
-    cer = []
-    for batch_id, (inputs, labels, input_lens, _) in enumerate(test_loader()):
+def evaluate(model, test_loader, vocabulary):
+    c = []
+    for inputs, labels, input_lens, _ in tqdm(test_loader()):
         # 执行识别
         outs, _ = model(inputs, input_lens)
         outs = paddle.nn.functional.softmax(outs, 2)
         # 解码获取识别结果
-        out_strings, out_offsets = greedy_decoder.decode(outs)
-        labels = greedy_decoder.convert_to_strings(labels)
-        for out_string, label in zip(*(out_strings, labels)):
+        out_strings = greedy_decoder_batch(outs.numpy(), vocabulary)
+        labels_str = labels_to_string(labels.numpy(), vocabulary)
+        for out_string, label in zip(*(out_strings, labels_str)):
             # 计算字错率
-            c = greedy_decoder.cer(out_string[0], label[0]) / float(len(label[0]))
-            cer.append(c)
-    cer = float(sum(cer) / len(cer))
-    return cer
+            c.append(cer(out_string, label) / float(len(label)))
+    c = float(sum(c) / len(c))
+    return c
 
 
 # 保存模型
@@ -99,8 +101,6 @@ def train(args):
                              batch_sampler=batch_sampler,
                              num_workers=args.num_workers)
 
-    # 获取解码器，用于评估
-    greedy_decoder = GreedyDecoder(train_dataset.vocabulary)
     # 获取模型
     model = DeepSpeech2Model(feat_size=train_dataset.feature_dim,
                              dict_size=len(train_dataset.vocabulary),
@@ -180,8 +180,10 @@ def train(args):
         if dist.get_rank() == 0:
             # 执行评估
             model.eval()
-            cer = evaluate(model, test_loader, greedy_decoder)
+            cer = evaluate(model, test_loader, test_dataset.vocabulary)
+            print('='*70)
             print('[%s] Test epoch %d, cer: %f' % (datetime.now(), epoch, cer))
+            print('='*70)
             writer.add_scalar('Test cer', cer, test_step)
             test_step += 1
             model.train()

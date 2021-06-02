@@ -2,25 +2,33 @@ import argparse
 import functools
 import os
 import time
+
 import numpy as np
 import paddle
 
 from data.utility import add_arguments, print_arguments
 from data_utils.audio_featurizer import AudioFeaturizer
 from data_utils.normalizer import FeatureNormalizer
-from utils.decoder import GreedyDecoder
+from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
-
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('num_conv_layers',  int,   2,                        '卷积层数量')
-add_arg('num_rnn_layers',   int,   3,                        '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   1024,                     '循环神经网络的大小')
-add_arg('audio_path',       str,  'dataset/test.wav',        '用于识别的音频路径')
-add_arg('dataset_vocab',    str,  'dataset/vocabulary.json', '数据字典的路径')
-add_arg('model_path',       str,  'models/step_final/',      '模型的路径')
-add_arg('mean_std_path',    str,  'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
+add_arg('num_conv_layers',  int,    2,                        '卷积层数量')
+add_arg('num_rnn_layers',   int,    3,                        '循环神经网络的数量')
+add_arg('rnn_layer_size',   int,    1024,                     '循环神经网络的大小')
+add_arg('alpha',            float,  1.2,                      '定向搜索的LM系数')
+add_arg('beta',             float,  0.35,                     '定向搜索的WC系数')
+add_arg('beam_size',        int,    10,                       '定向搜索的大小，范围:[5, 500]')
+add_arg('num_proc_bsearch', int,    8,                        '定向搜索方法使用CPU数量')
+add_arg('cutoff_prob',      float,  1.0,                      '剪枝的概率')
+add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大值')
+add_arg('audio_path',       str,   'dataset/test.wav',        '用于识别的音频路径')
+add_arg('dataset_vocab',    str,   'dataset/vocabulary.json', '数据字典的路径')
+add_arg('model_path',       str,   'models/step_final/',      '模型的路径')
+add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
+add_arg('decoder',          str,   'ctc_beam_search',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
+add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
 
 
@@ -28,10 +36,8 @@ print_arguments(args)
 # 加载数据字典
 with open(args.dataset_vocab, 'r', encoding='utf-8') as f:
     labels = eval(f.read())
-vocabulary = dict([(labels[i], i) for i in range(len(labels))])
+vocabulary = [labels[i] for i in range(len(labels))]
 
-# 获取解码器
-greedy_decoder = GreedyDecoder(vocabulary)
 # 提取音频特征器和归一化器
 audio_featurizer = AudioFeaturizer()
 normalizer = FeatureNormalizer(mean_std_filepath=args.mean_std_path)
@@ -46,25 +52,55 @@ model.set_state_dict(paddle.load(os.path.join(args.model_path, 'model.pdparams')
 model.eval()
 
 
+# 定向搜索方法的处理
+if args.decoder == "ctc_beam_search":
+    try:
+        from decoders.beam_search_decoder import BeamSearchDecoder
+        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, vocabulary)
+    except ModuleNotFoundError:
+        raise Exception('缺少ctc_decoders库，请在decoders目录中执行setup.sh编译，如果是Windows系统，请使用ctc_greed。')
+
+
+# 执行解码
+def decoder(outs, vocabulary):
+    if args.decoder == 'ctc_greedy':
+        result = greedy_decoder_batch(outs, vocabulary)
+    else:
+        result = beam_search_decoder.decode_batch_beam_search(probs_split=outs,
+                                                              beam_alpha=args.alpha,
+                                                              beam_beta=args.beta,
+                                                              beam_size=args.beam_size,
+                                                              cutoff_prob=args.cutoff_prob,
+                                                              cutoff_top_n=args.cutoff_top_n,
+                                                              vocab_list=vocabulary,
+                                                              num_processes=args.num_proc_bsearch)
+    return result
+
+
 @paddle.no_grad()
 def infer():
     # 提取音频特征
+    s = time.time()
     audio = audio_featurizer.load_audio_file(args.audio_path)
     feature = audio_featurizer.featurize(audio)
     # 对特征归一化
     audio = normalizer.apply(feature)[np.newaxis, :]
     audio = paddle.to_tensor(audio, dtype=paddle.float32)
     audio_len = paddle.to_tensor(feature.shape[1], dtype=paddle.int64)
+    print('加载音频和预处理时间：%dms' % round((time.time() - s) * 1000))
     # 执行识别
+    s = time.time()
     out, _ = model(audio, audio_len)
     out = paddle.nn.functional.softmax(out, 2)
+    print('执行预测时间：%dms' % round((time.time() - s) * 1000))
     # 执行解码
-    out_string, out_offset = greedy_decoder.decode(out)
+    s = time.time()
+    out_string = decoder(out.numpy(), vocabulary)
+    print('解码消耗时间：%dms' % round((time.time() - s) * 1000))
     return out_string
 
 
 if __name__ == '__main__':
     start = time.time()
-    result_text = infer()[0][0]
-    end = time.time()
-    print('识别时间：%dms，识别结果：%s' % (round((end - start) * 1000), result_text))
+    result_text = infer()[0]
+    print('识别总时间：%dms，识别结果：%s' % (round((time.time() - start) * 1000), result_text))
