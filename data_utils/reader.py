@@ -29,6 +29,7 @@ class PPASRDataset(Dataset):
         with open(dict_path, 'r', encoding='utf-8') as f:
             labels = eval(f.read())
         self.vocabulary = dict([(labels[i], i) for i in range(len(labels))])
+        self.feature_dim = self._audio_featurizer.feature_dim()
         # random.shuffle(self.data_list)
 
     def __getitem__(self, idx):

@@ -81,6 +81,7 @@ class ConvStack(nn.Layer):
         super().__init__()
         self.feat_size = feat_size  # D
         self.num_stacks = num_stacks
+        out_channel = 32
 
         self.conv_in = ConvBn(num_channels_in=1,
                               num_channels_out=32,
@@ -89,16 +90,15 @@ class ConvStack(nn.Layer):
                               padding=(20, 5),
                               act='brelu')
 
-        out_channel = 32
-        convs = [
-            ConvBn(num_channels_in=32,
-                   num_channels_out=out_channel,
-                   kernel_size=(21, 11),
-                   stride=(2, 1),
-                   padding=(10, 5),
-                   act='brelu') for i in range(self.num_stacks - 1)
-        ]
-        self.conv_stack = nn.LayerList(convs)
+        conv_stacks = []
+        for _ in range(self.num_stacks - 1):
+            conv_stacks.append(ConvBn(num_channels_in=32,
+                                      num_channels_out=out_channel,
+                                      kernel_size=(21, 11),
+                                      stride=(2, 1),
+                                      padding=(10, 5),
+                                      act='brelu'))
+        self.conv_stack = nn.LayerList(conv_stacks)
 
         # 卷积层输出的特征大小
         output_height = (self.feat_size - 1) // 2 + 1

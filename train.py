@@ -17,23 +17,23 @@ from utils.decoder import GreedyDecoder
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('gpus',             str,   '0',                      '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
-add_arg('batch_size',       int,   32,                       '训练的批量大小')
-add_arg('num_workers',      int,   8,                        '读取数据的线程数量')
-add_arg('num_epoch',        int,   200,                      '训练的轮数')
-add_arg('learning_rate',    int,   1e-3,                     '初始学习率的大小')
-add_arg('num_conv_layers',  int,   2,                        '卷积层数量')
-add_arg('num_rnn_layers',   int,   3,                        '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   1024,                     '循环神经网络的大小')
-add_arg('min_duration',     int,   0,                        '过滤最短的音频长度')
-add_arg('max_duration',     int,   20,                       '过滤最长的音频长度，当为-1的时候不限制长度')
-add_arg('train_manifest',   str,   'dataset/manifest.train', '训练数据的数据列表路径')
-add_arg('test_manifest',    str,   'dataset/manifest.test',  '测试数据的数据列表路径')
-add_arg('dataset_vocab',    str,   'dataset/zh_vocab.json',  '数据字典的路径')
-add_arg('mean_std_path',    str,   'dataset/mean_std.npz',   '数据集的均值和标准值的npy文件路径')
-add_arg('save_model',       str,   'models/',                '模型保存的路径')
-add_arg('resume',           str,    None,                    '恢复训练，当为None则不使用预训练模型')
-add_arg('pretrained_model', str,    None,                    '预训练模型的路径，当为None则不使用预训练模型')
+add_arg('gpus',             str,   '0',                        '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
+add_arg('batch_size',       int,   16,                         '训练的批量大小')
+add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
+add_arg('num_epoch',        int,   50,                         '训练的轮数')
+add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
+add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
+add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
+add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
+add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
+add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
+add_arg('train_manifest',   str,   'dataset/manifest.train',   '训练数据的数据列表路径')
+add_arg('test_manifest',    str,   'dataset/manifest.test',    '测试数据的数据列表路径')
+add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
+add_arg('mean_std_path',    str,   'dataset/mean_std.npz',     '数据集的均值和标准值的npy文件路径')
+add_arg('save_model',       str,   'models/',                  '模型保存的路径')
+add_arg('resume',           str,    None,                      '恢复训练，当为None则不使用预训练模型')
+add_arg('pretrained_model', str,    None,                      '预训练模型的路径，当为None则不使用预训练模型')
 args = parser.parse_args()
 
 
@@ -102,14 +102,14 @@ def train(args):
     # 获取解码器，用于评估
     greedy_decoder = GreedyDecoder(train_dataset.vocabulary)
     # 获取模型
-    model = DeepSpeech2Model(feat_size=39,
+    model = DeepSpeech2Model(feat_size=train_dataset.feature_dim,
                              dict_size=len(train_dataset.vocabulary),
                              num_conv_layers=args.num_conv_layers,
                              num_rnn_layers=args.num_rnn_layers,
                              rnn_size=args.rnn_layer_size)
     if dist.get_rank() == 0:
         print('input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！')
-        paddle.summary(model, input_size=[(args.batch_size, 39, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
+        paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
 
     # 设置支持多卡训练
     if len(args.gpus.split(',')) > 1:

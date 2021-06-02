@@ -15,15 +15,15 @@ from utils.decoder import GreedyDecoder
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   32,                       '训练的批量大小')
-add_arg('num_workers',      int,   8,                        '读取数据的线程数量')
-add_arg('num_conv_layers',  int,   2,                        '卷积层数量')
-add_arg('num_rnn_layers',   int,   3,                        '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   1024,                     '循环神经网络的大小')
-add_arg('test_manifest',    str,   'dataset/manifest.test',  '测试数据的数据列表路径')
-add_arg('dataset_vocab',    str,   'dataset/zh_vocab.json',  '数据字典的路径')
-add_arg('mean_std_path',    str,   'dataset/mean_std.npz',   '数据集的均值和标准值的npy文件路径')
-add_arg('model_path',       str,   'models/step_final/',     '模型的路径')
+add_arg('batch_size',       int,   32,                        '训练的批量大小')
+add_arg('num_workers',      int,   8,                         '读取数据的线程数量')
+add_arg('num_conv_layers',  int,   2,                         '卷积层数量')
+add_arg('num_rnn_layers',   int,   3,                         '循环神经网络的数量')
+add_arg('rnn_layer_size',   int,   1024,                      '循环神经网络的大小')
+add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
+add_arg('dataset_vocab',    str,   'dataset/vocabulary.json', '数据字典的路径')
+add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
+add_arg('model_path',       str,   'models/step_final/',      '模型的路径')
 args = parser.parse_args()
 
 
@@ -38,7 +38,7 @@ test_loader = DataLoader(dataset=test_dataset,
 # 获取解码器，用于评估
 greedy_decoder = GreedyDecoder(test_dataset.vocabulary)
 # 获取模型
-model = DeepSpeech2Model(feat_size=39,
+model = DeepSpeech2Model(feat_size=test_dataset.feature_dim,
                          dict_size=len(test_dataset.vocabulary),
                          num_conv_layers=args.num_conv_layers,
                          num_rnn_layers=args.num_rnn_layers,

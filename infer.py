@@ -14,13 +14,13 @@ from model_utils.deepspeech2 import DeepSpeech2Model
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('num_conv_layers',  int,   2,                       '卷积层数量')
-add_arg('num_rnn_layers',   int,   3,                       '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   1024,                    '循环神经网络的大小')
-add_arg('audio_path',       str,  'dataset/test.wav',       '用于识别的音频路径')
-add_arg('dataset_vocab',    str,  'dataset/zh_vocab.json',  '数据字典的路径')
-add_arg('model_path',       str,  'models/step_final/',     '模型的路径')
-add_arg('mean_std_path',    str,  'dataset/mean_std.npz',   '数据集的均值和标准值的npy文件路径')
+add_arg('num_conv_layers',  int,   2,                        '卷积层数量')
+add_arg('num_rnn_layers',   int,   3,                        '循环神经网络的数量')
+add_arg('rnn_layer_size',   int,   1024,                     '循环神经网络的大小')
+add_arg('audio_path',       str,  'dataset/test.wav',        '用于识别的音频路径')
+add_arg('dataset_vocab',    str,  'dataset/vocabulary.json', '数据字典的路径')
+add_arg('model_path',       str,  'models/step_final/',      '模型的路径')
+add_arg('mean_std_path',    str,  'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
 args = parser.parse_args()
 
 
@@ -37,7 +37,7 @@ audio_featurizer = AudioFeaturizer()
 normalizer = FeatureNormalizer(mean_std_filepath=args.mean_std_path)
 
 # 创建模型
-model = DeepSpeech2Model(feat_size=39,
+model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim(),
                          dict_size=len(vocabulary),
                          num_conv_layers=args.num_conv_layers,
                          num_rnn_layers=args.num_rnn_layers,
