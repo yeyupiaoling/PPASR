@@ -6,17 +6,13 @@ import numpy as np
 
 
 class Scorer(object):
-    """External scorer to evaluate a prefix or whole sentence in
-       beam search decoding, including the score from n-gram language
-       model and word count.
+    """在波束搜索解码中对前缀或整句进行外部评分，包括n-gram语言模型的评分和单词计数
 
-    :param alpha: Parameter associated with language model. Don't use
-                  language model when alpha = 0.
+    :param alpha: 与语言模型相关的参数。当alpha = 0时不要使用语言模型
     :type alpha: float
-    :param beta: Parameter associated with word count. Don't use word
-                count when beta = 0.
+    :param beta: 与字计数相关的参数。当beta = 0时不要使用统计字
     :type beta: float
-    :model_path: Path to load language model.
+    :model_path: 语言模型的路径
     :type model_path: str
     """
 
@@ -46,19 +42,18 @@ class Scorer(object):
 
     # execute evaluation
     def __call__(self, sentence, log=False):
-        """Evaluation function, gathering all the different scores
-        and return the final one.
+        """评价功能，收集所有不同的分数，并返回最后一个
 
-        :param sentence: The input sentence for evalutation
+        :param sentence: 输入语句进行计算
         :type sentence: str
-        :param log: Whether return the score in log representation.
+        :param log: 是否以日志形式返回分数
         :type log: bool
-        :return: Evaluation score, in the decimal or log.
+        :return: 评价分数，用小数或对数表示
         :rtype: float
         """
         lm = self._language_model_score(sentence)
         word_cnt = self._word_count(sentence)
-        if log == False:
+        if not log:
             score = np.power(lm, self._alpha) * np.power(word_cnt, self._beta)
         else:
             score = self._alpha * np.log(lm) + self._beta * np.log(word_cnt)

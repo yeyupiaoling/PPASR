@@ -9,7 +9,7 @@ import paddle
 from data.utility import add_arguments, print_arguments
 from data_utils.audio_featurizer import AudioFeaturizer
 from data_utils.normalizer import FeatureNormalizer
-from decoders.ctc_greedy_decoder import greedy_decoder_batch
+from decoders.ctc_greedy_decoder import greedy_decoder
 from model_utils.deepspeech2 import DeepSpeech2Model
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -62,19 +62,19 @@ if args.decoder == "ctc_beam_search":
 
 
 # 执行解码
-def decoder(outs, vocabulary):
+def decoder(out, vocab):
     if args.decoder == 'ctc_greedy':
-        result = greedy_decoder_batch(outs, vocabulary)
+        result = greedy_decoder(out, vocab)
     else:
-        result = beam_search_decoder.decode_batch_beam_search(probs_split=outs,
-                                                              beam_alpha=args.alpha,
-                                                              beam_beta=args.beta,
-                                                              beam_size=args.beam_size,
-                                                              cutoff_prob=args.cutoff_prob,
-                                                              cutoff_top_n=args.cutoff_top_n,
-                                                              vocab_list=vocabulary,
-                                                              num_processes=args.num_proc_bsearch)
-    return result
+        result = beam_search_decoder.decode_beam_search(probs_split=out,
+                                                        beam_alpha=args.alpha,
+                                                        beam_beta=args.beta,
+                                                        beam_size=args.beam_size,
+                                                        cutoff_prob=args.cutoff_prob,
+                                                        cutoff_top_n=args.cutoff_top_n,
+                                                        vocab_list=vocab)
+    score, text = result[0], result[1]
+    return score, text
 
 
 @paddle.no_grad()
@@ -91,16 +91,16 @@ def infer():
     # 执行识别
     s = time.time()
     out, _ = model(audio, audio_len)
-    out = paddle.nn.functional.softmax(out, 2)
+    out = paddle.nn.functional.softmax(out, 2)[0]
     print('执行预测时间：%dms' % round((time.time() - s) * 1000))
     # 执行解码
     s = time.time()
-    out_string = decoder(out.numpy(), vocabulary)
+    score, text = decoder(out.numpy(), vocabulary)
     print('解码消耗时间：%dms' % round((time.time() - s) * 1000))
-    return out_string
+    return score, text
 
 
 if __name__ == '__main__':
     start = time.time()
-    result_text = infer()[0]
-    print('识别总时间：%dms，识别结果：%s' % (round((time.time() - start) * 1000), result_text))
+    result_score, result_text = infer()
+    print('识别总时间：%dms，识别结果：%s，得分：%f' % (round((time.time() - start) * 1000), result_text, result_score))

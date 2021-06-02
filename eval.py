@@ -16,11 +16,11 @@ from utils.utils import labels_to_string
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   32,                        '训练的批量大小')
-add_arg('num_workers',      int,   8,                         '读取数据的线程数量')
-add_arg('num_conv_layers',  int,   2,                         '卷积层数量')
-add_arg('num_rnn_layers',   int,   3,                         '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   1024,                      '循环神经网络的大小')
+add_arg('batch_size',       int,    32,                       '训练的批量大小')
+add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
+add_arg('num_conv_layers',  int,    2,                        '卷积层数量')
+add_arg('num_rnn_layers',   int,    3,                        '循环神经网络的数量')
+add_arg('rnn_layer_size',   int,    1024,                     '循环神经网络的大小')
 add_arg('alpha',            float,  1.2,                      '定向搜索的LM系数')
 add_arg('beta',             float,  0.35,                     '定向搜索的WC系数')
 add_arg('beam_size',        int,    10,                       '定向搜索的大小，范围:[5, 500]')
@@ -88,7 +88,7 @@ def evaluate():
         outs, _ = model(inputs, input_lens)
         outs = paddle.nn.functional.softmax(outs, 2)
         # 解码获取识别结果
-        out_strings = greedy_decoder_batch(outs.numpy(), test_dataset.vocabulary)
+        out_strings = decoder(outs.numpy(), test_dataset.vocabulary)
         labels_str = labels_to_string(labels.numpy(), test_dataset.vocabulary)
         for out_string, label in zip(*(out_strings, labels_str)):
             # 计算字错率

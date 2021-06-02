@@ -7,12 +7,12 @@ if [ $? != 0 ]; then
 fi
 
 # install dependencies
-sudo apt-get install -y libboost-dev swig
+sudo apt-get install -y pkg-config libflac-dev libogg-dev libvorbis-dev libboost-dev swig libsndfile1 git vim gcc
 if [ $? != 0 ]; then
     echo "Install dependencies failed !!!"
     exit 1
 fi
-echo "Success installde libboost-dev swig"
+echo "Success installde pkg-config libflac-dev libogg-dev libvorbis-dev libboost-dev swig libsndfile1 git vim gcc"
 
 
 if [ ! -d kenlm ]; then

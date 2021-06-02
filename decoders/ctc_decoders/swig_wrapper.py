@@ -6,13 +6,11 @@ import swig_decoders
 class Scorer(swig_decoders.Scorer):
     """Wrapper for Scorer.
 
-    :param alpha: Parameter associated with language model. Don't use
-                  language model when alpha = 0.
+    :param alpha: 与语言模型相关的参数。当alpha = 0时不要使用语言模型
     :type alpha: float
-    :param beta: Parameter associated with word count. Don't use word
-                 count when beta = 0.
+    :param beta: 与字计数相关的参数。当beta = 0时不要使用统计字
     :type beta: float
-    :model_path: Path to load language model.
+    :model_path: 语言模型的路径
     :type model_path: str
     """
 
@@ -25,35 +23,29 @@ def ctc_beam_search_decoder(probs_seq,
                             beam_size,
                             cutoff_prob=1.0,
                             cutoff_top_n=40,
+                            blank_id=0,
                             ext_scoring_func=None):
-    """Wrapper for the CTC Beam Search Decoder.
+    """波束搜索解码器
 
-    :param probs_seq: 2-D list of probability distributions over each time
-                      step, with each element being a list of normalized
-                      probabilities over vocabulary and blank.
+    :param probs_seq: 单个2-D概率分布列表，每个元素是词汇表和空白上的标准化概率列表
     :type probs_seq: 2-D list
-    :param vocabulary: Vocabulary list.
+    :param vocabulary: 词汇列表
     :type vocabulary: list
-    :param beam_size: Width for beam search.
+    :param beam_size: 波束搜索宽度
     :type beam_size: int
-    :param cutoff_prob: Cutoff probability in pruning,
-                        default 1.0, no pruning.
+    :param cutoff_prob: 剪枝中的截断概率，默认1.0，没有剪枝
     :type cutoff_prob: float
-    :param cutoff_top_n: Cutoff number in pruning, only top cutoff_top_n
-                         characters with highest probs in vocabulary will be
-                         used in beam search, default 40.
+    :param cutoff_top_n: 剪枝时的截断数，仅在词汇表中具有最大probs的cutoff_top_n字符用于光束搜索，默认为40
     :type cutoff_top_n: int
-    :param ext_scoring_func: External scoring function for
-                             partially decoded sentence, e.g. word count
-                             or language model.
+    :param blank_id 空白索引
+    :type blank_id int
+    :param ext_scoring_func: 外部评分功能部分解码句子，如字计数或语言模型
     :type external_scoring_func: callable
-    :return: List of tuples of log probability and sentence as decoding
-             results, in descending order of the probability.
+    :return: 解码结果为log概率和句子的元组列表，按概率降序排列
     :rtype: list
     """
     beam_results = swig_decoders.ctc_beam_search_decoder(
-        probs_seq.tolist(), vocabulary, beam_size, cutoff_prob, cutoff_top_n,
-        ext_scoring_func)
+        probs_seq.tolist(), vocabulary, beam_size, cutoff_prob, cutoff_top_n, blank_id, ext_scoring_func)
     beam_results = [(res[0], res[1]) for res in beam_results]
     return beam_results
 
@@ -64,40 +56,34 @@ def ctc_beam_search_decoder_batch(probs_split,
                                   num_processes,
                                   cutoff_prob=1.0,
                                   cutoff_top_n=40,
+                                  blank_id=0,
                                   ext_scoring_func=None):
     """Wrapper for the batched CTC beam search decoder.
 
-    :param probs_seq: 3-D list with each element as an instance of 2-D list
-                      of probabilities used by ctc_beam_search_decoder().
+    :param probs_seq: 3-D列表，每个元素作为ctc_beam_search_decoder()使用的2-D概率列表的实例
     :type probs_seq: 3-D list
-    :param vocabulary: Vocabulary list.
+    :param vocabulary: 词汇列表
     :type vocabulary: list
-    :param beam_size: Width for beam search.
+    :param beam_size: 波束搜索宽度
     :type beam_size: int
-    :param num_processes: Number of parallel processes.
-    :type num_processes: int
-    :param cutoff_prob: Cutoff probability in vocabulary pruning,
-                        default 1.0, no pruning.
+    :param cutoff_prob: 剪枝中的截断概率，默认1.0，没有剪枝
     :type cutoff_prob: float
-    :param cutoff_top_n: Cutoff number in pruning, only top cutoff_top_n
-                         characters with highest probs in vocabulary will be
-                         used in beam search, default 40.
+    :param cutoff_top_n: 剪枝时的截断数，仅在词汇表中具有最大probs的cutoff_top_n字符用于光束搜索，默认为40
     :type cutoff_top_n: int
-    :param num_processes: Number of parallel processes.
+    :param blank_id 空白索引
+    :type blank_id int
+    :param num_processes: 并行解码进程数
     :type num_processes: int
-    :param ext_scoring_func: External scoring function for
-                             partially decoded sentence, e.g. word count
-                             or language model.
+    :param ext_scoring_func: 外部评分功能部分解码句子，如字计数或语言模型
     :type external_scoring_function: callable
-    :return: List of tuples of log probability and sentence as decoding
-             results, in descending order of the probability.
+    :return: 解码结果为log概率和句子的元组列表，按概率降序排列的列表
     :rtype: list
     """
     probs_split = [probs_seq.tolist() for probs_seq in probs_split]
 
     batch_beam_results = swig_decoders.ctc_beam_search_decoder_batch(
         probs_split, vocabulary, beam_size, num_processes, cutoff_prob,
-        cutoff_top_n, ext_scoring_func)
+        cutoff_top_n, blank_id, ext_scoring_func)
     batch_beam_results = [[(res[0], res[1]) for res in beam_results]
                           for beam_results in batch_beam_results]
     return batch_beam_results

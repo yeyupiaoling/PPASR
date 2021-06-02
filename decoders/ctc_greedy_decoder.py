@@ -19,25 +19,27 @@ def greedy_decoder(probs_seq, vocabulary, blank_index=0):
     """
     # 获得每个时间步的最佳索引
     max_index_list = list(np.array(probs_seq).argmax(axis=1))
-    # 删除连续的重复索引
+    max_prob_list = [probs_seq[i][max_index_list[i]] for i in range(len(max_index_list)) if max_index_list[i] != blank_index]
+    # 删除连续的重复索引和空索引
     index_list = [index_group[0] for index_group in groupby(max_index_list)]
     index_list = [index for index in index_list if index != blank_index]
     # 索引列表转换为字符串
-    return ''.join([vocabulary[index] for index in index_list])
+    text = ''.join([vocabulary[index] for index in index_list])
+    score = float(sum(max_prob_list) / len(max_prob_list)) * 100.0
+    return score, text
 
 
 def greedy_decoder_batch(probs_split, vocabulary):
-    """Decode by best path for a batch of probs matrix input.
-    :param probs_split: List of 2-D probability matrix, and each consists
-                        of prob vectors for one speech utterancce.
-    :param probs_split: List of matrix
-    :param vocab_list: List of tokens in the vocabulary, for decoding.
-    :type vocab_list: list
-    :return: List of transcription texts.
-    :rtype: List of str
+    """CTC贪婪(最佳路径)解码器
+    :param probs_split: 一批包含2D的概率表
+    :type probs_split: list
+    :param vocabulary: 词汇列表
+    :type vocabulary: list
+    :return: 字符串列表
+    :rtype: list
     """
     results = []
     for i, probs in enumerate(probs_split):
         output_transcription = greedy_decoder(probs, vocabulary)
-        results.append(output_transcription)
+        results.append(output_transcription[1])
     return results

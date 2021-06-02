@@ -1,7 +1,6 @@
 %module swig_decoders
 %{
 #include "scorer.h"
-#include "ctc_greedy_decoder.h"
 #include "ctc_beam_search_decoder.h"
 #include "decoder_utils.h"
 %}
