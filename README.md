@@ -1,6 +1,6 @@
 # PPASR语音识别（进阶级）
 
-本项目将分三个阶段分支，分别是入门级、进阶级和最终级分支，当前为进阶级，随着级别的提升，识别准确率也随之提升，也更适合实际项目使用，敬请关注！
+本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为进阶级，随着级别的提升，识别准确率也随之提升，也更适合实际项目使用，敬请关注！
 
 PPASR基于PaddlePaddle2实现的端到端自动语音识别，相比入门级，进阶级从三个方面来提高模型的准确率，首先最主要的是更换了模型，这次采用了DeepSpeech2模型，DeepSpeech2是2015年百度发布的语音识别模型，其论文为[《Baidu’s Deep Speech 2 paper》](http://proceedings.mlr.press/v48/amodei16.pdf) 。然后也修改了音频的预处理，这次使用了在语音识别上更好的预处理，通过用FFT energy计算线性谱图。最好修改的是解码器，相比之前使用的贪心策略解码器，这次增加了波束搜索解码器，这个解码器可以加载语言模型，对解码的结果调整，使得预测输出语句更合理，从而提高准确率。
 
