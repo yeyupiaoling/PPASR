@@ -23,7 +23,7 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('gpus',             str,   '0',                        '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
 add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
-add_arg('num_epoch',        int,   50,                         '训练的轮数')
+add_arg('num_epoch',        int,   20,                         '训练的轮数')
 add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
@@ -180,11 +180,11 @@ def train(args):
         if dist.get_rank() == 0:
             # 执行评估
             model.eval()
-            cer = evaluate(model, test_loader, test_dataset.vocabulary)
+            c = evaluate(model, test_loader, test_dataset.vocabulary)
+            print('\n', '='*70)
+            print('[%s] Test epoch %d, cer: %f' % (datetime.now(), epoch, c))
             print('='*70)
-            print('[%s] Test epoch %d, cer: %f' % (datetime.now(), epoch, cer))
-            print('='*70)
-            writer.add_scalar('Test cer', cer, test_step)
+            writer.add_scalar('Test cer', c, test_step)
             test_step += 1
             model.train()
 

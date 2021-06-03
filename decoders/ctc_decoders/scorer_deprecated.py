@@ -6,7 +6,7 @@ import numpy as np
 
 
 class Scorer(object):
-    """在波束搜索解码中对前缀或整句进行外部评分，包括n-gram语言模型的评分和单词计数
+    """在集束搜索解码中对前缀或整句进行外部评分，包括n-gram语言模型的评分和单词计数
 
     :param alpha: 与语言模型相关的参数。当alpha = 0时不要使用语言模型
     :type alpha: float

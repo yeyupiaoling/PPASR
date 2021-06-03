@@ -19,7 +19,7 @@ class BeamSearchDecoder:
             print("初始化解码器完成!")
         else:
             self._ext_scorer = None
-            print("没有语言模型，解码由纯波束搜索，解码速度慢！")
+            print("没有语言模型，解码由纯集束搜索，解码速度慢！")
 
     # 单个数据解码
     def decode_beam_search(self, probs_split, beam_alpha, beam_beta,

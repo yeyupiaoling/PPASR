@@ -25,13 +25,13 @@ def ctc_beam_search_decoder(probs_seq,
                             cutoff_top_n=40,
                             blank_id=0,
                             ext_scoring_func=None):
-    """波束搜索解码器
+    """集束搜索解码器
 
     :param probs_seq: 单个2-D概率分布列表，每个元素是词汇表和空白上的标准化概率列表
     :type probs_seq: 2-D list
     :param vocabulary: 词汇列表
     :type vocabulary: list
-    :param beam_size: 波束搜索宽度
+    :param beam_size: 集束搜索宽度
     :type beam_size: int
     :param cutoff_prob: 剪枝中的截断概率，默认1.0，没有剪枝
     :type cutoff_prob: float
@@ -64,7 +64,7 @@ def ctc_beam_search_decoder_batch(probs_split,
     :type probs_seq: 3-D list
     :param vocabulary: 词汇列表
     :type vocabulary: list
-    :param beam_size: 波束搜索宽度
+    :param beam_size: 集束搜索宽度
     :type beam_size: int
     :param cutoff_prob: 剪枝中的截断概率，默认1.0，没有剪枝
     :type cutoff_prob: float

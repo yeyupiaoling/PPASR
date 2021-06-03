@@ -17,10 +17,10 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('num_conv_layers',  int,    2,                        '卷积层数量')
 add_arg('num_rnn_layers',   int,    3,                        '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,    1024,                     '循环神经网络的大小')
-add_arg('alpha',            float,  1.2,                      '定向搜索的LM系数')
-add_arg('beta',             float,  0.35,                     '定向搜索的WC系数')
-add_arg('beam_size',        int,    10,                       '定向搜索的大小，范围:[5, 500]')
-add_arg('num_proc_bsearch', int,    8,                        '定向搜索方法使用CPU数量')
+add_arg('alpha',            float,  1.2,                      '集束搜索的LM系数')
+add_arg('beta',             float,  0.35,                     '集束搜索的WC系数')
+add_arg('beam_size',        int,    10,                       '集束搜索的大小，范围:[5, 500]')
+add_arg('num_proc_bsearch', int,    8,                        '集束搜索方法使用CPU数量')
 add_arg('cutoff_prob',      float,  1.0,                      '剪枝的概率')
 add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大值')
 add_arg('audio_path',       str,   'dataset/test.wav',        '用于识别的音频路径')
@@ -52,7 +52,7 @@ model.set_state_dict(paddle.load(os.path.join(args.model_path, 'model.pdparams')
 model.eval()
 
 
-# 定向搜索方法的处理
+# 集束搜索方法的处理
 if args.decoder == "ctc_beam_search":
     try:
         from decoders.beam_search_decoder import BeamSearchDecoder
