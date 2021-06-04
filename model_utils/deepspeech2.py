@@ -38,7 +38,7 @@ class DeepSpeech2Model(nn.Layer):
         """
         Args:
             audio (Tensor): [B, D, Tmax]
-            text (Tensor): [B, Umax]
+            audio_len (Tensor): [B, Umax]
         Returns:
             logits (Tensor): [B, T, D]
             x_lens (Tensor): [B]
