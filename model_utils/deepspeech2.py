@@ -32,6 +32,7 @@ class DeepSpeech2Model(nn.Layer):
         i_size = self.conv.output_height
         self.rnn = RNNStack(i_size=i_size, h_size=rnn_size, num_stacks=num_rnn_layers)
         # 分类输入层
+        self.bn = nn.BatchNorm1D(rnn_size * 2, bias_attr=None, data_format='NLC')
         self.fc = nn.Linear(rnn_size * 2, dict_size)
 
     def forward(self, audio, audio_len):
@@ -52,7 +53,8 @@ class DeepSpeech2Model(nn.Layer):
         x = x.transpose([0, 3, 1, 2])  # [B, T, C, D]
         x = x.reshape([0, 0, -1])  # [B, T, C*D]
         # 删除填充部分
-        x, x_lens = self.rnn(x, x_lens)  # [B, T, D]
+        x = self.rnn(x, x_lens)  # [B, T, D]
 
+        x = self.bn(x)
         logits = self.fc(x)
         return logits, x_lens

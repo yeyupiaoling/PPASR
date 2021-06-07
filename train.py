@@ -88,7 +88,7 @@ def train(args):
                                  mean_std_filepath=args.mean_std_path,
                                  min_duration=args.min_duration,
                                  max_duration=args.max_duration)
-    batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
+    batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=False)
     train_loader = DataLoader(dataset=train_dataset,
                               collate_fn=collate_fn,
                               batch_sampler=batch_sampler,
@@ -119,14 +119,14 @@ def train(args):
     clip = paddle.nn.ClipGradByNorm(clip_norm=3.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume)[-1]) if args.resume is not None else 0
-    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch, verbose=True)
+    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1, verbose=True)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
                                       weight_decay=paddle.regularizer.L2Decay(1e-06),
                                       grad_clip=clip)
 
     # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss()
+    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
 
     # 加载预训练模型
     if args.pretrained_model is not None:
@@ -155,7 +155,6 @@ def train(args):
     # 开始训练
     for epoch in range(last_epoch, args.num_epoch):
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
-
             out, out_lens = model(inputs, input_lens)
             out = paddle.transpose(out, perm=[1, 0, 2])
 

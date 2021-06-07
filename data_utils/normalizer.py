@@ -26,7 +26,7 @@ class FeatureNormalizer(object):
     def __init__(self,
                  mean_std_filepath,
                  manifest_path=None,
-                 num_samples=500,
+                 num_samples=5000,
                  random_seed=0):
         if not mean_std_filepath:
             if not manifest_path:
@@ -66,7 +66,10 @@ class FeatureNormalizer(object):
     def _compute_mean_std(self, manifest_path, num_samples):
         """从随机抽样的实例中计算均值和标准值"""
         manifest = read_manifest(manifest_path)
-        sampled_manifest = self._rng.sample(manifest, num_samples)
+        if num_samples < 0:
+            sampled_manifest = manifest
+        else:
+            sampled_manifest = self._rng.sample(manifest, num_samples)
         features = []
         for instance in tqdm(sampled_manifest):
             audio = self.audio_featurizer.load_audio_file(instance["audio_path"])

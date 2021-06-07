@@ -1,8 +1,27 @@
+import paddle
 from paddle import nn
-from model_utils.utils import brelu, make_non_pad_mask
-from paddle.nn import functional as F
 
 __all__ = ['ConvStack']
+
+
+class MaskConv(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, lengths):
+        """
+        :param x: 卷积输入，shape[B, C, D, T]
+        :param lengths: 卷积处理过的长度，shape[B]
+        :return: 经过填充0的结果
+        """
+        assert x.shape[0] == lengths.shape[0]
+        masks = paddle.full(shape=(x.shape[0], x.shape[-1]), fill_value=0, dtype=x.dtype)  # [B, T]
+        for i in range(x.shape[0]):
+            length = lengths[i].item()
+            masks[i, :length] = 1
+        masks = masks.unsqueeze(1).unsqueeze(1)  # [B, 1, 1, T]
+        x = x.multiply(masks)
+        return x
 
 
 class ConvBn(nn.Layer):
@@ -18,15 +37,13 @@ class ConvBn(nn.Layer):
     :type stride: int|tuple|list
     :param padding: 填充的大小
     :type padding: int|tuple|list
-    :param act: 激活函数的类型, relu|brelu
-    :type act: string
 
     :return: 带BN层的卷积
     :rtype: nn.Layer
 
     """
 
-    def __init__(self, num_channels_in, num_channels_out, kernel_size, stride, padding, act):
+    def __init__(self, num_channels_in, num_channels_out, kernel_size, stride, padding):
         super().__init__()
         assert len(kernel_size) == 2
         assert len(stride) == 2
@@ -34,6 +51,7 @@ class ConvBn(nn.Layer):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.mask = MaskConv()
 
         self.conv = nn.Conv2D(num_channels_in,
                               num_channels_out,
@@ -48,7 +66,7 @@ class ConvBn(nn.Layer):
                                  weight_attr=None,
                                  bias_attr=None,
                                  data_format='NCHW')
-        self.act = F.relu if act == 'relu' else brelu
+        self.act = nn.Hardtanh(min=0.0, max=24.0)
 
     def forward(self, x, x_len):
         """
@@ -61,10 +79,7 @@ class ConvBn(nn.Layer):
         x_len = (x_len - self.kernel_size[1] + 2 * self.padding[1]) // self.stride[1] + 1
 
         # 将填充部分重置为0
-        masks = make_non_pad_mask(x_len)  # [B, T]
-        masks = masks.unsqueeze(1).unsqueeze(1)  # [B, 1, 1, T]
-        masks = masks.astype(x.dtype)
-        x = x.multiply(masks)
+        x = self.mask(x, x_len)
         return x, x_len
 
 
@@ -87,8 +102,7 @@ class ConvStack(nn.Layer):
                               num_channels_out=32,
                               kernel_size=(41, 11),  # [D, T]
                               stride=(2, 3),
-                              padding=(20, 5),
-                              act='brelu')
+                              padding=(20, 5))
 
         conv_stacks = []
         for _ in range(self.num_stacks - 1):
@@ -96,8 +110,7 @@ class ConvStack(nn.Layer):
                                       num_channels_out=out_channel,
                                       kernel_size=(21, 11),
                                       stride=(2, 1),
-                                      padding=(10, 5),
-                                      act='brelu'))
+                                      padding=(10, 5)))
         self.conv_stack = nn.LayerList(conv_stacks)
 
         # 卷积层输出的特征大小
