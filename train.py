@@ -17,6 +17,7 @@ from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
 from utils.metrics import cer
 from utils.utils import labels_to_string
+from paddle.static import InputSpec
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -59,7 +60,7 @@ def evaluate(model, test_loader, vocabulary):
 
 
 # 保存模型
-def save_model(args, epoch, model, optimizer):
+def save_model(args, epoch, model, optimizer, feature_dim):
     model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
     if epoch == args.num_epoch - 1:
         model_path = os.path.join(args.save_model, 'step_final')
@@ -71,6 +72,14 @@ def save_model(args, epoch, model, optimizer):
     old_model_path = os.path.join(args.save_model, 'epoch_%d' % (epoch - 3))
     if os.path.exists(old_model_path):
         shutil.rmtree(old_model_path)
+    # 保存预测模型
+    infer_model_path = os.path.join(args.save_model, 'infer')
+    if not os.path.exists(infer_model_path):
+        os.makedirs(infer_model_path)
+    paddle.jit.save(layer=model,
+                    path=os.path.join(infer_model_path, 'model'),
+                    input_spec=[InputSpec(shape=(-1, feature_dim, -1), dtype=paddle.float32),
+                                InputSpec(shape=(-1, ), dtype=paddle.int64)])
 
 
 def train(args):
@@ -173,7 +182,7 @@ def train(args):
             # 固定步数也要保存一次模型
             if batch_id % 2000 == 0 and batch_id != 0 and dist.get_rank() == 0:
                 # 保存模型
-                save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
+                save_model(args=args, epoch=epoch, model=model, optimizer=optimizer, feature_dim=train_dataset.feature_dim)
 
         # 多卡训练只使用一个进程执行评估和保存模型
         if dist.get_rank() == 0:
@@ -191,7 +200,7 @@ def train(args):
             writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
 
             # 保存模型
-            save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
+            save_model(args=args, epoch=epoch, model=model, optimizer=optimizer, feature_dim=train_dataset.feature_dim)
         scheduler.step()
 
 

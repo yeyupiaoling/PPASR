@@ -18,7 +18,7 @@ class MaskRNN(nn.Layer):
         assert x.shape[0] == lengths.shape[0]
         masks = paddle.full(shape=(x.shape[0], x.shape[1]), fill_value=0, dtype=x.dtype)  # [B, T]
         for i in range(x.shape[0]):
-            length = lengths[i].item()
+            length = lengths[i]
             masks[i, :length] = 1
         masks = masks.unsqueeze(-1)  # [B, T, 1]
         x = x.multiply(masks)
