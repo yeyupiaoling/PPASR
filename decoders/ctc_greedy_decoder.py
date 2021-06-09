@@ -25,7 +25,9 @@ def greedy_decoder(probs_seq, vocabulary, blank_index=0):
     index_list = [index for index in index_list if index != blank_index]
     # 索引列表转换为字符串
     text = ''.join([vocabulary[index] for index in index_list])
-    score = float(sum(max_prob_list) / len(max_prob_list)) * 100.0
+    score = 0
+    if len(max_prob_list) > 0:
+        score = float(sum(max_prob_list) / len(max_prob_list)) * 100.0
     return score, text
 
 

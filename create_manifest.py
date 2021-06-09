@@ -20,7 +20,7 @@ add_arg('is_change_frame_rate', bool, True,                       '是否统一�
 add_arg('count_threshold',      int,  0,                          '字符计数的截断阈值，0为不做限制')
 add_arg('vocab_path',           str,  'dataset/vocabulary.json',  '生成的数据字典文件')
 add_arg('manifest_path',        str,  'dataset/manifest.train',   '数据列表路径')
-add_arg('num_samples',          int,  -1,                         '用于计算均值和标准值得音频数量，当为-1使用全部数据')
+add_arg('num_samples',          int,  5000,                       '用于计算均值和标准值得音频数量，当为-1使用全部数据')
 add_arg('output_path',          str,  './dataset/mean_std.npz',   '保存均值和标准值得numpy文件路径，后缀 (.npz).')
 args = parser.parse_args()
 

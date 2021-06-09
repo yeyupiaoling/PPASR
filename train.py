@@ -135,7 +135,7 @@ def train(args):
                                       grad_clip=clip)
 
     # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
+    ctc_loss = paddle.nn.CTCLoss()
 
     # 加载预训练模型
     if args.pretrained_model is not None:
