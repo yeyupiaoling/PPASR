@@ -1,6 +1,7 @@
 import numpy as np
 import resampy
 import soundfile
+from .audio_tool import AudioTool
 
 
 class AudioFeaturizer(object):
@@ -14,17 +15,22 @@ class AudioFeaturizer(object):
     :types max_freq: None|float
     :param target_audio_rate: 指定训练音频的采样率
     :type target_audio_rate: float
+    :param target_db: 目标音频分贝为标准化
+    :type target_db: float
     """
 
     def __init__(self,
                  stride_ms=10.0,
                  window_ms=20.0,
                  max_freq=None,
-                 target_audio_rate=16000):
+                 target_audio_rate=16000,
+                 target_db=-20):
         self._stride_ms = stride_ms
         self._window_ms = window_ms
         self._max_freq = max_freq
         self._target_audio_rate = target_audio_rate
+        self._target_dB = target_db
+        self._audio_tool = AudioTool()
 
     def load_audio_file(self, path):
         audio, audio_rate = soundfile.read(path, dtype='float32')
@@ -41,17 +47,18 @@ class AudioFeaturizer(object):
         :return: 经过处理的二维特征
         :rtype: ndarray
         """
-        # extract spectrogram
-        return self._compute_linear_specgram(audio, self._target_audio_rate, self._stride_ms, self._window_ms, self._max_freq)
+        audio = self._audio_tool.normalize(audio=audio, target_db=self._target_dB)
+        audio = self._compute_linear_specgram(audio, self._target_audio_rate, self._stride_ms, self._window_ms, self._max_freq)
+        return audio
 
-    def _compute_linear_specgram(self,
-                                 samples,
+    # 用 FFT energy计算线性谱图
+    @staticmethod
+    def _compute_linear_specgram(samples,
                                  sample_rate,
                                  stride_ms=10.0,
                                  window_ms=20.0,
                                  max_freq=None,
                                  eps=1e-14):
-        """用 FFT energy计算线性谱图"""
         if max_freq is None:
             max_freq = sample_rate / 2
         if max_freq > sample_rate / 2:
@@ -60,15 +67,6 @@ class AudioFeaturizer(object):
             raise ValueError("stride_ms不能大于window_ms")
         stride_size = int(0.001 * sample_rate * stride_ms)
         window_size = int(0.001 * sample_rate * window_ms)
-        specgram, freqs = self._specgram_real(samples,
-                                              window_size=window_size,
-                                              stride_size=stride_size,
-                                              sample_rate=sample_rate)
-        ind = np.where(freqs <= max_freq)[0][-1] + 1
-        return np.log(specgram[:ind, :] + eps)
-
-    def _specgram_real(self, samples, window_size, stride_size, sample_rate):
-        """计算来自真实信号的频谱图样本"""
         # extract strided windows
         truncate_size = (len(samples) - window_size) % stride_size
         samples = samples[:len(samples) - truncate_size]
@@ -86,7 +84,8 @@ class AudioFeaturizer(object):
         fft[(0, -1), :] /= scale
         # prepare fft frequency list
         freqs = float(sample_rate) / window_size * np.arange(fft.shape[0])
-        return fft, freqs
+        ind = np.where(freqs <= max_freq)[0][-1] + 1
+        return np.log(fft[:ind, :] + eps)
 
     @staticmethod
     def feature_dim():
