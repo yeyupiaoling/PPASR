@@ -1,4 +1,5 @@
 """特征归一化"""
+import math
 
 import numpy as np
 import random
@@ -37,7 +38,7 @@ class FeatureNormalizer(object):
         else:
             self._read_mean_std_from_file(mean_std_filepath)
 
-    def apply(self, features, eps=1e-14):
+    def apply(self, features, eps=1e-20):
         """使用均值和标准值计算音频特征的归一化值
 
         :param features: 需要归一化的音频
@@ -70,11 +71,29 @@ class FeatureNormalizer(object):
             sampled_manifest = manifest
         else:
             sampled_manifest = self._rng.sample(manifest, num_samples)
-        features = []
+        # 求总和
+        std, means = None, None
+        number = 0
         for instance in tqdm(sampled_manifest):
             audio = self.audio_featurizer.load_audio_file(instance["audio_path"])
             feature = self.audio_featurizer.featurize(audio)
-            features.append(feature)
-        features = np.hstack(features)
-        self._mean = np.mean(features, axis=1).reshape([-1, 1])
-        self._std = np.std(features, axis=1).reshape([-1, 1])
+            number += feature.shape[1]
+            sums = np.sum(feature, axis=1)
+            if means is None:
+                means = sums
+            else:
+                means += sums
+            square_sums = np.sum(np.square(feature), axis=1)
+            if std is None:
+                std = square_sums
+            else:
+                std += square_sums
+        # 求总和的均值和标准值
+        for i in range(len(means)):
+            means[i] /= number
+            std[i] = std[i] / number - means[i] * means[i]
+            if std[i] < 1.0e-20:
+                std[i] = 1.0e-20
+            std[i] = math.sqrt(std[i])
+        self._mean = means.reshape([-1, 1])
+        self._std = std.reshape([-1, 1])
