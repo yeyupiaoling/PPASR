@@ -125,7 +125,7 @@ def train(args):
         model = paddle.DataParallel(model)
 
     # 设置优化方法
-    clip = paddle.nn.ClipGradByNorm(clip_norm=3.0)
+    clip = paddle.nn.ClipGradByNorm(clip_norm=400.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume)[-1]) if args.resume is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1, verbose=True)
@@ -135,7 +135,7 @@ def train(args):
                                       grad_clip=clip)
 
     # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss()
+    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
 
     # 加载预训练模型
     if args.pretrained_model is not None:
@@ -168,7 +168,7 @@ def train(args):
             out = paddle.transpose(out, perm=[1, 0, 2])
 
             # 计算损失
-            loss = ctc_loss(out, labels, out_lens, label_lens)
+            loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
