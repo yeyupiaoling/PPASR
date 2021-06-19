@@ -25,7 +25,7 @@ add_arg('gpus',             str,   '0',                        '训练使用的G
 add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   5e-5,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
@@ -97,7 +97,7 @@ def train(args):
                                  mean_std_filepath=args.mean_std_path,
                                  min_duration=args.min_duration,
                                  max_duration=args.max_duration)
-    batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=False)
+    batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
     train_loader = DataLoader(dataset=train_dataset,
                               collate_fn=collate_fn,
                               batch_sampler=batch_sampler,
@@ -125,13 +125,13 @@ def train(args):
         model = paddle.DataParallel(model)
 
     # 设置优化方法
-    clip = paddle.nn.ClipGradByNorm(clip_norm=400.0)
+    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume)[-1]) if args.resume is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1, verbose=True)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
-                                      weight_decay=paddle.regularizer.L2Decay(1e-06),
+                                      weight_decay=paddle.regularizer.L2Decay(0.0001),
                                       grad_clip=clip)
 
     # 获取损失函数

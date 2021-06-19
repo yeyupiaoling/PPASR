@@ -1,4 +1,5 @@
 import json
+import random
 
 import numpy as np
 from paddle.io import Dataset
@@ -78,4 +79,7 @@ def collate_fn(batch):
         label_lens.append(len(target))
     input_lens = np.array(input_lens, dtype='int64')
     label_lens = np.array(label_lens, dtype='int64')
-    return inputs, labels, input_lens, label_lens
+    # 打乱数据
+    indexs = [i for i in range(len(input_lens))]
+    random.shuffle(indexs)
+    return inputs[indexs], labels[indexs], input_lens[indexs], label_lens[indexs]
