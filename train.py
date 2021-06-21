@@ -97,17 +97,21 @@ def train(args):
                                  mean_std_filepath=args.mean_std_path,
                                  min_duration=args.min_duration,
                                  max_duration=args.max_duration)
-    batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
+    # 设置支持多卡训练
+    if len(args.gpus.split(',')) > 1:
+        train_batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
+    else:
+        train_batch_sampler = paddle.io.BatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
     train_loader = DataLoader(dataset=train_dataset,
                               collate_fn=collate_fn,
-                              batch_sampler=batch_sampler,
+                              batch_sampler=train_batch_sampler,
                               num_workers=args.num_workers)
     # 获取测试数据
     test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean_std_filepath=args.mean_std_path)
-    batch_sampler = paddle.io.BatchSampler(test_dataset, batch_size=args.batch_size)
+    test_batch_sampler = paddle.io.BatchSampler(test_dataset, batch_size=args.batch_size)
     test_loader = DataLoader(dataset=test_dataset,
                              collate_fn=collate_fn,
-                             batch_sampler=batch_sampler,
+                             batch_sampler=test_batch_sampler,
                              num_workers=args.num_workers)
 
     # 获取模型
@@ -118,7 +122,7 @@ def train(args):
                              rnn_size=args.rnn_layer_size)
     if dist.get_rank() == 0:
         print('input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！')
-        paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
+        paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=['float32', 'int64'])
 
     # 设置支持多卡训练
     if len(args.gpus.split(',')) > 1:
