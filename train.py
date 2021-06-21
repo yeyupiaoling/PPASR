@@ -3,6 +3,7 @@ import functools
 import os
 import re
 import shutil
+import time
 from datetime import datetime
 
 import paddle
@@ -25,12 +26,12 @@ add_arg('gpus',             str,   '0',                        '训练使用的G
 add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   5e-5,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
 add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
-add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
+add_arg('max_duration',     int,   27,                         '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('train_manifest',   str,   'dataset/manifest.train',   '训练数据的数据列表路径')
 add_arg('test_manifest',    str,   'dataset/manifest.test',    '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
@@ -121,7 +122,8 @@ def train(args):
                              num_rnn_layers=args.num_rnn_layers,
                              rnn_size=args.rnn_layer_size)
     if dist.get_rank() == 0:
-        print('input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！')
+        print(f"{model}")
+        print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
         paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=['float32', 'int64'])
 
     # 设置支持多卡训练
@@ -139,7 +141,7 @@ def train(args):
                                       grad_clip=clip)
 
     # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
+    ctc_loss = paddle.nn.CTCLoss(reduction='mean')
 
     # 加载预训练模型
     if args.pretrained_model is not None:
@@ -155,19 +157,20 @@ def train(args):
             else:
                 print('Lack weight: {}'.format(name))
         model.set_dict(model_state_dict)
-        print('成功加载预训练模型')
+        print('[{}] 成功加载预训练模型'.format(datetime.now()))
 
     # 加载预训练模型
     if args.resume is not None:
         model.set_state_dict(paddle.load(os.path.join(args.resume, 'model.pdparams')))
         optimizer.set_state_dict(paddle.load(os.path.join(args.resume, 'optimizer.pdopt')))
-        print('成功恢复模型参数和优化方法参数')
+        print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
 
     train_step = 0
     test_step = 0
     # 开始训练
     for epoch in range(last_epoch, args.num_epoch):
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
+            start = time.time()
             out, out_lens = model(inputs, input_lens)
             out = paddle.transpose(out, perm=[1, 0, 2])
 
@@ -179,7 +182,8 @@ def train(args):
 
             # 多卡训练只使用一个进程打印
             if batch_id % 100 == 0 and dist.get_rank() == 0:
-                print('[%s] Train epoch %d, batch %d, loss: %f' % (datetime.now(), epoch, batch_id, loss))
+                print('[{}] Train epoch: {}, batch: {}/{}, loss: {:.5f}, learning rate: {}, train time: {:.3f}s'.format(
+                    datetime.now(), epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), (time.time() - start)))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
 
@@ -194,7 +198,7 @@ def train(args):
             model.eval()
             c = evaluate(model, test_loader, test_dataset.vocabulary)
             print('\n', '='*70)
-            print('[%s] Test epoch %d, cer: %f' % (datetime.now(), epoch, c))
+            print('[{}] Test epoch: {}, cer: {}'.format(datetime.now(), epoch, c))
             print('='*70)
             writer.add_scalar('Test cer', c, test_step)
             test_step += 1

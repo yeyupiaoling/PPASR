@@ -56,10 +56,8 @@ class BiGRUWithBN(nn.Layer):
 
     def forward(self, x, x_len):
         # x, shape [B, T, D]
-        fw_x = self.fw_fc(x)
-        fw_x = self.fw_bn(fw_x)
-        bw_x = self.bw_fc(x)
-        bw_x = self.bw_bn(bw_x)
+        fw_x = self.fw_bn(self.fw_fc(x))
+        bw_x = self.bw_bn(self.bw_fc(x))
         fw_x, _ = self.fw_rnn(inputs=fw_x, sequence_length=x_len)
         bw_x, _ = self.bw_rnn(inputs=bw_x, sequence_length=x_len)
         x = paddle.concat([fw_x, bw_x], axis=-1)
