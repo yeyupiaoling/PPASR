@@ -26,7 +26,7 @@ add_arg('gpus',             str,   '0',                        '训练使用的G
 add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
+add_arg('learning_rate',    float, 1e-3,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
