@@ -339,6 +339,6 @@ optional arguments:
 ## 模型下载
 | 数据集 | 字错率 | 下载地址 |
 | :---: | :---: | :---: |
-| AISHELL | 训练中 | [点击下载]() |
-| free_st_chinese_mandarin_corpus | 训练中 | [点击下载]() |
-| thchs30 | 训练中 | [点击下载]() |
+| AISHELL | 训练中 | [训练中]() |
+| free_st_chinese_mandarin_corpus | 训练中 | [训练中]() |
+| thchs30 | 训练中 | [训练中]() |
