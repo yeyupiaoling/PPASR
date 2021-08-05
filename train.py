@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import paddle
 import paddle.distributed as dist
@@ -12,13 +12,14 @@ from paddle.io import DataLoader
 from tqdm import tqdm
 from visualdl import LogWriter
 
-from data.utility import add_arguments, print_arguments
+from utils.utils import add_arguments, print_arguments
 from data_utils.reader import PPASRDataset, collate_fn
+from data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
 from utils.metrics import cer
 from utils.utils import labels_to_string
-from paddle.static import InputSpec
+
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -26,7 +27,7 @@ add_arg('gpus',             str,   '0',                        '训练使用的G
 add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    float, 1e-3,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   5e-5,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
@@ -61,7 +62,7 @@ def evaluate(model, test_loader, vocabulary):
 
 
 # 保存模型
-def save_model(args, epoch, model, optimizer, feature_dim):
+def save_model(args, epoch, model, optimizer):
     model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
     if epoch == args.num_epoch - 1:
         model_path = os.path.join(args.save_model, 'step_final')
@@ -73,14 +74,6 @@ def save_model(args, epoch, model, optimizer, feature_dim):
     old_model_path = os.path.join(args.save_model, 'epoch_%d' % (epoch - 3))
     if os.path.exists(old_model_path):
         shutil.rmtree(old_model_path)
-    # 保存预测模型
-    infer_model_path = os.path.join(args.save_model, 'infer')
-    if not os.path.exists(infer_model_path):
-        os.makedirs(infer_model_path)
-    paddle.jit.save(layer=model,
-                    path=os.path.join(infer_model_path, 'model'),
-                    input_spec=[InputSpec(shape=(-1, feature_dim, -1), dtype=paddle.float32),
-                                InputSpec(shape=(-1, ), dtype=paddle.int64)])
 
 
 def train(args):
@@ -100,9 +93,9 @@ def train(args):
                                  max_duration=args.max_duration)
     # 设置支持多卡训练
     if len(args.gpus.split(',')) > 1:
-        train_batch_sampler = paddle.io.DistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_batch_sampler = SortagradDistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
     else:
-        train_batch_sampler = paddle.io.BatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
+        train_batch_sampler = SortagradBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
     train_loader = DataLoader(dataset=train_dataset,
                               collate_fn=collate_fn,
                               batch_sampler=train_batch_sampler,
@@ -124,7 +117,7 @@ def train(args):
     if dist.get_rank() == 0:
         print(f"{model}")
         print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
-        paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=['float32', 'int64'])
+        paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
 
     # 设置支持多卡训练
     if len(args.gpus.split(',')) > 1:
@@ -167,6 +160,7 @@ def train(args):
 
     train_step = 0
     test_step = 0
+    sum_batch = len(train_loader) * (args.num_epoch - last_epoch)
     # 开始训练
     for epoch in range(last_epoch, args.num_epoch):
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
@@ -181,16 +175,18 @@ def train(args):
             optimizer.clear_grad()
 
             # 多卡训练只使用一个进程打印
-            if batch_id % 100 == 0 and dist.get_rank() == 0:
-                print('[{}] Train epoch: {}, batch: {}/{}, loss: {:.5f}, learning rate: {}, train time: {:.3f}s'.format(
-                    datetime.now(), epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), (time.time() - start)))
+            if batch_id % 1 == 0 and dist.get_rank() == 0:
+                eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - last_epoch) * len(train_loader) - batch_id)
+                eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
+                print('[{}] Train epoch: {}/{}, batch: {}/{}, loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
+                    datetime.now(), epoch + 1, args.num_epoch, batch_id + 1, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
 
             # 固定步数也要保存一次模型
             if batch_id % 2000 == 0 and batch_id != 0 and dist.get_rank() == 0:
                 # 保存模型
-                save_model(args=args, epoch=epoch, model=model, optimizer=optimizer, feature_dim=train_dataset.feature_dim)
+                save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
 
         # 多卡训练只使用一个进程执行评估和保存模型
         if dist.get_rank() == 0:
@@ -198,7 +194,7 @@ def train(args):
             model.eval()
             c = evaluate(model, test_loader, test_dataset.vocabulary)
             print('\n', '='*70)
-            print('[{}] Test epoch: {}, cer: {}'.format(datetime.now(), epoch, c))
+            print('[{}] Test epoch: {}, cer: {:.5f}'.format(datetime.now(), epoch, c))
             print('='*70)
             writer.add_scalar('Test cer', c, test_step)
             test_step += 1
@@ -208,13 +204,14 @@ def train(args):
             writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
 
             # 保存模型
-            save_model(args=args, epoch=epoch, model=model, optimizer=optimizer, feature_dim=train_dataset.feature_dim)
+            save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
         scheduler.step()
 
 
 if __name__ == '__main__':
     print_arguments(args)
     if len(args.gpus.split(',')) > 1:
-        dist.spawn(train, args=(args,), gpus=args.gpus, nprocs=len(args.gpus.split(',')))
+        dist.spawn(train, args=(args,), gpus=args.gpus)
     else:
+        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
         train(args)

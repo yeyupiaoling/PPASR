@@ -5,7 +5,7 @@ import time
 import numpy as np
 import paddle
 
-from data.utility import add_arguments, print_arguments
+from utils.utils import add_arguments, print_arguments
 from data_utils.audio_featurizer import AudioFeaturizer
 from data_utils.normalizer import FeatureNormalizer
 from decoders.ctc_greedy_decoder import greedy_decoder

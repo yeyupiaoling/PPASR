@@ -9,7 +9,7 @@ import librosa
 import soundfile
 from tqdm import tqdm
 
-from data.utility import add_arguments, print_arguments
+from utils.utils import add_arguments, print_arguments
 from data_utils.normalizer import FeatureNormalizer
 
 parser = argparse.ArgumentParser(description=__doc__)

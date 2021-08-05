@@ -31,17 +31,19 @@ def greedy_decoder(probs_seq, vocabulary, blank_index=0):
     return score, text
 
 
-def greedy_decoder_batch(probs_split, vocabulary):
+def greedy_decoder_batch(probs_split, vocabulary, blank_index=0):
     """CTC贪婪(最佳路径)解码器
     :param probs_split: 一批包含2D的概率表
     :type probs_split: list
     :param vocabulary: 词汇列表
     :type vocabulary: list
+    :param blank_index 需要移除的空白索引
+    :type blank_index int
     :return: 字符串列表
     :rtype: list
     """
     results = []
     for i, probs in enumerate(probs_split):
-        output_transcription = greedy_decoder(probs, vocabulary)
+        output_transcription = greedy_decoder(probs, vocabulary, blank_index=blank_index)
         results.append(output_transcription[1])
     return results

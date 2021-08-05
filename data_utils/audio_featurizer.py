@@ -87,7 +87,7 @@ class AudioFeaturizer(object):
         ind = np.where(freqs <= max_freq)[0][-1] + 1
         return np.log(fft[:ind, :] + eps)
 
-    @staticmethod
-    def feature_dim():
+    @property
+    def feature_dim(self):
         """返回特征的维度大小"""
         return 161

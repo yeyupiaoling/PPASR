@@ -31,7 +31,7 @@ class PPASRDataset(Dataset):
             labels = eval(f.read())
         self.vocabulary_dict = dict([(labels[i], i) for i in range(len(labels))])
         self.vocabulary = [labels[i] for i in range(len(labels))]
-        self.feature_dim = self._audio_featurizer.feature_dim()
+        self.feature_dim = self._audio_featurizer.feature_dim
         # random.shuffle(self.data_list)
 
     def __getitem__(self, idx):
@@ -75,8 +75,8 @@ def collate_fn(batch):
         # 将数据插入都0张量中，实现了padding
         inputs[x, :, :seq_length] = tensor[:, :]
         labels[x, :label_length] = target[:]
-        input_lens.append(seq_length)
-        label_lens.append(len(target))
+        input_lens.append(max_audio_length)
+        label_lens.append(label_length)
     input_lens = np.array(input_lens, dtype='int64')
     label_lens = np.array(label_lens, dtype='int64')
     # 打乱数据

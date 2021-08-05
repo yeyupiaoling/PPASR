@@ -7,7 +7,7 @@ import paddle
 from paddle.io import DataLoader
 from tqdm import tqdm
 
-from data.utility import add_arguments, print_arguments
+from utils.utils import add_arguments, print_arguments
 from data_utils.reader import PPASRDataset, collate_fn
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
@@ -30,8 +30,8 @@ add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大�
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json', '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
-add_arg('model_path',       str,   'models/step_final/',      '模型的路径')
-add_arg('decoder',          str,   'ctc_beam_search',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
+add_arg('model_path',       str,   'models/epoch_0/',      '模型的路径')
+add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
 

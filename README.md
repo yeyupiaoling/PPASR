@@ -40,11 +40,11 @@ sh setup.sh
 
 # 数据准备
 
-1. 在`data`目录下是公开数据集的下载和制作训练数据列表和字典的，本项目提供了下载公开的中文普通话语音数据集，分别是Aishell，Free ST-Chinese-Mandarin-Corpus，THCHS-30 这三个数据集，总大小超过28G。下载这三个数据只需要执行一下代码即可，当然如果想快速训练，也可以只下载其中一个。
+1. 在`download_data`目录下是公开数据集的下载和制作训练数据列表和字典的，本项目提供了下载公开的中文普通话语音数据集，分别是Aishell，Free ST-Chinese-Mandarin-Corpus，THCHS-30 这三个数据集，总大小超过28G。下载这三个数据只需要执行一下代码即可，当然如果想快速训练，也可以只下载其中一个。
 ```shell script
-python3 data/aishell.py
-python3 data/free_st_chinese_mandarin_corpus.py
-python3 data/thchs_30.py
+python3 download_data/aishell.py
+python3 download_data/free_st_chinese_mandarin_corpus.py
+python3 download_data/thchs_30.py
 ```
 
  - 如果开发者有自己的数据集，可以使用自己的数据集进行训练，当然也可以跟上面下载的数据集一起训练。自定义的语音数据需要符合一下格式：
@@ -88,28 +88,7 @@ vocab_path: dataset/vocabulary.json
 ```
 
 可以用使用`python create_manifest.py --help`命令查看各个参数的说明和默认值。
-```shell
-optional arguments:
-  -h, --help            show this help message and exit
-  ----annotation_path ANNOTATION_PATH
-                        标注文件的路径 默认: dataset/annotation/.
-  --manifest_prefix MANIFEST_PREFIX
-                        训练数据清单，包括音频路径和标注信息 默认: dataset/.
-  --is_change_frame_rate IS_CHANGE_FRAME_RATE
-                        是否统一改变音频为16000Hz，这会消耗大量的时间 默认: True.
-  --count_threshold COUNT_THRESHOLD
-                        字符计数的截断阈值，0为不做限制 默认: 0.
-  --vocab_path VOCAB_PATH
-                        生成的数据字典文件 默认: dataset/vocabulary.json.
-  --manifest_path MANIFEST_PATH
-                        数据列表路径 默认: dataset/manifest.train.
-  --num_samples NUM_SAMPLES
-                        用于计算均值和标准值得音频数量 默认: 5000.
-  --output_path OUTPUT_PATH
-                        保存均值和标准值得numpy文件路径，后缀 (.npz). 默认:
-                        ./dataset/mean_std.npz.
 
-```
 
 # 训练模型
 
@@ -203,42 +182,7 @@ Epoch 1: ExponentialDecay set learning rate to 0.00083.
 ```
 
 可以用使用`python train.py --help`命令查看各个参数的说明和默认值。
-```shell
-optional arguments:
-  -h, --help            show this help message and exit
-  --gpus GPUS           训练使用的GPU序号，使用英文逗号,隔开，如：0,1 默认: 0.
-  --batch_size BATCH_SIZE
-                        训练的批量大小 默认: 16.
-  --num_workers NUM_WORKERS
-                        读取数据的线程数量 默认: 8.
-  --num_epoch NUM_EPOCH
-                        训练的轮数 默认: 20.
-  --learning_rate LEARNING_RATE
-                        初始学习率的大小 默认: 0.001.
-  --num_conv_layers NUM_CONV_LAYERS
-                        卷积层数量 默认: 2.
-  --num_rnn_layers NUM_RNN_LAYERS
-                        循环神经网络的数量 默认: 3.
-  --rnn_layer_size RNN_LAYER_SIZE
-                        循环神经网络的大小 默认: 1024.
-  --min_duration MIN_DURATION
-                        过滤最短的音频长度 默认: 0.
-  --max_duration MAX_DURATION
-                        过滤最长的音频长度，当为-1的时候不限制长度 默认: 20.
-  --train_manifest TRAIN_MANIFEST
-                        训练数据的数据列表路径 默认: dataset/manifest.train.
-  --test_manifest TEST_MANIFEST
-                        测试数据的数据列表路径 默认: dataset/manifest.test.
-  --dataset_vocab DATASET_VOCAB
-                        数据字典的路径 默认: dataset/vocabulary.json.
-  --mean_std_path MEAN_STD_PATH
-                        数据集的均值和标准值的npy文件路径 默认: dataset/mean_std.npz.
-  --save_model SAVE_MODEL
-                        模型保存的路径 默认: models/.
-  --resume RESUME       恢复训练，当为None则不使用预训练模型 默认: None.
-  --pretrained_model PRETRAINED_MODEL
-                        预训练模型的路径，当为None则不使用预训练模型 默认: None.
-```
+
 
  - 在训练过程中，程序会使用VisualDL记录训练结果，可以通过以下的命令启动VisualDL。
 ```shell
@@ -250,7 +194,7 @@ visualdl --logdir=log --host 0.0.0.0
 ![Train](https://s3.ax1x.com/2021/03/05/6ehhjK.jpg)
 
 
-# 评估和预测
+# 评估
 
 在评估和预测中，使用`--decoder`参数可以指定解码方法，当`--decoder`参数为`ctc_greedy`对结果解码的贪心策略解码方法，贪心策略是在每一步选择概率最大的输出值，然后删除重复字符和空索引，就得到预测结果了。当`--decoder`参数为`ctc_beam_search`对结果解码的集束搜索解码方法，该方法可以加载语言模型，将模型输出的结果在语音模型中搜索最优解。
 
@@ -260,83 +204,27 @@ python3 eval.py --model_path=models/step_final/
 ```
 
 可以用使用`python eval.py --help`命令查看各个参数的说明和默认值。
+
+
+# 导出模型
+
+在训练时，我们保存了模型的参数，但是如何要用于推理，还需要导出预测模型，执行下面命令导出模型。模型的结构参数必须跟训练时的一致。
 ```shell
-optional arguments:
-  -h, --help            show this help message and exit
-  --batch_size BATCH_SIZE
-                        训练的批量大小 默认: 32.
-  --num_workers NUM_WORKERS
-                        读取数据的线程数量 默认: 8.
-  --num_conv_layers NUM_CONV_LAYERS
-                        卷积层数量 默认: 2.
-  --num_rnn_layers NUM_RNN_LAYERS
-                        循环神经网络的数量 默认: 3.
-  --rnn_layer_size RNN_LAYER_SIZE
-                        循环神经网络的大小 默认: 1024.
-  --alpha ALPHA         定向搜索的LM系数 默认: 1.2.
-  --beta BETA           定向搜索的WC系数 默认: 0.35.
-  --beam_size BEAM_SIZE
-                        定向搜索的大小，范围:[5, 500] 默认: 10.
-  --num_proc_bsearch NUM_PROC_BSEARCH
-                        定向搜索方法使用CPU数量 默认: 8.
-  --cutoff_prob CUTOFF_PROB
-                        剪枝的概率 默认: 1.0.
-  --cutoff_top_n CUTOFF_TOP_N
-                        剪枝的最大值 默认: 40.
-  --test_manifest TEST_MANIFEST
-                        测试数据的数据列表路径 默认: dataset/manifest.test.
-  --dataset_vocab DATASET_VOCAB
-                        数据字典的路径 默认: dataset/vocabulary.json.
-  --mean_std_path MEAN_STD_PATH
-                        数据集的均值和标准值的npy文件路径 默认: dataset/mean_std.npz.
-  --model_path MODEL_PATH
-                        模型的路径 默认: models/step_final/.
-  --decoder {ctc_beam_search,ctc_greedy}
-                        结果解码方法 默认: ctc_beam_search.
-  --lang_model_path LANG_MODEL_PATH
-                        语言模型文件路径 默认: lm/zh_giga.no_cna_cmn.prune01244.klm.
+python export_model.py --resume=models/step_final
 ```
 
+可以用使用`python export_model.py --help`命令查看各个参数的说明和默认值。
+
+# 预测
  - 我们可以使用这个脚本使用模型进行预测，通过传递音频文件的路径进行识别。参数`--decoder`默认指定集束搜索解码方法对结果进行解码，读者也可以使用贪心策略解码方法，对比他们的解码的准确率。参数`--mean_std_path`指定均值和标准值得文件，这个文件需要跟训练时使用的是同一个文件。参数`--beam_size`指定集束搜索方法的搜索宽度，越大解码结果越准确，但是解码速度就越慢。参数`model_path`指定模型所在的文件夹的路径，参数`wav_path`指定需要预测音频文件的路径。
 ```shell script
 python3 infer.py --audio_path=./dataset/test.wav
 ```
 
 可以用使用`python infer.py --help`命令查看各个参数的说明和默认值。
-```shell
-optional arguments:
-  -h, --help            show this help message and exit
-  --num_conv_layers NUM_CONV_LAYERS
-                        卷积层数量 默认: 2.
-  --num_rnn_layers NUM_RNN_LAYERS
-                        循环神经网络的数量 默认: 3.
-  --rnn_layer_size RNN_LAYER_SIZE
-                        循环神经网络的大小 默认: 1024.
-  --alpha ALPHA         定向搜索的LM系数 默认: 1.2.
-  --beta BETA           定向搜索的WC系数 默认: 0.35.
-  --beam_size BEAM_SIZE
-                        定向搜索的大小，范围:[5, 500] 默认: 10.
-  --num_proc_bsearch NUM_PROC_BSEARCH
-                        定向搜索方法使用CPU数量 默认: 8.
-  --cutoff_prob CUTOFF_PROB
-                        剪枝的概率 默认: 1.0.
-  --cutoff_top_n CUTOFF_TOP_N
-                        剪枝的最大值 默认: 40.
-  --audio_path AUDIO_PATH
-                        用于识别的音频路径 默认: dataset/test.wav.
-  --dataset_vocab DATASET_VOCAB
-                        数据字典的路径 默认: dataset/vocabulary.json.
-  --model_path MODEL_PATH
-                        模型的路径 默认: models/step_final/.
-  --mean_std_path MEAN_STD_PATH
-                        数据集的均值和标准值的npy文件路径 默认: dataset/mean_std.npz.
-  --decoder {ctc_beam_search,ctc_greedy}
-                        结果解码方法 默认: ctc_beam_search.
-  --lang_model_path LANG_MODEL_PATH
-                        语言模型文件路径 默认: lm/zh_giga.no_cna_cmn.prune01244.klm.
-```
 
-## 模型下载
+
+# 模型下载
 | 数据集 | 字错率 | 下载地址 |
 | :---: | :---: | :---: |
 | AISHELL | 训练中 | [训练中]() |
