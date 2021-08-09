@@ -24,7 +24,7 @@ from utils.utils import labels_to_string
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('gpus',             str,   '0',                        '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
-add_arg('batch_size',       int,   28,                         '训练的批量大小')
+add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
 add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
@@ -198,7 +198,7 @@ def train(args):
             model.eval()
             print('\n', '='*70)
             c = evaluate(model, test_loader, test_dataset.vocabulary)
-            print('[{}] Test epoch: {}, train: {}sec, cer: {:.5f}'.format(datetime.now(), epoch, int(time.time() - start_epoch), c))
+            print('[{}] Test epoch: {}, time/epoch: {}, cer: {:.5f}'.format(datetime.now(), epoch, str(timedelta(time.time() - start_epoch)), c))
             print('='*70)
             writer.add_scalar('Test cer', c, test_step)
             test_step += 1

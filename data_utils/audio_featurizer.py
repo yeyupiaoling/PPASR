@@ -1,6 +1,8 @@
 import numpy as np
 import resampy
 import soundfile
+from python_speech_features import mfcc
+from python_speech_features import delta
 from .audio_tool import AudioTool
 
 
@@ -48,46 +50,43 @@ class AudioFeaturizer(object):
         :rtype: ndarray
         """
         audio = self._audio_tool.normalize(audio=audio, target_db=self._target_dB)
-        audio = self._compute_linear_specgram(audio, self._target_audio_rate, self._stride_ms, self._window_ms, self._max_freq)
+        # 计算音频梅尔频谱倒谱系数（MFCCs）
+        audio = self._compute_mfcc(audio, self._target_audio_rate, self._stride_ms, self._window_ms, self._max_freq)
         return audio
 
-    # 用 FFT energy计算线性谱图
-    @staticmethod
-    def _compute_linear_specgram(samples,
-                                 sample_rate,
-                                 stride_ms=10.0,
-                                 window_ms=20.0,
-                                 max_freq=None,
-                                 eps=1e-14):
+    # 计算音频梅尔频谱倒谱系数（MFCCs）
+    def _compute_mfcc(self,
+                      samples,
+                      sample_rate,
+                      stride_ms=10.0,
+                      window_ms=20.0,
+                      max_freq=None):
+        """Compute mfcc from samples."""
         if max_freq is None:
             max_freq = sample_rate / 2
         if max_freq > sample_rate / 2:
-            raise ValueError("max_freq不能大于采样率的一半")
+            raise ValueError("max_freq must not be greater than half of sample rate.")
         if stride_ms > window_ms:
-            raise ValueError("stride_ms不能大于window_ms")
-        stride_size = int(0.001 * sample_rate * stride_ms)
-        window_size = int(0.001 * sample_rate * window_ms)
-        # extract strided windows
-        truncate_size = (len(samples) - window_size) % stride_size
-        samples = samples[:len(samples) - truncate_size]
-        nshape = (window_size, (len(samples) - window_size) // stride_size + 1)
-        nstrides = (samples.strides[0], samples.strides[0] * stride_size)
-        windows = np.lib.stride_tricks.as_strided(samples, shape=nshape, strides=nstrides)
-        assert np.all(windows[:, 1] == samples[stride_size:(stride_size + window_size)])
-        # window weighting, squared Fast Fourier Transform (fft), scaling
-        weighting = np.hanning(window_size)[:, None]
-        fft = np.fft.rfft(windows * weighting, axis=0)
-        fft = np.absolute(fft)
-        fft = fft ** 2
-        scale = np.sum(weighting ** 2) * sample_rate
-        fft[1:-1, :] *= (2.0 / scale)
-        fft[(0, -1), :] /= scale
-        # prepare fft frequency list
-        freqs = float(sample_rate) / window_size * np.arange(fft.shape[0])
-        ind = np.where(freqs <= max_freq)[0][-1] + 1
-        return np.log(fft[:ind, :] + eps)
+            raise ValueError("Stride size must not be greater than window size.")
+        # 计算13个倒谱系数，第一个用log(帧能量)代替
+        mfcc_feat = mfcc(signal=samples,
+                         samplerate=sample_rate,
+                         winlen=0.001 * window_ms,
+                         winstep=0.001 * stride_ms,
+                         highfreq=max_freq)
+        # Deltas
+        d_mfcc_feat = delta(mfcc_feat, 2)
+        # Deltas-Deltas
+        dd_mfcc_feat = delta(d_mfcc_feat, 2)
+        # 转置
+        mfcc_feat = np.transpose(mfcc_feat)
+        d_mfcc_feat = np.transpose(d_mfcc_feat)
+        dd_mfcc_feat = np.transpose(dd_mfcc_feat)
+        # 拼接以上三个特点
+        concat_mfcc_feat = np.concatenate((mfcc_feat, d_mfcc_feat, dd_mfcc_feat))
+        return concat_mfcc_feat
 
     @property
     def feature_dim(self):
         """返回特征的维度大小"""
-        return 161
+        return 39
