@@ -24,7 +24,7 @@ def _batch_shuffle(indices, batch_size, epoch):
     :type batch_size: int
     :param epoch: 当前的轮数。
     :type epoch: int
-    :return: Batch shuffled mainifest.
+    :return: Batch shuffled indices.
     :rtype: list
     """
     rng = np.random.RandomState(epoch)

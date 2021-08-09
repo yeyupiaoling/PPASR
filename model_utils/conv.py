@@ -60,13 +60,13 @@ class ConvBn(nn.Layer):
                               kernel_size=kernel_size,
                               stride=stride,
                               padding=padding,
-                              weight_attr=None,
-                              bias_attr=False,
+                              weight_attr=paddle.ParamAttr(),
+                              bias_attr=paddle.ParamAttr(),
                               data_format='NCHW')
 
         self.bn = nn.BatchNorm2D(num_channels_out,
-                                 weight_attr=None,
-                                 bias_attr=None,
+                                 weight_attr=paddle.ParamAttr(),
+                                 bias_attr=paddle.ParamAttr(),
                                  data_format='NCHW')
         self.act = nn.Hardtanh(min=0.0, max=24.0)
 

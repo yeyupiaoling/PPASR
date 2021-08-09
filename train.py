@@ -24,10 +24,10 @@ from utils.utils import labels_to_string
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('gpus',             str,   '0',                        '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
-add_arg('batch_size',       int,   16,                         '训练的批量大小')
+add_arg('batch_size',       int,   28,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   5e-5,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
@@ -64,8 +64,6 @@ def evaluate(model, test_loader, vocabulary):
 # 保存模型
 def save_model(args, epoch, model, optimizer):
     model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
-    if epoch == args.num_epoch - 1:
-        model_path = os.path.join(args.save_model, 'step_final')
     if not os.path.exists(model_path):
         os.makedirs(model_path)
     paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
@@ -99,6 +97,7 @@ def train(args):
     train_loader = DataLoader(dataset=train_dataset,
                               collate_fn=collate_fn,
                               batch_sampler=train_batch_sampler,
+                             use_shared_memory=False,
                               num_workers=args.num_workers)
     # 获取测试数据
     test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean_std_filepath=args.mean_std_path)
@@ -106,6 +105,7 @@ def train(args):
     test_loader = DataLoader(dataset=test_dataset,
                              collate_fn=collate_fn,
                              batch_sampler=test_batch_sampler,
+                             use_shared_memory=False,
                              num_workers=args.num_workers)
 
     # 获取模型
@@ -127,14 +127,16 @@ def train(args):
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume)[-1]) if args.resume is not None else 0
-    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1, verbose=True)
+    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
                                       weight_decay=paddle.regularizer.L2Decay(0.0001),
                                       grad_clip=clip)
 
+    print('[{}] 训练数据：{}'.format(datetime.now(), len(train_dataset)))
+
     # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss(reduction='mean')
+    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
 
     # 加载预训练模型
     if args.pretrained_model is not None:
@@ -160,9 +162,10 @@ def train(args):
 
     train_step = 0
     test_step = 0
-    sum_batch = len(train_loader) * (args.num_epoch - last_epoch)
+    sum_batch = len(train_loader) * args.num_epoch
     # 开始训练
     for epoch in range(last_epoch, args.num_epoch):
+        start_epoch = time.time()
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
             start = time.time()
             out, out_lens = model(inputs, input_lens)
@@ -170,15 +173,16 @@ def train(args):
 
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
+            loss = loss / paddle.shape(inputs)[0]
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
 
             # 多卡训练只使用一个进程打印
-            if batch_id % 1 == 0 and dist.get_rank() == 0:
-                eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - last_epoch) * len(train_loader) - batch_id)
+            if batch_id % 100 == 0 and dist.get_rank() == 0:
+                eta_sec = ((time.time() - start) * 1000) * (sum_batch - epoch * len(train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
-                print('[{}] Train epoch: {}/{}, batch: {}/{}, loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
+                print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
                     datetime.now(), epoch + 1, args.num_epoch, batch_id + 1, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
@@ -192,9 +196,9 @@ def train(args):
         if dist.get_rank() == 0:
             # 执行评估
             model.eval()
-            c = evaluate(model, test_loader, test_dataset.vocabulary)
             print('\n', '='*70)
-            print('[{}] Test epoch: {}, cer: {:.5f}'.format(datetime.now(), epoch, c))
+            c = evaluate(model, test_loader, test_dataset.vocabulary)
+            print('[{}] Test epoch: {}, train: {}sec, cer: {:.5f}'.format(datetime.now(), epoch, int(time.time() - start_epoch), c))
             print('='*70)
             writer.add_scalar('Test cer', c, test_step)
             test_step += 1

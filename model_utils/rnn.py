@@ -44,13 +44,23 @@ class BiGRUWithBN(nn.Layer):
         hidden_size = h_size * 3
         self.mask = MaskRNN()
 
-        self.fw_fc = nn.Linear(i_size, hidden_size, bias_attr=False)
-        self.fw_bn = nn.BatchNorm1D(hidden_size, bias_attr=None, data_format='NLC')
-        self.bw_fc = nn.Linear(i_size, hidden_size, bias_attr=False)
-        self.bw_bn = nn.BatchNorm1D(hidden_size, bias_attr=None, data_format='NLC')
+        self.fw_fc = nn.Linear(i_size, hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr())
+        self.fw_bn = nn.BatchNorm1D(hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr(), data_format='NLC')
+        self.bw_fc = nn.Linear(i_size, hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr())
+        self.bw_bn = nn.BatchNorm1D(hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr(), data_format='NLC')
 
-        self.fw_cell = nn.GRUCell(input_size=hidden_size, hidden_size=h_size)
-        self.bw_cell = nn.GRUCell(input_size=hidden_size, hidden_size=h_size)
+        self.fw_cell = nn.GRUCell(input_size=hidden_size,
+                                  hidden_size=h_size,
+                                  weight_ih_attr=paddle.ParamAttr(),
+                                  weight_hh_attr=paddle.ParamAttr(),
+                                  bias_ih_attr=paddle.ParamAttr(),
+                                  bias_hh_attr=paddle.ParamAttr())
+        self.bw_cell = nn.GRUCell(input_size=hidden_size,
+                                  hidden_size=h_size,
+                                  weight_ih_attr=paddle.ParamAttr(),
+                                  weight_hh_attr=paddle.ParamAttr(),
+                                  bias_ih_attr=paddle.ParamAttr(),
+                                  bias_hh_attr=paddle.ParamAttr())
         self.fw_rnn = nn.RNN(self.fw_cell, is_reverse=False, time_major=False)  # [B, T, D]
         self.bw_rnn = nn.RNN(self.bw_cell, is_reverse=True, time_major=False)  # [B, T, D]
 
