@@ -38,7 +38,7 @@ add_arg('test_manifest',    str,   'dataset/manifest.test',    '测试数据的�
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',     '数据集的均值和标准值的npy文件路径')
 add_arg('save_model',       str,   'models/',                  '模型保存的路径')
-add_arg('resume',           str,    None,                      '恢复训练，当为None则不使用预训练模型')
+add_arg('resume_model',     str,    None,                      '恢复训练，当为None则不使用预训练模型')
 add_arg('pretrained_model', str,    None,                      '预训练模型的路径，当为None则不使用预训练模型')
 args = parser.parse_args()
 
@@ -126,7 +126,7 @@ def train(args):
     # 设置优化方法
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
     # 获取预训练的epoch数
-    last_epoch = int(re.findall(r'\d+', args.resume)[-1]) if args.resume is not None else 0
+    last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
@@ -154,10 +154,10 @@ def train(args):
         model.set_dict(model_state_dict)
         print('[{}] 成功加载预训练模型'.format(datetime.now()))
 
-    # 加载预训练模型
-    if args.resume is not None:
-        model.set_state_dict(paddle.load(os.path.join(args.resume, 'model.pdparams')))
-        optimizer.set_state_dict(paddle.load(os.path.join(args.resume, 'optimizer.pdopt')))
+    # 加载恢复模型
+    if args.resume_model is not None:
+        model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
+        optimizer.set_state_dict(paddle.load(os.path.join(args.resume_model, 'optimizer.pdopt')))
         print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
 
     train_step = 0
@@ -183,7 +183,7 @@ def train(args):
                 eta_sec = ((time.time() - start) * 1000) * (sum_batch - epoch * len(train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                 print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
-                    datetime.now(), epoch + 1, args.num_epoch, batch_id + 1, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
+                    datetime.now(), epoch + 1, args.num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
 

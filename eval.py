@@ -30,7 +30,7 @@ add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大�
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json', '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
-add_arg('model_path',       str,   'models/epoch_0/',      '模型的路径')
+add_arg('model_path',       str,   'models/epoch_50/',        '模型的路径')
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
@@ -60,7 +60,7 @@ if args.decoder == "ctc_beam_search":
         from decoders.beam_search_decoder import BeamSearchDecoder
         beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, test_dataset.vocabulary)
     except ModuleNotFoundError:
-        raise Exception('缺少ctc_decoders库，请在decoders目录中执行setup.sh编译，如果是Windows系统，请使用ctc_greedy。')
+        raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greedy。')
 
 
 # 执行解码

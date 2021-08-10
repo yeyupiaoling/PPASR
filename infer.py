@@ -48,7 +48,7 @@ if args.decoder == "ctc_beam_search":
         from decoders.beam_search_decoder import BeamSearchDecoder
         beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, vocabulary)
     except ModuleNotFoundError:
-        raise Exception('缺少ctc_decoders库，请在decoders目录中执行setup.sh编译，如果是Windows系统，请使用ctc_greed。')
+        raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
 
 
 # 执行解码
