@@ -35,7 +35,6 @@ class FeatureNormalizer(object):
             if not manifest_path:
                 raise ValueError("如果mean_std_filepath是None，那么meanifest_path和featurize_func不应该是None")
             self._rng = random.Random(random_seed)
-            self.audio_featurizer = AudioFeaturizer()
             self._compute_mean_std(manifest_path, num_samples, num_workers)
         else:
             self._read_mean_std_from_file(mean_std_filepath)
