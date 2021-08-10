@@ -20,6 +20,7 @@ add_arg('is_change_frame_rate', bool, True,                       '是否统一�
 add_arg('count_threshold',      int,  0,                          '字符计数的截断阈值，0为不做限制')
 add_arg('vocab_path',           str,  'dataset/vocabulary.json',  '生成的数据字典文件')
 add_arg('manifest_path',        str,  'dataset/manifest.train',   '数据列表路径')
+add_arg('num_workers',          int,   8,                         '读取数据的线程数量')
 add_arg('num_samples',          int,  -1,                         '用于计算均值和标准值得音频数量，当为-1使用全部数据')
 add_arg('output_path',          str,  './dataset/mean_std.npz',   '保存均值和标准值得numpy文件路径，后缀 (.npz).')
 args = parser.parse_args()
@@ -108,7 +109,8 @@ def count_manifest(counter, manifest_path):
 def compute_mean_std(manifest_path, num_samples, output_path):
     normalizer = FeatureNormalizer(mean_std_filepath=None,
                                    manifest_path=manifest_path,
-                                   num_samples=num_samples)
+                                   num_samples=num_samples,
+                                   num_workers=args.num_workers)
     # 将计算的结果保存的文件中
     normalizer.write_to_file(output_path)
     print('计算的均值和标准值已保存在 %s！' % output_path)
