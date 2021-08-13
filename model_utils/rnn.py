@@ -1,7 +1,6 @@
 import paddle
 from paddle import nn
 
-
 __all__ = ['RNNStack']
 
 
@@ -44,33 +43,21 @@ class BiGRUWithBN(nn.Layer):
         hidden_size = h_size * 3
         self.mask = MaskRNN()
 
-        self.fw_fc = nn.Linear(i_size, hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr())
-        self.fw_bn = nn.BatchNorm1D(hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr(), data_format='NLC')
-        self.bw_fc = nn.Linear(i_size, hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr())
-        self.bw_bn = nn.BatchNorm1D(hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr(), data_format='NLC')
+        self.fc = nn.Linear(i_size, hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr())
+        self.bn = nn.BatchNorm1D(hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr(), data_format='NLC')
 
-        self.fw_cell = nn.GRUCell(input_size=hidden_size,
-                                  hidden_size=h_size,
-                                  weight_ih_attr=paddle.ParamAttr(),
-                                  weight_hh_attr=paddle.ParamAttr(),
-                                  bias_ih_attr=paddle.ParamAttr(),
-                                  bias_hh_attr=paddle.ParamAttr())
-        self.bw_cell = nn.GRUCell(input_size=hidden_size,
-                                  hidden_size=h_size,
-                                  weight_ih_attr=paddle.ParamAttr(),
-                                  weight_hh_attr=paddle.ParamAttr(),
-                                  bias_ih_attr=paddle.ParamAttr(),
-                                  bias_hh_attr=paddle.ParamAttr())
-        self.fw_rnn = nn.RNN(self.fw_cell, is_reverse=False, time_major=False)  # [B, T, D]
-        self.bw_rnn = nn.RNN(self.bw_cell, is_reverse=True, time_major=False)  # [B, T, D]
+        self.gru = nn.GRU(input_size=hidden_size,
+                          hidden_size=h_size,
+                          direction='bidirectional',
+                          weight_ih_attr=paddle.ParamAttr(),
+                          weight_hh_attr=paddle.ParamAttr(),
+                          bias_ih_attr=paddle.ParamAttr(),
+                          bias_hh_attr=paddle.ParamAttr())
 
     def forward(self, x, x_len):
         # x, shape [B, T, D]
-        fw_x = self.fw_bn(self.fw_fc(x))
-        bw_x = self.bw_bn(self.bw_fc(x))
-        fw_x, _ = self.fw_rnn(inputs=fw_x, sequence_length=x_len)
-        bw_x, _ = self.bw_rnn(inputs=bw_x, sequence_length=x_len)
-        x = paddle.concat([fw_x, bw_x], axis=-1)
+        x = self.bn(self.fc(x))
+        x, _ = self.gru(inputs=x, sequence_length=x_len)
 
         # 将填充部分重置为0
         x = self.mask(x, x_len)

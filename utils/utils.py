@@ -1,4 +1,5 @@
 import distutils.util
+import os
 
 
 def print_arguments(args):
@@ -23,3 +24,11 @@ def labels_to_string(label, vocabulary, blank_index=0):
         index_list = [index for index in l if index != blank_index]
         labels.append(''.join([vocabulary[index] for index in index_list]))
     return labels
+
+
+# 使用模糊删除方式删除文件
+def fuzzy_delete(dir, fuzzy_str):
+    for file in os.listdir(dir):
+        if fuzzy_str in file:
+            path = os.path.join(dir, file)
+            os.remove(path)

@@ -7,19 +7,17 @@ import time
 from datetime import datetime, timedelta
 
 import paddle
-import paddle.distributed as dist
+from paddle.distributed import fleet
 from paddle.io import DataLoader
-from tqdm import tqdm
 from visualdl import LogWriter
 
-from utils.utils import add_arguments, print_arguments
 from data_utils.reader import PPASRDataset, collate_fn
 from data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
 from utils.metrics import cer
-from utils.utils import labels_to_string
-
+from utils.utils import add_arguments, print_arguments
+from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -32,7 +30,7 @@ add_arg('num_conv_layers',  int,   2,                          '卷积层数量'
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
 add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
-add_arg('max_duration',     int,   27,                         '过滤最长的音频长度，当为-1的时候不限制长度')
+add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('train_manifest',   str,   'dataset/manifest.train',   '训练数据的数据列表路径')
 add_arg('test_manifest',    str,   'dataset/manifest.test',    '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
@@ -47,7 +45,7 @@ args = parser.parse_args()
 @paddle.no_grad()
 def evaluate(model, test_loader, vocabulary):
     c = []
-    for inputs, labels, input_lens, _ in tqdm(test_loader()):
+    for batch_id, (inputs, labels, input_lens, _) in enumerate(test_loader()):
         # 执行识别
         outs, _ = model(inputs, input_lens)
         outs = paddle.nn.functional.softmax(outs, 2)
@@ -57,6 +55,8 @@ def evaluate(model, test_loader, vocabulary):
         for out_string, label in zip(*(out_strings, labels_str)):
             # 计算字错率
             c.append(cer(out_string, label) / float(len(label)))
+        if batch_id % 100 == 0:
+            print('[{}] Test batch: [{}/{}], cer: {:.5f}'.format(datetime.now(), batch_id, len(test_loader), float(sum(c) / len(c))))
     c = float(sum(c) / len(c))
     return c
 
@@ -75,14 +75,16 @@ def save_model(args, epoch, model, optimizer):
 
 
 def train(args):
-    if dist.get_rank() == 0:
-        shutil.rmtree('log', ignore_errors=True)
+    # 获取有多少张显卡训练
+    nranks = paddle.distributed.get_world_size()
+    local_rank = paddle.distributed.get_rank()
+    if local_rank == 0:
+        fuzzy_delete('log', 'vdlrecords')
         # 日志记录器
         writer = LogWriter(logdir='log')
-
-    # 设置支持多卡训练
-    if len(args.gpus.split(',')) > 1:
-        dist.init_parallel_env()
+    if nranks > 1:
+        # 初始化Fleet环境
+        fleet.init(is_collective=True)
 
     # 获取训练数据
     train_dataset = PPASRDataset(args.train_manifest, args.dataset_vocab,
@@ -90,22 +92,20 @@ def train(args):
                                  min_duration=args.min_duration,
                                  max_duration=args.max_duration)
     # 设置支持多卡训练
-    if len(args.gpus.split(',')) > 1:
+    if nranks > 1:
         train_batch_sampler = SortagradDistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
     else:
         train_batch_sampler = SortagradBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
     train_loader = DataLoader(dataset=train_dataset,
                               collate_fn=collate_fn,
                               batch_sampler=train_batch_sampler,
-                             use_shared_memory=False,
                               num_workers=args.num_workers)
     # 获取测试数据
     test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, mean_std_filepath=args.mean_std_path)
-    test_batch_sampler = paddle.io.BatchSampler(test_dataset, batch_size=args.batch_size)
+    test_batch_sampler = SortagradBatchSampler(test_dataset, batch_size=args.batch_size)
     test_loader = DataLoader(dataset=test_dataset,
                              collate_fn=collate_fn,
                              batch_sampler=test_batch_sampler,
-                             use_shared_memory=False,
                              num_workers=args.num_workers)
 
     # 获取模型
@@ -114,14 +114,10 @@ def train(args):
                              num_conv_layers=args.num_conv_layers,
                              num_rnn_layers=args.num_rnn_layers,
                              rnn_size=args.rnn_layer_size)
-    if dist.get_rank() == 0:
+    if local_rank == 0:
         print(f"{model}")
         print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
         paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
-
-    # 设置支持多卡训练
-    if len(args.gpus.split(',')) > 1:
-        model = paddle.DataParallel(model)
 
     # 设置优化方法
     clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
@@ -132,6 +128,11 @@ def train(args):
                                       learning_rate=scheduler,
                                       weight_decay=paddle.regularizer.L2Decay(0.0001),
                                       grad_clip=clip)
+
+    # 设置支持多卡训练
+    if nranks > 1:
+        optimizer = fleet.distributed_optimizer(optimizer)
+        model = fleet.distributed_model(model)
 
     print('[{}] 训练数据：{}'.format(datetime.now(), len(train_dataset)))
 
@@ -165,6 +166,7 @@ def train(args):
     sum_batch = len(train_loader) * args.num_epoch
     # 开始训练
     for epoch in range(last_epoch, args.num_epoch):
+        epoch += 1
         start_epoch = time.time()
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
             start = time.time()
@@ -179,27 +181,27 @@ def train(args):
             optimizer.clear_grad()
 
             # 多卡训练只使用一个进程打印
-            if batch_id % 100 == 0 and dist.get_rank() == 0:
-                eta_sec = ((time.time() - start) * 1000) * (sum_batch - epoch * len(train_loader) - batch_id)
+            if batch_id % 100 == 0 and local_rank == 0:
+                eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                 print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
-                    datetime.now(), epoch + 1, args.num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
+                    datetime.now(), epoch, args.num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
 
             # 固定步数也要保存一次模型
-            if batch_id % 2000 == 0 and batch_id != 0 and dist.get_rank() == 0:
-                # 保存模型
+            if batch_id % 2000 == 0 and batch_id != 0 and local_rank == 0:
                 save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
 
         # 多卡训练只使用一个进程执行评估和保存模型
-        if dist.get_rank() == 0:
+        if local_rank == 0:
             # 执行评估
             model.eval()
             print('\n', '='*70)
             c = evaluate(model, test_loader, test_dataset.vocabulary)
-            print('[{}] Test epoch: {}, time/epoch: {}, cer: {:.5f}'.format(datetime.now(), epoch, str(timedelta(time.time() - start_epoch)), c))
-            print('='*70)
+            print('[{}] Test epoch: {}, time/epoch: {}, cer: {:.5f}'.format(
+                datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), c))
+            print('='*70, '\n')
             writer.add_scalar('Test cer', c, test_step)
             test_step += 1
             model.train()
@@ -214,8 +216,4 @@ def train(args):
 
 if __name__ == '__main__':
     print_arguments(args)
-    if len(args.gpus.split(',')) > 1:
-        dist.spawn(train, args=(args,), gpus=args.gpus)
-    else:
-        os.environ["CUDA_VISIBLE_DEVICES"] = args.gpus
-        train(args)
+    train(args)
