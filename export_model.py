@@ -18,7 +18,7 @@ add_arg('num_rnn_layers',   int,   3,                          '循环神经网�
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
 add_arg('save_model',       str,   'models/',                  '模型保存的路径')
-add_arg('resume',           str,   'models/epoch_50',          '恢复训练，当为None则不使用预训练模型')
+add_arg('resume_model',     str,   'models/epoch_50',          '恢复训练，当为None则不使用预训练模型')
 args = parser.parse_args()
 
 
@@ -38,8 +38,8 @@ def export(args):
         paddle.summary(model, input_size=[(None, audio_featurizer.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
 
     # 加载预训练模型
-    resume_model_path = os.path.join(args.resume, 'model.pdparams')
-    assert os.path.join(resume_model_path), "恢复模型不存在！"
+    resume_model_path = os.path.join(args.resume_model, 'model.pdparams')
+    assert os.path.exists(resume_model_path), "恢复模型不存在！"
     model.set_state_dict(paddle.load(resume_model_path))
     print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
 

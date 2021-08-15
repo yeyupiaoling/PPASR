@@ -94,7 +94,10 @@ vocab_path: dataset/vocabulary.json
 
  - 执行训练脚本，开始训练语音识别模型， 每训练一轮保存一次模型，模型保存在`models/`目录下，测试使用的是贪心解码路径解码方法。本项目支持多卡训练，通过使用`--gpus`参数指定，如`--gpus=0,1`指定使用第1张和第2张显卡训练。其他的参数一般不需要改动，参数`--num_workers`可以数据读取的线程数，这个参数是指定使用多少个线程读取数据。参数`--pretrained_model`是指定预训练模型所在的文件夹，使用预训练模型，在加载的时候会自动跳过维度不一致的层。如果使用`--resume`恢复训练模型，恢复模型的路径结构应该要跟保存的时候一样，这样才能读取到该模型是epoch数，并且必须使用跟预训练配套的数据字典，原因是，其一，数据字典的大小指定了模型的输出大小，如果使用了其他更大的数据字典，恢复训练模型就无法完全加载。其二，数值字典定义了文字的ID，不同的数据字典文字的ID可能不一样，这样恢复练模型的作用就不是那么大了。
 ```shell script
-CUDA_VISIBLE_DEVICES=0,1 python3 train.py
+# 单卡训练
+python3 train.py
+# 多卡训练
+python -m paddle.distributed.launch --gpus '0,1' train.py
 ```
 
 训练输出结果如下：
@@ -229,4 +232,4 @@ python3 infer.py --audio_path=./dataset/test.wav
 | :---: | :---: | :---: |
 | AISHELL | 训练中 | [训练中]() |
 | free_st_chinese_mandarin_corpus | 训练中 | [训练中]() |
-| thchs30 | 训练中 | [训练中]() |
+| thchs30 | 0.057432 | [点击下载](https://download.csdn.net/download/qq_33200967/21095490) |

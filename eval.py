@@ -30,7 +30,7 @@ add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大�
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.json', '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
-add_arg('model_path',       str,   'models/epoch_50/',        '模型的路径')
+add_arg('resume_model',     str,   'models/epoch_50/',        '模型的路径')
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
@@ -51,7 +51,8 @@ model = DeepSpeech2Model(feat_size=test_dataset.feature_dim,
                          num_conv_layers=args.num_conv_layers,
                          num_rnn_layers=args.num_rnn_layers,
                          rnn_size=args.rnn_layer_size)
-model.set_state_dict(paddle.load(os.path.join(args.model_path, 'model.pdparams')))
+assert os.path.exists(os.path.join(args.resume_model, 'model.pdparams')), "模型不存在！"
+model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
 model.eval()
 
 # 集束搜索方法的处理

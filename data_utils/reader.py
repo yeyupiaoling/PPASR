@@ -63,7 +63,7 @@ def collate_fn(batch):
     max_label_length = len(batch_temp[0][1])
     # 以最大的长度创建0张量
     inputs = np.zeros((batch_size, freq_size, max_audio_length), dtype='float32')
-    labels = np.full((batch_size, max_label_length), fill_value=-1, dtype='int32')
+    labels = np.zeros((batch_size, max_label_length), dtype='int32')
     input_lens = []
     label_lens = []
     for x in range(batch_size):
@@ -75,7 +75,7 @@ def collate_fn(batch):
         # 将数据插入都0张量中，实现了padding
         inputs[x, :, :seq_length] = tensor[:, :]
         labels[x, :label_length] = target[:]
-        input_lens.append(max_audio_length)
+        input_lens.append(seq_length)
         label_lens.append(label_length)
     input_lens = np.array(input_lens, dtype='int64')
     label_lens = np.array(label_lens, dtype='int64')

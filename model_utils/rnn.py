@@ -43,16 +43,9 @@ class BiGRUWithBN(nn.Layer):
         hidden_size = h_size * 3
         self.mask = MaskRNN()
 
-        self.fc = nn.Linear(i_size, hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr())
-        self.bn = nn.BatchNorm1D(hidden_size, weight_attr=paddle.ParamAttr(), bias_attr=paddle.ParamAttr(), data_format='NLC')
-
-        self.gru = nn.GRU(input_size=hidden_size,
-                          hidden_size=h_size,
-                          direction='bidirectional',
-                          weight_ih_attr=paddle.ParamAttr(),
-                          weight_hh_attr=paddle.ParamAttr(),
-                          bias_ih_attr=paddle.ParamAttr(),
-                          bias_hh_attr=paddle.ParamAttr())
+        self.fc = nn.Linear(i_size, hidden_size)
+        self.bn = nn.BatchNorm1D(hidden_size, data_format='NLC')
+        self.gru = nn.GRU(input_size=hidden_size, hidden_size=h_size, direction='bidirectional')
 
     def forward(self, x, x_len):
         # x, shape [B, T, D]

@@ -21,11 +21,10 @@ from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('gpus',             str,   '0',                        '训练使用的GPU序号，使用英文逗号,隔开，如：0,1')
 add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   2e-3,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
@@ -120,13 +119,13 @@ def train(args):
         paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
 
     # 设置优化方法
-    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
+    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
-                                      weight_decay=paddle.regularizer.L2Decay(0.0001),
+                                      weight_decay=paddle.regularizer.L2Decay(1e-06),
                                       grad_clip=clip)
 
     # 设置支持多卡训练
@@ -157,6 +156,8 @@ def train(args):
 
     # 加载恢复模型
     if args.resume_model is not None:
+        assert os.path.exists(os.path.join(args.resume_model, 'model.pdparams')), "模型参数文件不存在！"
+        assert os.path.exists(os.path.join(args.resume_model, 'optimizer.pdopt')), "优化方法参数文件不存在！"
         model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
         optimizer.set_state_dict(paddle.load(os.path.join(args.resume_model, 'optimizer.pdopt')))
         print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
