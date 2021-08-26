@@ -6,7 +6,13 @@ PPASR基于PaddlePaddle2实现的端到端自动语音识别，相比入门级�
 
 # 安装环境
 
- - 本项目的训练在Windows或者Ubuntu都可以运行，安装环境很简单，只需要执行以下一条命令即可。
+ - 本项目的训练在Windows或者Ubuntu都可以运行，首先安装PaddlePaddle的GPU版本。
+
+```shell
+conda install paddlepaddle-gpu==2.1.2 cudatoolkit=10.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/
+```
+
+ - 安装其他依赖环境很简单，只需要执行以下一条命令即可。
 ```shell
 pip install -r requirements.txt -i https://mirrors.aliyun.com/pypi/simple/
 ```
