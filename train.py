@@ -21,10 +21,10 @@ from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   16,                         '训练的批量大小')
+add_arg('batch_size',       int,   8,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   2e-3,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
@@ -42,11 +42,18 @@ args = parser.parse_args()
 
 # 评估模型
 @paddle.no_grad()
-def evaluate(model, test_loader, vocabulary):
+def evaluate(model, test_loader, vocabulary, ctc_loss):
     c = []
-    for batch_id, (inputs, labels, input_lens, _) in enumerate(test_loader()):
+    l = []
+    for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(test_loader()):
         # 执行识别
-        outs, _ = model(inputs, input_lens)
+        outs, out_lens = model(inputs, input_lens)
+        out = paddle.transpose(outs, perm=[1, 0, 2])
+
+        # 计算损失
+        loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
+        loss = (loss / paddle.shape(inputs)[0]).numpy()[0]
+        l.append(loss)
         outs = paddle.nn.functional.softmax(outs, 2)
         # 解码获取识别结果
         out_strings = greedy_decoder_batch(outs.numpy(), vocabulary)
@@ -55,9 +62,11 @@ def evaluate(model, test_loader, vocabulary):
             # 计算字错率
             c.append(cer(out_string, label) / float(len(label)))
         if batch_id % 100 == 0:
-            print('[{}] Test batch: [{}/{}], cer: {:.5f}'.format(datetime.now(), batch_id, len(test_loader), float(sum(c) / len(c))))
+            print('[{}] Test batch: [{}/{}], loss: {:.5f}, cer: {:.5f}'.format(datetime.now(), batch_id, len(test_loader),
+                                                                               loss, float(sum(c) / len(c))))
     c = float(sum(c) / len(c))
-    return c
+    l = float(sum(l) / len(l))
+    return c, l
 
 
 # 保存模型
@@ -119,13 +128,13 @@ def train(args):
         paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
 
     # 设置优化方法
-    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
+    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
-                                      weight_decay=paddle.regularizer.L2Decay(1e-06),
+                                      weight_decay=paddle.regularizer.L2Decay(5e-4),
                                       grad_clip=clip)
 
     # 设置支持多卡训练
@@ -199,9 +208,9 @@ def train(args):
             # 执行评估
             model.eval()
             print('\n', '='*70)
-            c = evaluate(model, test_loader, test_dataset.vocabulary)
-            print('[{}] Test epoch: {}, time/epoch: {}, cer: {:.5f}'.format(
-                datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), c))
+            c, l = evaluate(model, test_loader, test_dataset.vocabulary, ctc_loss)
+            print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, cer: {:.5f}'.format(
+                datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, c))
             print('='*70, '\n')
             writer.add_scalar('Test cer', c, test_step)
             test_step += 1
