@@ -10,7 +10,7 @@ from .normalizer import FeatureNormalizer
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, dict_path, mean_std_filepath, min_duration=0, max_duration=-1):
+    def __init__(self, data_list, dict_path, mean_std_filepath, min_duration=0, max_duration=30):
         super(PPASRDataset, self).__init__()
         self._audio_featurizer = AudioFeaturizer()
         self._normalizer = FeatureNormalizer(mean_std_filepath=mean_std_filepath)
@@ -80,6 +80,6 @@ def collate_fn(batch):
     input_lens = np.array(input_lens, dtype='int64')
     label_lens = np.array(label_lens, dtype='int64')
     # 打乱数据
-    indexs = [i for i in range(len(input_lens))]
-    random.shuffle(indexs)
-    return inputs[indexs], labels[indexs], input_lens[indexs], label_lens[indexs]
+    # indexs = [i for i in range(len(input_lens))]
+    # random.shuffle(indexs)
+    return inputs, labels, input_lens, label_lens

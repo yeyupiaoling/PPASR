@@ -49,28 +49,22 @@ class AudioFeaturizer(object):
         :rtype: ndarray
         """
         audio = self._audio_tool.normalize(audio=audio, target_db=self._target_dB)
-        # 计算音频梅尔频谱倒谱系数（MFCCs）
+        # 计算快速傅里叶变换
         audio = self._compute_linear_specgram(audio, self._target_audio_rate,
                                               stride_ms=self._stride_ms, window_ms=self._window_ms)
         return audio
 
     # 用快速傅里叶变换计算线性谱图
     @staticmethod
-    def _compute_linear_specgram(samples,
-                                 sample_rate,
-                                 stride_ms=10.0,
-                                 window_ms=20.0,
-                                 eps=1e-14):
+    def _compute_linear_specgram(samples, sample_rate, stride_ms=10.0, window_ms=20.0, eps=1e-14):
         stride_size = int(0.001 * sample_rate * stride_ms)
         window_size = int(0.001 * sample_rate * window_ms)
         truncate_size = (len(samples) - window_size) % stride_size
         samples = samples[:len(samples) - truncate_size]
         nshape = (window_size, (len(samples) - window_size) // stride_size + 1)
         nstrides = (samples.strides[0], samples.strides[0] * stride_size)
-        windows = np.lib.stride_tricks.as_strided(
-            samples, shape=nshape, strides=nstrides)
-        assert np.all(
-            windows[:, 1] == samples[stride_size:(stride_size + window_size)])
+        windows = np.lib.stride_tricks.as_strided(samples, shape=nshape, strides=nstrides)
+        assert np.all(windows[:, 1] == samples[stride_size:(stride_size + window_size)])
         # 快速傅里叶变换
         weighting = np.hanning(window_size)[:, None]
         fft = np.fft.rfft(windows * weighting, n=None, axis=0)

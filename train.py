@@ -21,7 +21,7 @@ from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   8,                         '训练的批量大小')
+add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
 add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
@@ -128,14 +128,14 @@ def train(args):
         paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
 
     # 设置优化方法
-    clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
+    grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
-                                      weight_decay=paddle.regularizer.L2Decay(5e-4),
-                                      grad_clip=clip)
+                                      weight_decay=paddle.regularizer.L2Decay(5e-5),
+                                      grad_clip=grad_clip)
 
     # 设置支持多卡训练
     if nranks > 1:
@@ -143,9 +143,6 @@ def train(args):
         model = fleet.distributed_model(model)
 
     print('[{}] 训练数据：{}'.format(datetime.now(), len(train_dataset)))
-
-    # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
 
     # 加载预训练模型
     if args.pretrained_model is not None:
@@ -170,6 +167,9 @@ def train(args):
         model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
         optimizer.set_state_dict(paddle.load(os.path.join(args.resume_model, 'optimizer.pdopt')))
         print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
+
+    # 获取损失函数
+    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
 
     train_step = 0
     test_step = 0

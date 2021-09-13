@@ -128,7 +128,7 @@ def main():
 
     count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
     with open(args.vocab_path, 'w', encoding='utf-8') as fout:
-        labels = ['?']
+        labels = ['<blank>']
         for char, count in count_sorted:
             if count < args.count_threshold: break
             labels.append(char)
