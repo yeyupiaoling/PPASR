@@ -1,4 +1,3 @@
-"""特征归一化"""
 import math
 
 import numpy as np
@@ -6,7 +5,8 @@ import random
 from tqdm import tqdm
 from paddle.io import Dataset, DataLoader
 from data_utils.utils import read_manifest
-from data_utils.audio_featurizer import AudioFeaturizer
+from data_utils.audio import AudioSegment
+from data_utils.featurizer.audio_featurizer import AudioFeaturizer
 
 
 class FeatureNormalizer(object):
@@ -18,6 +18,8 @@ class FeatureNormalizer(object):
     :type mean_std_filepath: None|str
     :param manifest_path: 用于计算均值和标准值的数据列表，一般是训练的数据列表
     :type meanifest_path: None|str
+    :param featurize_func:函数提取特征。它应该是可调用的``featurize_func(audio_segment)``
+    :type featurize_func: None|callable
     :param num_samples: 用于计算均值和标准值的音频数量
     :type num_samples: int
     :param random_seed: 随机种子
@@ -28,8 +30,8 @@ class FeatureNormalizer(object):
     def __init__(self,
                  mean_std_filepath,
                  manifest_path=None,
-                 num_samples=5000,
                  num_workers=4,
+                 num_samples=5000,
                  random_seed=0):
         if not mean_std_filepath:
             if not manifest_path:
@@ -107,7 +109,7 @@ class NormalizerDataset(Dataset):
     def __getitem__(self, idx):
         instance = self.sampled_manifest[idx]
         # 获取音频特征
-        audio = self.audio_featurizer.load_audio_file(instance["audio_path"])
+        audio = AudioSegment.from_file(instance["audio_filepath"])
         feature = self.audio_featurizer.featurize(audio)
         return feature, 0
 
