@@ -7,7 +7,7 @@ import paddle
 import paddle.distributed as dist
 from paddle.static import InputSpec
 
-from data_utils.audio_featurizer import AudioFeaturizer
+from data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from utils.utils import add_arguments, print_arguments
 from model_utils.deepspeech2 import DeepSpeech2Model
 
@@ -16,7 +16,7 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
 add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
-add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
+add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',   '数据字典的路径')
 add_arg('save_model',       str,   'models/',                  '模型保存的路径')
 add_arg('resume_model',     str,   'models/epoch_50',          '恢复训练，当为None则不使用预训练模型')
 args = parser.parse_args()
@@ -29,7 +29,7 @@ def export(args):
         vocabulary = eval(f.read())
     # 获取模型
     model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim,
-                             dict_size=len(vocabulary),
+                             vocab_size=len(vocabulary),
                              num_conv_layers=args.num_conv_layers,
                              num_rnn_layers=args.num_rnn_layers,
                              rnn_size=args.rnn_layer_size)

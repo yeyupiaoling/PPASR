@@ -8,7 +8,8 @@ from paddle.io import DataLoader
 from tqdm import tqdm
 
 from utils.utils import add_arguments, print_arguments
-from data_utils.reader import PPASRDataset, collate_fn
+from data_utils.reader import PPASRDataset
+from data_utils.collate_fn import collate_fn
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
 from utils.metrics import cer
@@ -28,7 +29,7 @@ add_arg('num_proc_bsearch', int,    8,                        '集束搜索方�
 add_arg('cutoff_prob',      float,  1.0,                      '剪枝的概率')
 add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大值')
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
-add_arg('dataset_vocab',    str,   'dataset/vocabulary.json', '数据字典的路径')
+add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
 add_arg('resume_model',     str,   'models/epoch_50/',        '模型的路径')
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
@@ -47,7 +48,7 @@ test_loader = DataLoader(dataset=test_dataset,
 
 # 获取模型
 model = DeepSpeech2Model(feat_size=test_dataset.feature_dim,
-                         dict_size=len(test_dataset.vocabulary),
+                         vocab_size=test_dataset.vocab_size,
                          num_conv_layers=args.num_conv_layers,
                          num_rnn_layers=args.num_rnn_layers,
                          rnn_size=args.rnn_layer_size)
@@ -59,7 +60,7 @@ model.eval()
 if args.decoder == "ctc_beam_search":
     try:
         from decoders.beam_search_decoder import BeamSearchDecoder
-        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, test_dataset.vocabulary)
+        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, test_dataset.vocab_list)
     except ModuleNotFoundError:
         raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greedy。')
 
@@ -75,7 +76,7 @@ def decoder(outs, vocabulary):
                                                               beam_size=args.beam_size,
                                                               cutoff_prob=args.cutoff_prob,
                                                               cutoff_top_n=args.cutoff_top_n,
-                                                              vocab_list=test_dataset.vocabulary,
+                                                              vocab_list=test_dataset.vocab_list,
                                                               num_processes=args.num_proc_bsearch)
     return result
 
@@ -89,8 +90,8 @@ def evaluate():
         outs, _ = model(inputs, input_lens)
         outs = paddle.nn.functional.softmax(outs, 2)
         # 解码获取识别结果
-        out_strings = decoder(outs.numpy(), test_dataset.vocabulary)
-        labels_str = labels_to_string(labels.numpy(), test_dataset.vocabulary)
+        out_strings = decoder(outs.numpy(), test_dataset.vocab_list)
+        labels_str = labels_to_string(labels.numpy(), test_dataset.vocab_list)
         for out_string, label in zip(*(out_strings, labels_str)):
             # 计算字错率
             c.append(cer(out_string, label) / float(len(label)))

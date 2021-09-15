@@ -1,5 +1,6 @@
 import argparse
 import functools
+import io
 import os
 import re
 import shutil
@@ -11,7 +12,8 @@ from paddle.distributed import fleet
 from paddle.io import DataLoader
 from visualdl import LogWriter
 
-from data_utils.reader import PPASRDataset, collate_fn
+from data_utils.reader import PPASRDataset
+from data_utils.collate_fn import collate_fn
 from data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2 import DeepSpeech2Model
@@ -32,8 +34,9 @@ add_arg('min_duration',     int,   0,                          '过滤最短的�
 add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('train_manifest',   str,   'dataset/manifest.train',   '训练数据的数据列表路径')
 add_arg('test_manifest',    str,   'dataset/manifest.test',    '测试数据的数据列表路径')
-add_arg('dataset_vocab',    str,   'dataset/vocabulary.json',  '数据字典的路径')
+add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',   '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',     '数据集的均值和标准值的npy文件路径')
+add_arg('augment_conf_path',str,   'conf/augmentation.json',   '数据增强的配置文件，为json格式')
 add_arg('save_model',       str,   'models/',                  '模型保存的路径')
 add_arg('resume_model',     str,    None,                      '恢复训练，当为None则不使用预训练模型')
 add_arg('pretrained_model', str,    None,                      '预训练模型的路径，当为None则不使用预训练模型')
@@ -51,7 +54,7 @@ def evaluate(model, test_loader, vocabulary, ctc_loss):
         out = paddle.transpose(outs, perm=[1, 0, 2])
 
         # 计算损失
-        loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
+        loss = ctc_loss(out, labels, out_lens, label_lens)
         loss = (loss / paddle.shape(inputs)[0]).numpy()[0]
         l.append(loss)
         outs = paddle.nn.functional.softmax(outs, 2)
@@ -95,10 +98,12 @@ def train(args):
         fleet.init(is_collective=True)
 
     # 获取训练数据
+    augmentation_config = io.open(args.augment_conf_path, mode='r', encoding='utf8').read() if args.augment_conf_path is not None else '{}'
     train_dataset = PPASRDataset(args.train_manifest, args.dataset_vocab,
                                  mean_std_filepath=args.mean_std_path,
                                  min_duration=args.min_duration,
-                                 max_duration=args.max_duration)
+                                 max_duration=args.max_duration,
+                                 augmentation_config=augmentation_config)
     # 设置支持多卡训练
     if nranks > 1:
         train_batch_sampler = SortagradDistributedBatchSampler(train_dataset, batch_size=args.batch_size, shuffle=True)
@@ -118,7 +123,7 @@ def train(args):
 
     # 获取模型
     model = DeepSpeech2Model(feat_size=train_dataset.feature_dim,
-                             dict_size=len(train_dataset.vocabulary),
+                             vocab_size=train_dataset.vocab_size,
                              num_conv_layers=args.num_conv_layers,
                              num_rnn_layers=args.num_rnn_layers,
                              rnn_size=args.rnn_layer_size)
@@ -132,10 +137,10 @@ def train(args):
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
-    optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
-                                      learning_rate=scheduler,
-                                      weight_decay=paddle.regularizer.L2Decay(5e-5),
-                                      grad_clip=grad_clip)
+    optimizer = paddle.optimizer.AdamW(parameters=model.parameters(),
+                                       learning_rate=scheduler,
+                                       weight_decay=5e-5,
+                                       grad_clip=grad_clip)
 
     # 设置支持多卡训练
     if nranks > 1:
@@ -184,7 +189,7 @@ def train(args):
             out = paddle.transpose(out, perm=[1, 0, 2])
 
             # 计算损失
-            loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
+            loss = ctc_loss(out, labels, out_lens, label_lens)
             loss = loss / paddle.shape(inputs)[0]
             loss.backward()
             optimizer.step()
@@ -208,7 +213,7 @@ def train(args):
             # 执行评估
             model.eval()
             print('\n', '='*70)
-            c, l = evaluate(model, test_loader, test_dataset.vocabulary, ctc_loss)
+            c, l = evaluate(model, test_loader, test_dataset.vocab_list, ctc_loss)
             print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, cer: {:.5f}'.format(
                 datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, c))
             print('='*70, '\n')

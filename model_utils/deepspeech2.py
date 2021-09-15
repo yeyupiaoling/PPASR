@@ -11,8 +11,8 @@ class DeepSpeech2Model(nn.Layer):
 
     :param feat_size: 输入的特征大小
     :type feat_size: int
-    :param dict_size: 字典的大小，用来分类输出
-    :type dict_size: int
+    :param vocab_size: 字典的大小，用来分类输出
+    :type vocab_size: int
     :param num_conv_layers: 堆叠卷积层数
     :type num_conv_layers: int
     :param num_rnn_layers: 堆叠RNN层数
@@ -24,7 +24,7 @@ class DeepSpeech2Model(nn.Layer):
     :rtype: nn.Layer
     """
 
-    def __init__(self, feat_size, dict_size, num_conv_layers=2, num_rnn_layers=3, rnn_size=1024):
+    def __init__(self, feat_size, vocab_size, num_conv_layers=2, num_rnn_layers=3, rnn_size=1024):
         super().__init__()
         # 卷积层堆
         self.conv = ConvStack(feat_size, num_conv_layers)
@@ -32,7 +32,8 @@ class DeepSpeech2Model(nn.Layer):
         i_size = self.conv.output_height
         self.rnn = RNNStack(i_size=i_size, h_size=rnn_size, num_stacks=num_rnn_layers)
         # 分类输入层
-        self.fc = nn.Linear(rnn_size * 2, dict_size)
+        self.bn = nn.BatchNorm1D(rnn_size * 2, data_format='NLC')
+        self.fc = nn.Linear(rnn_size * 2, vocab_size)
 
     def forward(self, audio, audio_len):
         """
@@ -54,5 +55,6 @@ class DeepSpeech2Model(nn.Layer):
         # 删除填充部分
         x = self.rnn(x, x_lens)  # [B, T, D]
 
+        x = self.bn(x)
         logits = self.fc(x)
         return logits, x_lens
