@@ -1,9 +1,29 @@
 import paddle
 from paddle import nn
 
-from model_utils.utils import make_non_pad_mask
-
 __all__ = ['RNNStack']
+
+
+class MaskRNN(nn.Layer):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self, x, lengths):
+        """
+        :param x: RNN输入，shape[B, T, D]
+        :param lengths: RNN处理过的长度，shape[B]
+        :return: 经过填充0的结果
+        """
+        batch_size = int(lengths.shape[0])
+        max_len = int(lengths.max())
+        seq_range = paddle.arange(0, max_len, dtype=paddle.int64)
+        seq_range_expand = seq_range.unsqueeze(0).expand([batch_size, max_len])
+        seq_length_expand = lengths.unsqueeze(-1).astype(paddle.int64)
+        masks = paddle.less_than(seq_range_expand, seq_length_expand)
+        masks = masks.astype(x.dtype)
+        masks = masks.unsqueeze(-1)  # [B, T, 1]
+        x = x.multiply(masks)
+        return x
 
 
 class BiGRUWithBN(nn.Layer):
@@ -21,33 +41,20 @@ class BiGRUWithBN(nn.Layer):
     def __init__(self, i_size: int, h_size: int):
         super().__init__()
         hidden_size = h_size * 3
+        self.mask = MaskRNN()
 
-        self.fw_fc = nn.Linear(i_size, hidden_size, bias_attr=False)
-        self.fw_bn = nn.BatchNorm1D(hidden_size, bias_attr=None, data_format='NLC')
-        self.bw_fc = nn.Linear(i_size, hidden_size, bias_attr=False)
-        self.bw_bn = nn.BatchNorm1D(hidden_size, bias_attr=None, data_format='NLC')
-
-        self.fw_cell = nn.GRUCell(input_size=hidden_size, hidden_size=h_size)
-        self.bw_cell = nn.GRUCell(input_size=hidden_size, hidden_size=h_size)
-        self.fw_rnn = nn.RNN(self.fw_cell, is_reverse=False, time_major=False)  # [B, T, D]
-        self.bw_rnn = nn.RNN(self.fw_cell, is_reverse=True, time_major=False)  # [B, T, D]
+        self.fc = nn.Linear(i_size, hidden_size)
+        self.bn = nn.BatchNorm1D(hidden_size, data_format='NLC')
+        self.gru = nn.GRU(input_size=hidden_size, hidden_size=h_size, direction='bidirectional')
 
     def forward(self, x, x_len):
         # x, shape [B, T, D]
-        fw_x = self.fw_fc(x)
-        fw_x = self.fw_bn(fw_x)
-        bw_x = self.bw_fc(x)
-        bw_x = self.bw_bn(bw_x)
-        fw_x, _ = self.fw_rnn(inputs=fw_x, sequence_length=x_len)
-        bw_x, _ = self.bw_rnn(inputs=bw_x, sequence_length=x_len)
-        x = paddle.concat([fw_x, bw_x], axis=-1)
+        x = self.bn(self.fc(x))
+        x, _ = self.gru(inputs=x, sequence_length=x_len)
 
         # 将填充部分重置为0
-        masks = make_non_pad_mask(x_len)  # [B, T]
-        masks = masks.unsqueeze(-1)  # [B, T, 1]
-        masks = masks.astype(x.dtype)
-        x = x.multiply(masks)
-        return x, x_len
+        x = self.mask(x, x_len)
+        return x
 
 
 class RNNStack(nn.Layer):
@@ -79,5 +86,5 @@ class RNNStack(nn.Layer):
         x_len: shpae [B]
         """
         for i, rnn in enumerate(self.rnn_stacks):
-            x, x_len = rnn(x, x_len)
-        return x, x_len
+            x = rnn(x, x_len)
+        return x

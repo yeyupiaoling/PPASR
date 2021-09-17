@@ -110,7 +110,7 @@ decoders_module = [
 
 setup(
     name='swig_decoders',
-    version='1.1',
+    version='1.2',
     description="""CTC decoders""",
     ext_modules=decoders_module,
     packages=setuptools.find_packages(),
