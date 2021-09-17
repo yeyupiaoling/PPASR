@@ -27,9 +27,10 @@ args = parser.parse_args()
 
 print_arguments(args)
 # 加载数据字典
-with open(args.dataset_vocab, 'r', encoding='utf-8') as f:
-    labels = eval(f.read())
-vocabulary = [labels[i] for i in range(len(labels))]
+vocab_lines = []
+with open(args.dataset_vocab, 'r', encoding='utf-8') as file:
+    vocab_lines.extend(file.readlines())
+vocab_list = [line.replace('\n', '') for line in vocab_lines]
 
 # 提取音频特征器和归一化器
 audio_process = AudioProcess(mean_std_filepath=args.mean_std_path)
@@ -43,7 +44,7 @@ model.eval()
 if args.decoder == "ctc_beam_search":
     try:
         from decoders.beam_search_decoder import BeamSearchDecoder
-        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, vocabulary)
+        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, vocab_list)
     except ModuleNotFoundError:
         raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
 
@@ -69,16 +70,16 @@ def infer():
     # 提取音频特征
     s = time.time()
     feature = audio_process.process_utterance(args.audio_path)
-    audio_len = paddle.to_tensor(feature.shape[1], dtype=paddle.int64)
+    feature = paddle.to_tensor([feature], dtype=paddle.float32)
+    audio_len = paddle.to_tensor(feature.shape[2], dtype=paddle.int64)
     print('加载音频和预处理时间：%dms' % round((time.time() - s) * 1000))
     # 执行识别
     s = time.time()
-    out, _ = model(feature, audio_len)
-    out = paddle.nn.functional.softmax(out, 2)[0]
+    out = model(feature, audio_len)[0]
     print('执行预测时间：%dms' % round((time.time() - s) * 1000))
     # 执行解码
     s = time.time()
-    score, text = decoder(out.numpy(), vocabulary)
+    score, text = decoder(out.numpy(), vocab_list)
     print('解码消耗时间：%dms' % round((time.time() - s) * 1000))
     return score, text
 

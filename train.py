@@ -54,7 +54,7 @@ def evaluate(model, test_loader, vocabulary, ctc_loss):
         out = paddle.transpose(outs, perm=[1, 0, 2])
 
         # 计算损失
-        loss = ctc_loss(out, labels, out_lens, label_lens)
+        loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
         loss = (loss / paddle.shape(inputs)[0]).numpy()[0]
         l.append(loss)
         outs = paddle.nn.functional.softmax(outs, 2)
@@ -137,10 +137,10 @@ def train(args):
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
     scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
-    optimizer = paddle.optimizer.AdamW(parameters=model.parameters(),
-                                       learning_rate=scheduler,
-                                       weight_decay=5e-5,
-                                       grad_clip=grad_clip)
+    optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
+                                      learning_rate=scheduler,
+                                      weight_decay=paddle.regularizer.L2Decay(1e-5),
+                                      grad_clip=grad_clip)
 
     # 设置支持多卡训练
     if nranks > 1:
@@ -189,7 +189,7 @@ def train(args):
             out = paddle.transpose(out, perm=[1, 0, 2])
 
             # 计算损失
-            loss = ctc_loss(out, labels, out_lens, label_lens)
+            loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
             loss = loss / paddle.shape(inputs)[0]
             loss.backward()
             optimizer.step()

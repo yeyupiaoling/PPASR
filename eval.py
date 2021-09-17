@@ -33,7 +33,7 @@ add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的�
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
 add_arg('resume_model',     str,   'models/epoch_50/',        '模型的路径')
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
-add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
+add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
 
 

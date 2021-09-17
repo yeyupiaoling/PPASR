@@ -8,6 +8,7 @@ import paddle.distributed as dist
 from paddle.static import InputSpec
 
 from data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from data_utils.featurizer.text_featurizer import TextFeaturizer
 from utils.utils import add_arguments, print_arguments
 from model_utils.deepspeech2 import DeepSpeech2Model
 
@@ -25,24 +26,38 @@ args = parser.parse_args()
 def export(args):
     # 获取训练数据
     audio_featurizer = AudioFeaturizer()
-    with open(args.dataset_vocab, 'r', encoding='utf-8') as f:
-        vocabulary = eval(f.read())
+    text_featurizer = TextFeaturizer(args.dataset_vocab)
+
     # 获取模型
-    model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim,
-                             vocab_size=len(vocabulary),
+    deepspeech2 = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim,
+                             vocab_size=text_featurizer.vocab_size,
                              num_conv_layers=args.num_conv_layers,
                              num_rnn_layers=args.num_rnn_layers,
                              rnn_size=args.rnn_layer_size)
     if dist.get_rank() == 0:
         print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
-        paddle.summary(model, input_size=[(None, audio_featurizer.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
+        paddle.summary(deepspeech2, input_size=[(None, audio_featurizer.feature_dim, 970), (None,)],
+                       dtypes=[paddle.float32, paddle.int64])
 
     # 加载预训练模型
     resume_model_path = os.path.join(args.resume_model, 'model.pdparams')
     assert os.path.exists(resume_model_path), "恢复模型不存在！"
-    model.set_state_dict(paddle.load(resume_model_path))
+    deepspeech2.set_state_dict(paddle.load(resume_model_path))
     print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
 
+    # 在输出层加上Softmax
+    class Model(paddle.nn.Layer):
+        def __init__(self, model: DeepSpeech2Model):
+            super(Model, self).__init__()
+            self.model = model
+            self.softmax = paddle.nn.Softmax()
+
+        def forward(self, audio, audio_len):
+            logits, x_lensx = self.model(audio, audio_len)
+            output = self.softmax(logits)
+            return output
+
+    model = Model(deepspeech2)
     infer_model_path = os.path.join(args.save_model, 'infer')
     if not os.path.exists(infer_model_path):
         os.makedirs(infer_model_path)
