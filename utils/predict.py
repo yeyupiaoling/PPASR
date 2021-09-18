@@ -10,11 +10,11 @@ from data_utils.audio_process import AudioProcess
 
 
 class Predictor:
-    def __init__(self, model_dir, audio_process:AudioProcess, decoding_method='ctc_greedy', alpha=1.2, beta=0.35,
+    def __init__(self, model_dir, audio_process:AudioProcess, decoder='ctc_greedy', alpha=1.2, beta=0.35,
                  lang_model_path=None, beam_size=10, cutoff_prob=1.0, cutoff_top_n=40, use_gpu=True, gpu_mem=500,
                  num_threads=10):
         self.audio_process = audio_process
-        self.decoding_method = decoding_method
+        self.decoder = decoder
         self.alpha = alpha
         self.beta = beta
         self.lang_model_path = lang_model_path
@@ -22,7 +22,7 @@ class Predictor:
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
         # 集束搜索方法的处理
-        if decoding_method == "ctc_beam_search":
+        if decoder == "ctc_beam_search":
             try:
                 from decoders.beam_search_decoder import BeamSearchDecoder
                 self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, audio_process.vocab_list)
@@ -85,7 +85,7 @@ class Predictor:
         output_data = output_handle.copy_to_cpu()[0]
 
         # 执行解码
-        if self.decoding_method == 'ctc_beam_search':
+        if self.decoder == 'ctc_beam_search':
             # 集束搜索解码策略
             result = self.beam_search_decoder.decode_beam_search(probs_split=output_data,
                                                                  beam_alpha=self.alpha,

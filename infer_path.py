@@ -22,7 +22,7 @@ add_arg('mean_std_path',    str,    'dataset/mean_std.npz',      "数据集的�
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/infer/',             "导出的预测模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',   "集束搜索解码相关参数，语言模型文件路径")
-add_arg('decoding_method',  str,    'ctc_greedy',    "结果解码方法，有集束搜索(ctc_beam_search)、贪婪策略(ctc_greedy)", choices=['ctc_beam_search', 'ctc_greedy'])
+add_arg('decoder',          str,    'ctc_greedy',    "结果解码方法，有集束搜索(ctc_beam_search)、贪婪策略(ctc_greedy)", choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
 print_arguments(args)
 
@@ -30,7 +30,7 @@ print_arguments(args)
 # 提取音频特征器和归一化器
 audio_process = AudioProcess(mean_std_filepath=args.mean_std_path, vocab_filepath=args.vocab_path)
 
-predictor = Predictor(model_dir=args.model_dir, audio_process=audio_process, decoding_method=args.decoding_method,
+predictor = Predictor(model_dir=args.model_dir, audio_process=audio_process, decoder=args.decoder,
                       alpha=args.alpha, beta=args.beta, lang_model_path=args.lang_model_path, beam_size=args.beam_size,
                       cutoff_prob=args.cutoff_prob, cutoff_top_n=args.cutoff_top_n, use_gpu=args.use_gpu)
 
