@@ -259,7 +259,7 @@ python3 infer.py --audio_path=dataset/test.wav
 # 模型下载
 | 数据集 | 卷积层数量 | 循环神经网络的数量 | 循环神经网络的大小 | 测试集字错率 | 下载地址 |
 | :---: | :---: | :---: | :---: | :---: | :---: |
-| aishell(179小时) | 2 | 3 | 1024 | 0.084532 | [点击下载]() |
+| aishell(179小时) | 2 | 3 | 1024 | 0.083327 | [点击下载](https://download.csdn.net/download/qq_33200967/23458370) |
 | free_st_chinese_mandarin_corpus(109小时) | 2 | 3 | 1024 | 0.143291 | [点击下载](https://download.csdn.net/download/qq_33200967/23389305) |
 | thchs_30(34小时) | 2 | 3 | 1024 | 0.047665 | [点击下载](https://download.csdn.net/download/qq_33200967/21095490) |
 
