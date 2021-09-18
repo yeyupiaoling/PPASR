@@ -23,17 +23,11 @@ add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均�
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
-
-
 print_arguments(args)
-# 加载数据字典
-vocab_lines = []
-with open(args.dataset_vocab, 'r', encoding='utf-8') as file:
-    vocab_lines.extend(file.readlines())
-vocab_list = [line.replace('\n', '') for line in vocab_lines]
+
 
 # 提取音频特征器和归一化器
-audio_process = AudioProcess(mean_std_filepath=args.mean_std_path)
+audio_process = AudioProcess(mean_std_filepath=args.mean_std_path, vocab_filepath=args.dataset_vocab)
 
 # 创建模型
 model = paddle.jit.load(args.model_path)
@@ -44,7 +38,7 @@ model.eval()
 if args.decoder == "ctc_beam_search":
     try:
         from decoders.beam_search_decoder import BeamSearchDecoder
-        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, vocab_list)
+        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, audio_process.vocab_list)
     except ModuleNotFoundError:
         raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
 
@@ -79,7 +73,7 @@ def infer():
     print('执行预测时间：%dms' % round((time.time() - s) * 1000))
     # 执行解码
     s = time.time()
-    score, text = decoder(out.numpy(), vocab_list)
+    score, text = decoder(out.numpy(), audio_process.vocab_list)
     print('解码消耗时间：%dms' % round((time.time() - s) * 1000))
     return score, text
 
