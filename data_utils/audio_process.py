@@ -1,4 +1,5 @@
 from data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from data_utils.featurizer.text_featurizer import TextFeaturizer
 from data_utils.normalizer import FeatureNormalizer
 from data_utils.audio import AudioSegment
 
@@ -11,8 +12,9 @@ class AudioProcess(object):
     :type mean_std_filepath: str
     """
 
-    def __init__(self, mean_std_filepath):
+    def __init__(self, mean_std_filepath, vocab_filepath):
         self._audio_featurizer = AudioFeaturizer()
+        self._text_featurizer = TextFeaturizer(vocab_filepath)
         self._normalizer = FeatureNormalizer(mean_std_filepath)
 
     def process_utterance(self, audio_file):
@@ -27,3 +29,12 @@ class AudioProcess(object):
         specgram = self._audio_featurizer.featurize(audio_segment)
         specgram = self._normalizer.apply(specgram)
         return specgram
+
+    @property
+    def vocab_list(self):
+        """返回词汇表的list
+
+        :return: Vocabulary in list.
+        :rtype: list
+        """
+        return self._text_featurizer.vocab_list

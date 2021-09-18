@@ -30,10 +30,10 @@ def export(args):
 
     # 获取模型
     deepspeech2 = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim,
-                             vocab_size=text_featurizer.vocab_size,
-                             num_conv_layers=args.num_conv_layers,
-                             num_rnn_layers=args.num_rnn_layers,
-                             rnn_size=args.rnn_layer_size)
+                                   vocab_size=text_featurizer.vocab_size,
+                                   num_conv_layers=args.num_conv_layers,
+                                   num_rnn_layers=args.num_rnn_layers,
+                                   rnn_size=args.rnn_layer_size)
     if dist.get_rank() == 0:
         print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
         paddle.summary(deepspeech2, input_size=[(None, audio_featurizer.feature_dim, 970), (None,)],

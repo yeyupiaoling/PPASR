@@ -1,0 +1,111 @@
+body {
+    padding-top: 100px;
+    background-color: #008e8e;
+}
+
+#content {
+    width: 900px;
+    height: 500px;
+    margin: 0 auto;
+    background-color: #00921d;
+    position: relative;
+}
+
+#player {
+    bottom: 50px;
+    left: 300px;
+    position: absolute;
+}
+
+#result {
+    background-color: white;
+    width: 300px;
+    height: 250px;
+    top: 100px;
+    right: 100px;
+    position: absolute;
+}
+
+#result_p{
+    width: 300px;
+    height: 250px;
+}
+
+
+#upload {
+    width: 80px;
+    height: 30px;
+    top: 100px;
+    left: 130px;
+    position: absolute;
+}
+
+#upload_long {
+    width: 80px;
+    height: 30px;
+    top: 100px;
+    left: 300px;
+    position: absolute;
+}
+
+#btn {
+    top: 180px;
+    left: 150px;
+    position: relative;
+}
+
+
+.file {
+    position: relative;
+    text-align: center;
+    display: inline-block;
+    background: #D0EEFF;
+    border: 1px solid #99D3F5;
+    border-radius: 4px;
+    padding: 8px 40px;
+    overflow: hidden;
+    color: #1E88C7;
+    text-decoration: none;
+    text-indent: 0;
+    line-height: 20px;
+}
+
+#upload_recod_btn {
+    top: 290px;
+    width: 200px;
+    height: 30px;
+    left: 155px;
+    margin-top: 10px;
+    position: absolute;
+}
+
+.file input {
+    position: absolute;
+    font-size: 100px;
+    right: 0;
+    top: 0;
+    opacity: 0;
+}
+
+.file:hover {
+    background: #AADFFD;
+    border-color: #78C3F3;
+    color: #004974;
+    text-decoration: none;
+}
+
+#record_btn {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    left: 150px;
+    top: 185px;
+}
+
+#play_btn {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    left: 250px;
+    top: 178px;
+}
