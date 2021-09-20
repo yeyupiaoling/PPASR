@@ -23,13 +23,13 @@ from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   16,                         '训练的批量大小')
+add_arg('batch_size',       int,   32,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
 add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
 add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
 add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   1024,                       '循环神经网络的大小')
+add_arg('rnn_layer_size',   int,   512,                       '循环神经网络的大小')
 add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
 add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('train_manifest',   str,   'dataset/manifest.train',   '训练数据的数据列表路径')
@@ -55,7 +55,7 @@ def evaluate(model, test_loader, vocabulary, ctc_loss):
 
         # 计算损失
         loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
-        loss = (loss / paddle.shape(inputs)[0]).numpy()[0]
+        loss = loss.mean().numpy()[0]
         l.append(loss)
         outs = paddle.nn.functional.softmax(outs, 2)
         # 解码获取识别结果
@@ -174,7 +174,7 @@ def train(args):
         print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
 
     # 获取损失函数
-    ctc_loss = paddle.nn.CTCLoss(reduction='sum')
+    ctc_loss = paddle.nn.CTCLoss(reduction='none')
 
     train_step = 0
     test_step = 0
@@ -190,7 +190,7 @@ def train(args):
 
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
-            loss = loss / paddle.shape(inputs)[0]
+            loss = loss.mean()
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
@@ -205,7 +205,7 @@ def train(args):
                 train_step += 1
 
             # 固定步数也要保存一次模型
-            if batch_id % 2000 == 0 and batch_id != 0 and local_rank == 0:
+            if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
                 save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
 
         # 多卡训练只使用一个进程执行评估和保存模型

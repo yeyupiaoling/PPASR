@@ -3,7 +3,6 @@ import argparse
 import logging
 import os
 import random
-import threading
 from pathlib import Path
 
 import numpy as np

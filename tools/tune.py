@@ -30,7 +30,7 @@ add_arg('beam_size',        int,    10,    "定向搜索的大小，范围:[5, 5
 add_arg('num_proc_bsearch', int,    8,     "定向搜索方法使用CPU数量")
 add_arg('num_conv_layers',  int,    2,     "卷积层数量")
 add_arg('num_rnn_layers',   int,    3,     "循环神经网络的数量")
-add_arg('rnn_layer_size',   int,    1024,  "循环神经网络的大小")
+add_arg('rnn_layer_size',   int,    512,  "循环神经网络的大小")
 add_arg('num_alphas',       int,    45,    "用于调优的alpha候选项")
 add_arg('num_betas',        int,    8,     "用于调优的beta候选项")
 add_arg('alpha_from',       float,  1.0,   "alpha调优开始大小")

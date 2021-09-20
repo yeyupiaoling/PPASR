@@ -26,6 +26,54 @@ class MaskConv(nn.Layer):
         return x
 
 
+class SEBlock(nn.Layer):
+    def __init__(self, channel, reduction=16):
+        super(SEBlock, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2D(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channel, channel // reduction),
+            nn.PReLU(),
+            nn.Linear(channel // reduction, channel),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.shape
+        y = self.avg_pool(x).reshape((b, c))
+        y = self.fc(y).reshape((b, c, 1, 1))
+        return x * y
+
+
+class SEModule(nn.Layer):
+    def __init__(self, channel, reduction=4):
+        super(SEModule, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2D(1)
+        self.conv1 = nn.Conv2D(in_channels=channel,
+                               out_channels=channel // reduction,
+                               kernel_size=1,
+                               stride=1,
+                               padding=0,
+                               weight_attr=paddle.ParamAttr(),
+                               bias_attr=paddle.ParamAttr())
+        self.conv2 = nn.Conv2D(in_channels=channel // reduction,
+                               out_channels=channel,
+                               kernel_size=1,
+                               stride=1,
+                               padding=0,
+                               weight_attr=paddle.ParamAttr(),
+                               bias_attr=paddle.ParamAttr())
+        self.act1 = nn.ReLU()
+        self.act2 = nn.Hardsigmoid()
+
+    def forward(self, inputs):
+        outputs = self.avg_pool(inputs)
+        outputs = self.conv1(outputs)
+        outputs = self.act1(outputs)
+        outputs = self.conv2(outputs)
+        outputs = self.act2(outputs)
+        return paddle.multiply(x=inputs, y=outputs)
+
+
 class ConvBn(nn.Layer):
     """带BN层的卷积
 
@@ -64,6 +112,7 @@ class ConvBn(nn.Layer):
 
         self.bn = nn.BatchNorm2D(num_channels_out, data_format='NCHW')
         self.act = nn.Hardtanh(min=0.0, max=24.0)
+        self.se = SEModule(num_channels_out)
 
     def forward(self, x, x_len):
         """
@@ -71,6 +120,7 @@ class ConvBn(nn.Layer):
         """
         x = self.conv(x)
         x = self.bn(x)
+        x = self.se(x)
         x = self.act(x)
 
         x_len = (x_len - self.kernel_size[1] + 2 * self.padding[1]) // self.stride[1] + 1

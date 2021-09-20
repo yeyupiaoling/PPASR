@@ -5,6 +5,9 @@ import os
 import wave
 from collections import Counter
 
+import numpy as np
+from zhconv import convert
+
 import librosa
 import soundfile
 from tqdm import tqdm
@@ -17,7 +20,7 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('--annotation_path',    str,  'dataset/annotation/',      '标注文件的路径')
 add_arg('manifest_prefix',      str,  'dataset/',                 '训练数据清单，包括音频路径和标注信息')
 add_arg('is_change_frame_rate', bool, True,                       '是否统一改变音频为16000Hz，这会消耗大量的时间')
-add_arg('count_threshold',      int,  0,                          '字符计数的截断阈值，0为不做限制')
+add_arg('count_threshold',      int,  2,                          '字符计数的截断阈值，0为不做限制')
 add_arg('vocab_path',           str,  'dataset/vocabulary.txt',   '生成的数据字典文件')
 add_arg('manifest_path',        str,  'dataset/manifest.train',   '数据列表路径')
 add_arg('num_workers',          int,   8,                         '读取数据的线程数量')
@@ -45,6 +48,8 @@ def create_manifest(annotation_path, manifest_path_prefix):
             durations.append(duration)
             # 过滤非法的字符
             text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', ''))
+            # 保证全部都是简体
+            text = convert(text, 'zh-cn')
             # 加入数据列表中
             line = '{"audio_filepath":"%s", "duration":%.2f, "text":"%s"}' % (audio_path.replace('\\', '/'), duration, text)
             data_list.append(line)
@@ -179,12 +184,11 @@ def main():
 
     count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
     with open(args.vocab_path, 'w', encoding='utf-8') as fout:
-        labels = ['<blank>']
+        fout.write('<blank>\t-1\n')
         for char, count in count_sorted:
+            # 跳过指定的字符阈值，超过这大小的字符都忽略
             if count < args.count_threshold: break
-            labels.append(char)
-        for label in labels:
-            fout.write('%s\n' % label)
+            fout.write('%s\t%d\n' % (char, count))
     print('数据字典生成完成！')
 
     print('='*70)

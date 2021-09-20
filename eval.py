@@ -21,7 +21,7 @@ add_arg('batch_size',       int,    32,                       '训练的批量�
 add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
 add_arg('num_conv_layers',  int,    2,                        '卷积层数量')
 add_arg('num_rnn_layers',   int,    3,                        '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,    1024,                     '循环神经网络的大小')
+add_arg('rnn_layer_size',   int,    512,                      '循环神经网络的大小')
 add_arg('alpha',            float,  1.2,                      '集束搜索的LM系数')
 add_arg('beta',             float,  0.35,                     '集束搜索的WC系数')
 add_arg('beam_size',        int,    10,                       '集束搜索的大小，范围:[5, 500]')
