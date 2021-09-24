@@ -27,7 +27,7 @@ wget https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm
 
 这一步可以跳过，使用默认的alpha和beta也是不错的，如果想精益求精，可以执行下面的命令，可能速度会比较慢。执行完成之后会得到效果最好的alpha和beta参数值。
 ```shell
-python tools/tune.py --resume_model=models/epoch_50
+python tools/tune.py --resume_model=models/deepspeech2/epoch_50
 ```
 
 # 使用集束搜索解码

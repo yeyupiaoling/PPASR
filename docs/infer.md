@@ -17,13 +17,13 @@ decoding_method: ctc_greedy
 is_long_audio: False
 lang_model_path: ./lm/zh_giga.no_cna_cmn.prune01244.klm
 mean_std_path: ./dataset/mean_std.npz
-model_dir: ./models/infer/
+model_dir: ./models/deepspeech2/infer/
 to_an: True
 use_gpu: True
 vocab_path: ./dataset/zh_vocab.txt
 wav_path: ./dataset/test.wav
 ------------------------------------------------
-消耗时间：132, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
+消耗时间：101, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
 ```
 
 ## 长语音预测
@@ -45,7 +45,7 @@ decoding_method: ctc_greedy
 is_long_audio: 1
 lang_model_path: ./lm/zh_giga.no_cna_cmn.prune01244.klm
 mean_std_path: ./dataset/mean_std.npz
-model_dir: ./models/infer/
+model_dir: ./models/deepspeech2/infer/
 to_an: True
 use_gpu: True
 vocab_path: ./dataset/zh_vocab.txt

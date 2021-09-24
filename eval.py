@@ -11,7 +11,7 @@ from utils.utils import add_arguments, print_arguments
 from data_utils.reader import PPASRDataset
 from data_utils.collate_fn import collate_fn
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
-from model_utils.deepspeech2 import DeepSpeech2Model
+from model_utils.deepspeech2.model import DeepSpeech2Model
 from utils.metrics import cer
 from utils.utils import labels_to_string
 
@@ -19,19 +19,17 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('batch_size',       int,    32,                       '训练的批量大小')
 add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
-add_arg('num_conv_layers',  int,    2,                        '卷积层数量')
-add_arg('num_rnn_layers',   int,    3,                        '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,    512,                      '循环神经网络的大小')
 add_arg('alpha',            float,  1.2,                      '集束搜索的LM系数')
 add_arg('beta',             float,  0.35,                     '集束搜索的WC系数')
 add_arg('beam_size',        int,    10,                       '集束搜索的大小，范围:[5, 500]')
 add_arg('num_proc_bsearch', int,    8,                        '集束搜索方法使用CPU数量')
 add_arg('cutoff_prob',      float,  1.0,                      '剪枝的概率')
 add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大值')
+add_arg('use_model',        str,   'deepspeech2',             '所使用的模型')
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
-add_arg('resume_model',     str,   'models/epoch_50/',        '模型的路径')
+add_arg('resume_model',     str,   'models/deepspeech2/epoch_50/', '模型的路径')
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
@@ -47,11 +45,11 @@ test_loader = DataLoader(dataset=test_dataset,
                          use_shared_memory=False)
 
 # 获取模型
-model = DeepSpeech2Model(feat_size=test_dataset.feature_dim,
-                         vocab_size=test_dataset.vocab_size,
-                         num_conv_layers=args.num_conv_layers,
-                         num_rnn_layers=args.num_rnn_layers,
-                         rnn_size=args.rnn_layer_size)
+if args.use_model == 'deepspeech2':
+    model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
+else:
+    raise Exception('没有该模型：%s' % args.use_model)
+
 assert os.path.exists(os.path.join(args.resume_model, 'model.pdparams')), "模型不存在！"
 model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
 model.eval()

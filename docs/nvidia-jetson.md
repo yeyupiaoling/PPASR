@@ -38,7 +38,7 @@ decoding_method: ctc_greedy
 is_long_audio: False
 lang_model_path: ./lm/zh_giga.no_cna_cmn.prune01244.klm
 mean_std_path: ./dataset/mean_std.npz
-model_dir: ./models/infer/
+model_dir: ./models/deepspeech2/infer/
 to_an: True
 use_gpu: True
 use_tensorrt: False

@@ -26,24 +26,6 @@ class MaskConv(nn.Layer):
         return x
 
 
-class SEBlock(nn.Layer):
-    def __init__(self, channel, reduction=16):
-        super(SEBlock, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2D(1)
-        self.fc = nn.Sequential(
-            nn.Linear(channel, channel // reduction),
-            nn.PReLU(),
-            nn.Linear(channel // reduction, channel),
-            nn.Sigmoid()
-        )
-
-    def forward(self, x):
-        b, c, _, _ = x.shape
-        y = self.avg_pool(x).reshape((b, c))
-        y = self.fc(y).reshape((b, c, 1, 1))
-        return x * y
-
-
 class SEModule(nn.Layer):
     def __init__(self, channel, reduction=4):
         super(SEModule, self).__init__()
@@ -87,13 +69,15 @@ class ConvBn(nn.Layer):
     :type stride: int|tuple|list
     :param padding: 填充的大小
     :type padding: int|tuple|list
+    :param use_se: 是否使用SE模块
+    :type use_se: bool
 
     :return: 带BN层的卷积
     :rtype: nn.Layer
 
     """
 
-    def __init__(self, num_channels_in, num_channels_out, kernel_size, stride, padding):
+    def __init__(self, num_channels_in, num_channels_out, kernel_size, stride, padding, use_se=False):
         super().__init__()
         assert len(kernel_size) == 2
         assert len(stride) == 2
@@ -101,6 +85,7 @@ class ConvBn(nn.Layer):
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
+        self.use_se = use_se
         self.mask = MaskConv()
 
         self.conv = nn.Conv2D(num_channels_in,
@@ -112,7 +97,8 @@ class ConvBn(nn.Layer):
 
         self.bn = nn.BatchNorm2D(num_channels_out, data_format='NCHW')
         self.act = nn.Hardtanh(min=0.0, max=24.0)
-        self.se = SEModule(num_channels_out)
+        if self.use_se:
+            self.se = SEModule(num_channels_out)
 
     def forward(self, x, x_len):
         """
@@ -120,7 +106,8 @@ class ConvBn(nn.Layer):
         """
         x = self.conv(x)
         x = self.bn(x)
-        x = self.se(x)
+        if self.use_se:
+            x = self.se(x)
         x = self.act(x)
 
         x_len = (x_len - self.kernel_size[1] + 2 * self.padding[1]) // self.stride[1] + 1
@@ -157,7 +144,8 @@ class ConvStack(nn.Layer):
                                       num_channels_out=out_channel,
                                       kernel_size=(21, 11),
                                       stride=(2, 1),
-                                      padding=(10, 5)))
+                                      padding=(10, 5),
+                                      use_se=True))
         self.conv_stack = nn.LayerList(conv_stacks)
 
         # 卷积层输出的特征大小

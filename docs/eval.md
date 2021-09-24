@@ -2,7 +2,7 @@
 
 执行下面这个脚本对模型进行评估，通过字符错误率来评价模型的性能。
 ```shell
-python eval.py --resume_model=models/epoch_50
+python eval.py --resume_model=models/deepspeech2/epoch_50
 ```
 
 输出结果：
@@ -18,12 +18,10 @@ dataset_vocab: dataset/vocabulary.txt
 decoder: ctc_greedy
 lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
 mean_std_path: dataset/mean_std.npz
-num_conv_layers: 2
 num_proc_bsearch: 8
-num_rnn_layers: 3
 num_workers: 8
-resume_model: models/epoch_50
-rnn_layer_size: 1024
+use_model: deepspeech2
+resume_model: models/deepspeech2/epoch_50
 test_manifest: dataset/manifest.test
 ------------------------------------------------
 W0918 10:33:58.960235 16295 device_context.cc:404] Please NOTE: device: 0, GPU Compute Capability: 7.5, Driver API Version: 11.0, Runtime API Version: 10.2

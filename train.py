@@ -16,22 +16,20 @@ from data_utils.reader import PPASRDataset
 from data_utils.collate_fn import collate_fn
 from data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
-from model_utils.deepspeech2 import DeepSpeech2Model
+from model_utils.deepspeech2.model import DeepSpeech2Model
 from utils.metrics import cer
 from utils.utils import add_arguments, print_arguments
 from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   32,                         '训练的批量大小')
+add_arg('batch_size',       int,   8,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
 add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
-add_arg('num_conv_layers',  int,   2,                          '卷积层数量')
-add_arg('num_rnn_layers',   int,   3,                          '循环神经网络的数量')
-add_arg('rnn_layer_size',   int,   512,                       '循环神经网络的大小')
 add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
 add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
+add_arg('use_model',        str,   'deepspeech2',              '所使用的模型')
 add_arg('train_manifest',   str,   'dataset/manifest.train',   '训练数据的数据列表路径')
 add_arg('test_manifest',    str,   'dataset/manifest.test',    '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',   '数据字典的路径')
@@ -74,13 +72,13 @@ def evaluate(model, test_loader, vocabulary, ctc_loss):
 
 # 保存模型
 def save_model(args, epoch, model, optimizer):
-    model_path = os.path.join(args.save_model, 'epoch_%d' % epoch)
+    model_path = os.path.join(args.save_model, args.use_model, 'epoch_%d' % epoch)
     if not os.path.exists(model_path):
         os.makedirs(model_path)
     paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
     paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
     # 删除旧的模型
-    old_model_path = os.path.join(args.save_model, 'epoch_%d' % (epoch - 3))
+    old_model_path = os.path.join(args.save_model, args.use_model, 'epoch_%d' % (epoch - 3))
     if os.path.exists(old_model_path):
         shutil.rmtree(old_model_path)
 
@@ -122,11 +120,11 @@ def train(args):
                              num_workers=args.num_workers)
 
     # 获取模型
-    model = DeepSpeech2Model(feat_size=train_dataset.feature_dim,
-                             vocab_size=train_dataset.vocab_size,
-                             num_conv_layers=args.num_conv_layers,
-                             num_rnn_layers=args.num_rnn_layers,
-                             rnn_size=args.rnn_layer_size)
+    if args.use_model == 'deepspeech2':
+        model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
+    else:
+        raise Exception('没有该模型：%s' % args.use_model)
+
     if local_rank == 0:
         print(f"{model}")
         print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
