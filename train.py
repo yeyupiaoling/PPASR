@@ -17,13 +17,14 @@ from data_utils.collate_fn import collate_fn
 from data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from decoders.ctc_greedy_decoder import greedy_decoder_batch
 from model_utils.deepspeech2.model import DeepSpeech2Model
+from model_utils.deepspeech2_light.model import DeepSpeech2LightModel
 from utils.metrics import cer
 from utils.utils import add_arguments, print_arguments
 from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   8,                         '训练的批量大小')
+add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
 add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
@@ -122,6 +123,8 @@ def train(args):
     # 获取模型
     if args.use_model == 'deepspeech2':
         model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
+    elif args.use_model == 'deepspeech2_light':
+        model = DeepSpeech2LightModel(vocab_size=train_dataset.vocab_size)
     else:
         raise Exception('没有该模型：%s' % args.use_model)
 

@@ -11,6 +11,7 @@ from data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from data_utils.featurizer.text_featurizer import TextFeaturizer
 from utils.utils import add_arguments, print_arguments
 from model_utils.deepspeech2.model import DeepSpeech2Model
+from model_utils.deepspeech2_light.model import DeepSpeech2LightModel
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -29,6 +30,8 @@ def export(args):
     # 获取模型
     if args.use_model == 'deepspeech2':
         base_model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim, vocab_size=text_featurizer.vocab_size)
+    elif args.use_model == 'deepspeech2_light':
+        base_model = DeepSpeech2LightModel(vocab_size=text_featurizer.vocab_size)
     else:
         raise Exception('没有该模型：%s' % args.use_model)
 

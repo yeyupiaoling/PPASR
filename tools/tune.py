@@ -18,6 +18,7 @@ from utils.utils import add_arguments, print_arguments
 from data_utils.reader import PPASRDataset
 from data_utils.collate_fn import collate_fn
 from model_utils.deepspeech2.model import DeepSpeech2Model
+from model_utils.deepspeech2_light.model import DeepSpeech2LightModel
 from utils.metrics import cer
 from utils.utils import labels_to_string
 
@@ -62,9 +63,10 @@ def tune():
                              use_shared_memory=False)
 
     # 获取模型
-    # 获取模型
     if args.use_model == 'deepspeech2':
         model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
+    elif args.use_model == 'deepspeech2_light':
+        model = DeepSpeech2LightModel(vocab_size=test_dataset.vocab_size)
     else:
         raise Exception('没有该模型：%s' % args.use_model)
 
