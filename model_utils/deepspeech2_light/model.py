@@ -17,14 +17,14 @@ def get_para_bias_attr(l2_decay, k):
 
 
 class DeepSpeech2LightModel(nn.Layer):
-    def __init__(self, vocab_size, scale=1.0):
+    def __init__(self, vocab_size, rnn_size=128, scale=1.0):
         super().__init__()
         self.conv = MobileNetV1(scale)
         self.rnn = BidirectionalGRU(in_channels=self.conv.out_channels, hidden_size=128)
         weight_attr1, bias_attr1 = get_para_bias_attr(l2_decay=0.00002, k=self.rnn.out_channels)
-        self.fc1 = nn.Linear(self.rnn.out_channels, 256, weight_attr=weight_attr1, bias_attr=bias_attr1)
-        weight_attr2, bias_attr2 = get_para_bias_attr(l2_decay=0.00002, k=256)
-        self.fc2 = nn.Linear(256, vocab_size, weight_attr=weight_attr2, bias_attr=bias_attr2)
+        self.fc1 = nn.Linear(self.rnn.out_channels, rnn_size * 2, weight_attr=weight_attr1, bias_attr=bias_attr1)
+        weight_attr2, bias_attr2 = get_para_bias_attr(l2_decay=0.00002, k=rnn_size * 2)
+        self.fc2 = nn.Linear(rnn_size * 2, vocab_size, weight_attr=weight_attr2, bias_attr=bias_attr2)
 
     def forward(self, audio, audio_len):
         """
