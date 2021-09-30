@@ -17,9 +17,7 @@ class FeatureNormalizer(object):
     :param mean_std_filepath: 均值和标准值的文件路径
     :type mean_std_filepath: None|str
     :param manifest_path: 用于计算均值和标准值的数据列表，一般是训练的数据列表
-    :type meanifest_path: None|str
-    :param featurize_func:函数提取特征。它应该是可调用的``featurize_func(audio_segment)``
-    :type featurize_func: None|callable
+    :type manifest_path: None|str
     :param num_samples: 用于计算均值和标准值的音频数量
     :type num_samples: int
     :param random_seed: 随机种子
@@ -35,11 +33,11 @@ class FeatureNormalizer(object):
                  random_seed=0):
         if not mean_std_filepath:
             if not manifest_path:
-                raise ValueError("如果mean_std_filepath是None，那么meanifest_path和featurize_func不应该是None")
+                raise ValueError("如果mean_std_filepath是None，那么meanifest_path不应该是None")
             self._rng = random.Random(random_seed)
             self._compute_mean_std(manifest_path, num_samples, num_workers)
         else:
-            self._read_mean_std_from_file(mean_std_filepath)
+            self.mean, self.std = self._read_mean_std_from_file(mean_std_filepath)
 
     def apply(self, features, eps=1e-20):
         """使用均值和标准值计算音频特征的归一化值
@@ -51,7 +49,7 @@ class FeatureNormalizer(object):
         :return: 已经归一化的数据
         :rtype: ndarray
         """
-        return (features - self._mean) / (self._std + eps)
+        return (features - self.mean) / (self.std + eps)
 
     def write_to_file(self, filepath):
         """将计算得到的均值和标准值写入到文件中
@@ -59,13 +57,14 @@ class FeatureNormalizer(object):
         :param filepath: 均值和标准值写入的文件路径
         :type filepath: str
         """
-        np.savez(filepath, mean=self._mean, std=self._std)
+        np.savez(filepath, mean=self.mean, std=self.std)
 
     def _read_mean_std_from_file(self, filepath):
         """从文件中加载均值和标准值"""
         npzfile = np.load(filepath)
-        self._mean = npzfile["mean"]
-        self._std = npzfile["std"]
+        mean = npzfile["mean"]
+        std = npzfile["std"]
+        return mean, std
 
     def _compute_mean_std(self, manifest_path, num_samples, num_workers):
         """从随机抽样的实例中计算均值和标准值"""
@@ -96,8 +95,8 @@ class FeatureNormalizer(object):
             if std[i] < 1.0e-20:
                 std[i] = 1.0e-20
             std[i] = math.sqrt(std[i])
-        self._mean = means.reshape([-1, 1])
-        self._std = std.reshape([-1, 1])
+        self.mean = means.reshape([-1, 1])
+        self.std = std.reshape([-1, 1])
 
 
 class NormalizerDataset(Dataset):

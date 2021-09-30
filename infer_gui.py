@@ -22,7 +22,6 @@ add_arg('alpha',            float,  1.2,    "集束搜索解码相关参数，LM
 add_arg('beta',             float,  0.35,   "集束搜索解码相关参数，WC系数")
 add_arg('cutoff_prob',      float,  1.0,    "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
-add_arg('mean_std_path',    str,    'dataset/mean_std.npz',      "数据集的均值和标准值的npy文件路径")
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',   "集束搜索解码相关参数，语言模型文件路径")
@@ -78,7 +77,7 @@ class SpeechRecognitionApp:
         self.an_frame.place(x=700, y=10)
 
         # 提取音频特征器和归一化器
-        self.audio_process = AudioProcess(mean_std_filepath=args.mean_std_path, vocab_filepath=args.vocab_path)
+        self.audio_process = AudioProcess(vocab_filepath=args.vocab_path)
 
         # 获取识别器中文数字转阿拉伯数字
         self.predictor = Predictor(model_dir=args.model_dir, audio_process=self.audio_process, decoder=args.decoder,

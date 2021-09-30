@@ -164,7 +164,7 @@ def train(args):
             else:
                 print('Lack weight: {}'.format(name))
         model.set_dict(model_state_dict)
-        print('[{}] 成功加载预训练模型'.format(datetime.now()))
+        print('[{}] 成功加载预训练模型：{}'.format(datetime.now(), args.pretrained_model))
 
     # 加载恢复模型
     if args.resume_model is not None:
@@ -172,7 +172,7 @@ def train(args):
         assert os.path.exists(os.path.join(args.resume_model, 'optimizer.pdopt')), "优化方法参数文件不存在！"
         model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
         optimizer.set_state_dict(paddle.load(os.path.join(args.resume_model, 'optimizer.pdopt')))
-        print('[{}] 成功恢复模型参数和优化方法参数'.format(datetime.now()))
+        print('[{}] 成功恢复模型参数和优化方法参数：{}'.format(datetime.now(), args.resume_model))
 
     # 获取损失函数
     ctc_loss = paddle.nn.CTCLoss(reduction='none')
