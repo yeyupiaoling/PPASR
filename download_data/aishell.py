@@ -4,18 +4,17 @@ import functools
 from utility import download, unpack
 from utility import add_arguments, print_arguments
 
-URL_ROOT = 'https://openslr.magicdatatech.com/resources/33'
-DATA_URL = URL_ROOT + '/data_aishell.tgz'
+DATA_URL = 'https://openslr.magicdatatech.com/resources/33/data_aishell.tgz'
 MD5_DATA = '2f494334227864a8a8fec932999db9d8'
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 parser.add_argument("--target_dir",
-                    default="dataset/audio/",
+                    default="../dataset/audio/",
                     type=str,
                     help="存放音频文件的目录 (默认: %(default)s)")
 parser.add_argument("--annotation_text",
-                    default="dataset/annotation/",
+                    default="../dataset/annotation/",
                     type=str,
                     help="存放音频标注文件的目录 (默认: %(default)s)")
 args = parser.parse_args()
@@ -46,7 +45,7 @@ def create_annotation_text(data_dir, annotation_path):
                 if audio_id not in transcript_dict:
                     continue
                 text = transcript_dict[audio_id]
-                f_a.write(audio_path + '\t' + text + '\n')
+                f_a.write(audio_path[3:] + '\t' + text + '\n')
     f_a.close()
 
 

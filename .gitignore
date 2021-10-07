@@ -11,3 +11,5 @@ tools/generate_audio/models/
 tools/generate_audio/dgk_lost_conv/
 tools/generate_audio/corpus.txt
 test.py
+android/
+convert_model.py
