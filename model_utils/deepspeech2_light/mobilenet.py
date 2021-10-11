@@ -171,7 +171,7 @@ class MobileNetV1(nn.Layer):
                                      scale=scale)
         self.block_list.append(conv4_2)
 
-        for _ in range(5):
+        for _ in range(1):
             conv5 = DepthwiseSeparable(num_channels=int(512 * scale),
                                        num_filters1=512,
                                        num_filters2=512,

@@ -5,12 +5,13 @@ import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
 
-from decoders.ctc_greedy_decoder import greedy_decoder
 from data_utils.audio_process import AudioProcess
+from decoders.ctc_greedy_decoder import greedy_decoder
+from model_utils.utils import LinearSpecgram
 
 
 class Predictor:
-    def __init__(self, model_dir, audio_process:AudioProcess, decoder='ctc_greedy', alpha=1.2, beta=0.35,
+    def __init__(self, model_dir, audio_process: AudioProcess, decoder='ctc_greedy', alpha=1.2, beta=0.35,
                  lang_model_path=None, beam_size=10, cutoff_prob=1.0, cutoff_top_n=40, use_gpu=True, gpu_mem=500,
                  num_threads=10):
         self.audio_process = audio_process
@@ -57,6 +58,7 @@ class Predictor:
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
 
+        self.linear_specgram = LinearSpecgram()
         # 预热
         warmup_audio_path = 'dataset/test.wav'
         if os.path.exists(warmup_audio_path):
@@ -68,6 +70,10 @@ class Predictor:
     def predict(self, audio_path, to_an=False):
         # 加载音频文件，并进行预处理
         audio_feature = self.audio_process.process_utterance(audio_path)
+        # audio, _ = soundfile.read(audio_path)
+        # audio = paddle.to_tensor(audio, dtype=paddle.float32)
+        # audio_feature1 = self.linear_specgram(audio).numpy()
+        # print(audio_feature - audio_feature1)
         audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
         audio_len = np.array([audio_data.shape[2]]).astype('int64')
 

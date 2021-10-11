@@ -184,8 +184,8 @@ def train(args):
     for epoch in range(last_epoch, args.num_epoch):
         epoch += 1
         start_epoch = time.time()
+        start = time.time()
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
-            start = time.time()
             out, out_lens = model(inputs, input_lens)
             out = paddle.transpose(out, perm=[1, 0, 2])
 
@@ -204,7 +204,7 @@ def train(args):
                     datetime.now(), epoch, args.num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
                 writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
-
+            start = time.time()
             # 固定步数也要保存一次模型
             if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
                 save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
