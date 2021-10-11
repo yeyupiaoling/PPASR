@@ -9,3 +9,4 @@ SoundFile==0.9.0.post1
 resampy==0.2.2
 python_speech_features==0.6
 zhconv==1.4.2
+lac

@@ -1,6 +1,7 @@
 import os
 import sys
 
+from LAC import LAC
 import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
@@ -22,6 +23,8 @@ class Predictor:
         self.beam_size = beam_size
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
+        self.use_gpu = use_gpu
+        self.lac = None
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
             try:
@@ -39,7 +42,7 @@ class Predictor:
         self.config.enable_use_gpu(1000, 0)
         self.config.enable_memory_optim()
 
-        if use_gpu:
+        if self.use_gpu:
             self.config.enable_use_gpu(gpu_mem, 0)
         else:
             self.config.disable_gpu()
@@ -62,7 +65,7 @@ class Predictor:
         # 预热
         warmup_audio_path = 'dataset/test.wav'
         if os.path.exists(warmup_audio_path):
-            self.predict(warmup_audio_path)
+            self.predict(warmup_audio_path, to_an=True)
         else:
             print('预热文件不存在，忽略预热！', file=sys.stderr)
 
@@ -107,5 +110,18 @@ class Predictor:
         score, text = result[0], result[1]
         # 是否转为阿拉伯数字
         if to_an:
-            text = cn2an.transform(text, "cn2an")
+            text = self.cn2an(text)
         return score, text
+
+    # 是否转为阿拉伯数字
+    def cn2an(self, text):
+        # 获取分词模型
+        if self.lac is None:
+            self.lac = LAC(mode='lac', use_cuda=self.use_gpu)
+        lac_result = self.lac.run(text)
+        result_text = ''
+        for t, r in zip(lac_result[0], lac_result[1]):
+            if r == 'm' or r == 'TIME':
+                t = cn2an.transform(t, "cn2an")
+            result_text += t
+        return result_text
