@@ -1,7 +1,6 @@
 import math
 
 import paddle
-import soundfile
 from paddle import nn
 
 __all__ = ['Mask']
@@ -41,20 +40,6 @@ class Normalizer(nn.Layer):
         return x
 
 
-def as_strided(x, kernel_size, strides):  # x.shape[L] kernel_size=320, strides=160
-    x = x.unsqueeze(0).unsqueeze(0).unsqueeze(0)
-    x = paddle.nn.functional.unfold(x, kernel_sizes=[1, kernel_size], strides=strides)
-    x = x.squeeze(0)
-    return x
-
-
-def hanning(M): # M=320
-    pi = paddle.to_tensor(math.pi, dtype=paddle.float64)
-    n = paddle.arange(1 - M, M, 2)
-    k = pi * n / paddle.to_tensor((M - 1), dtype=paddle.float64)
-    return 0.5 + 0.5 * paddle.cos(k)
-
-
 class LinearSpecgram(nn.Layer):
     def __init__(self, stride_ms=10.0, window_ms=20.0, audio_rate=16000, use_db_normalization=True, target_db=-20):
         super().__init__()
@@ -68,14 +53,14 @@ class LinearSpecgram(nn.Layer):
         self._window_size = int(0.001 * self._audio_rate * self._window_ms)
 
     def forward(self, audio):
+        audio = audio.astype(paddle.float64)
         audio = self.normalize(audio)
         truncate_size = (audio.shape[-1] - self._window_size) % self._stride_size
         audio = audio[:audio.shape[-1] - truncate_size]
-        windows = as_strided(audio, kernel_size=self._window_size, strides=self._stride_size)
+        windows = self.as_strided(audio, kernel_size=self._window_size, strides=self._stride_size)
+        weighting = self.hanning(self._window_size)[:, None]
         # 快速傅里叶变换
-        weighting = hanning(self._window_size)[:, None]
         fft = paddle.fft.rfft(windows * weighting, n=None, axis=0)
-        # fft = fft.astype(paddle.float64)
         fft = paddle.abs(fft)
         fft = fft ** 2
         scale = paddle.sum(weighting ** 2) * self._audio_rate
@@ -101,15 +86,24 @@ class LinearSpecgram(nn.Layer):
         mean_square = paddle.mean(audio ** 2)
         return 10 * paddle.log10(mean_square)
 
+    @staticmethod
+    def as_strided(x, kernel_size, strides):  # x.shape[L] kernel_size=320, strides=160
+        x = x.unsqueeze(0).unsqueeze(0).unsqueeze(0)
+        x = paddle.nn.functional.unfold(x, kernel_sizes=[1, kernel_size], strides=strides)
+        x = x.squeeze(0)
+        return x
+
+    @staticmethod
+    def hanning(M):  # M=320
+        pi = paddle.to_tensor(math.pi, dtype=paddle.float64)
+        n = paddle.arange(1 - M, M, 2)
+        k = pi * n / paddle.to_tensor((M - 1), dtype=paddle.float64)
+        return 0.5 + 0.5 * paddle.cos(k)
+
 
 if __name__ == '__main__':
     linear_specgram = LinearSpecgram()
-    sound, rate = soundfile.read('../dataset/test.wav')
-    print(sound.shape)
-    sound = paddle.to_tensor(sound, dtype=paddle.float32)
-    out = linear_specgram(sound)
-    print(out)
 
-    # paddle.jit.save(layer=linear_specgram,
-    #                 path='models',
-    #                 input_spec=[paddle.static.InputSpec(shape=(-1,), dtype=paddle.float32)])
+    paddle.jit.save(layer=linear_specgram,
+                    path='../models',
+                    input_spec=[paddle.static.InputSpec(shape=(-1,), dtype=paddle.float32)])

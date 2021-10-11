@@ -8,7 +8,6 @@ import paddle.inference as paddle_infer
 
 from data_utils.audio_process import AudioProcess
 from decoders.ctc_greedy_decoder import greedy_decoder
-from model_utils.utils import LinearSpecgram
 
 
 class Predictor:
@@ -29,7 +28,7 @@ class Predictor:
         if decoder == "ctc_beam_search":
             try:
                 from decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, audio_process.vocab_list)
+                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self.audio_process.vocab_list)
             except ModuleNotFoundError:
                 raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
 
@@ -61,7 +60,6 @@ class Predictor:
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
 
-        self.linear_specgram = LinearSpecgram()
         # 预热
         warmup_audio_path = 'dataset/test.wav'
         if os.path.exists(warmup_audio_path):
@@ -73,10 +71,6 @@ class Predictor:
     def predict(self, audio_path, to_an=False):
         # 加载音频文件，并进行预处理
         audio_feature = self.audio_process.process_utterance(audio_path)
-        # audio, _ = soundfile.read(audio_path)
-        # audio = paddle.to_tensor(audio, dtype=paddle.float32)
-        # audio_feature1 = self.linear_specgram(audio).numpy()
-        # print(audio_feature - audio_feature1)
         audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
         audio_len = np.array([audio_data.shape[2]]).astype('int64')
 
