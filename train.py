@@ -128,10 +128,11 @@ def train(args):
     else:
         raise Exception('没有该模型：%s' % args.use_model)
 
-    if local_rank == 0:
-        print(f"{model}")
-        print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
-        paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,)], dtypes=[paddle.float32, paddle.int64])
+    # if local_rank == 0:
+    #     print(f"{model}")
+    #     print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
+    #     paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,), (4, None, 1024)],
+    #                    dtypes=[paddle.float32, paddle.int64, paddle.float32])
 
     # 设置优化方法
     grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
@@ -191,7 +192,7 @@ def train(args):
 
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
-            loss = loss.mean()
+            loss = loss / inputs.shape[0]
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
@@ -201,8 +202,8 @@ def train(args):
                 eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                 print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
-                    datetime.now(), epoch, args.num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
-                writer.add_scalar('Train loss', loss, train_step)
+                    datetime.now(), epoch, args.num_epoch, batch_id, len(train_loader), loss.mean().numpy()[0], scheduler.get_lr(), eta_str))
+                writer.add_scalar('Train loss', loss.mean(), train_step)
                 train_step += 1
             start = time.time()
             # 固定步数也要保存一次模型

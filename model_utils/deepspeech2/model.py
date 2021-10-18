@@ -1,5 +1,6 @@
 from paddle import nn
 
+import paddle.nn.functional as F
 from model_utils.deepspeech2.conv import ConvStack
 from model_utils.deepspeech2.rnn import RNNStack
 
@@ -24,37 +25,26 @@ class DeepSpeech2Model(nn.Layer):
     :rtype: nn.Layer
     """
 
-    def __init__(self, feat_size, vocab_size, num_conv_layers=3, num_rnn_layers=3, rnn_size=1024):
+    def __init__(self, feat_size, vocab_size, cnn_size=32, num_rnn_layers=5, rnn_size=1024):
         super().__init__()
         # 卷积层堆
-        self.conv = ConvStack(feat_size, num_conv_layers)
+        self.conv = ConvStack(feat_size=feat_size, output_dim=cnn_size)
         # RNN层堆
-        i_size = self.conv.output_height
-        self.rnn = RNNStack(i_size=i_size, h_size=rnn_size, num_stacks=num_rnn_layers)
+        self.rnn = RNNStack(i_size=self.conv.output_dim, h_size=rnn_size, num_rnn_layers=num_rnn_layers)
         # 分类输入层
-        self.bn = nn.BatchNorm1D(rnn_size * 2, data_format='NLC')
-        self.fc = nn.Linear(rnn_size * 2, vocab_size)
+        self.fc = nn.Linear(self.rnn.output_dim, vocab_size)
 
-    def forward(self, audio, audio_len):
+    def forward(self, audio, audio_len, init_state_h_box=None):
         """
         Args:
             audio (Tensor): [B, D, Tmax]
             audio_len (Tensor): [B, Umax]
+            init_state_h_box (Tensor): [num_rnn_layers, B, rnn_size]
         Returns:
             logits (Tensor): [B, T, D]
             x_lens (Tensor): [B]
         """
-        # [B, D, T] -> [B, C=1, D, T]
-        x = audio.unsqueeze(1)
-
-        x, x_lens = self.conv(x, audio_len)
-
-        # 将数据从卷积特征映射转换为向量序列
-        x = x.transpose([0, 3, 1, 2])  # [B, T, C, D]
-        x = x.reshape([0, 0, -1])  # [B, T, C*D]
-        # 删除填充部分
-        x = self.rnn(x, x_lens)  # [B, T, D]
-
-        x = self.bn(x)
+        x, x_lens = self.conv(audio, audio_len)
+        x = self.rnn(x, x_lens, init_state_h_box)  # [B, T, D]
         logits = self.fc(x)
         return logits, x_lens
