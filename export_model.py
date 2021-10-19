@@ -53,10 +53,10 @@ def export(args):
             self.model = model
             self.softmax = paddle.nn.Softmax()
 
-        def forward(self, audio, audio_len):
+        def forward(self, audio, audio_len, init_state_h_box=None):
             x = self.normalizer(audio)
             x = self.mask(x, audio_len)
-            logits, x_lensx = self.model(x, audio_len)
+            logits, x_lensx = self.model(x, audio_len, init_state_h_box)
             output = self.softmax(logits)
             return output
 
@@ -67,7 +67,8 @@ def export(args):
     paddle.jit.save(layer=model,
                     path=os.path.join(infer_model_path, 'model'),
                     input_spec=[InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
-                                InputSpec(shape=(-1,), dtype=paddle.int64)])
+                                InputSpec(shape=(-1,), dtype=paddle.int64),
+                                InputSpec(shape=(-1, -1, -1), dtype=paddle.float32)])
     print("预测模型已保存：%s" % infer_model_path)
 
 

@@ -1,6 +1,5 @@
 from paddle import nn
 
-import paddle.nn.functional as F
 from model_utils.deepspeech2.conv import ConvStack
 from model_utils.deepspeech2.rnn import RNNStack
 
@@ -14,8 +13,8 @@ class DeepSpeech2Model(nn.Layer):
     :type feat_size: int
     :param vocab_size: 字典的大小，用来分类输出
     :type vocab_size: int
-    :param num_conv_layers: 堆叠卷积层数
-    :type num_conv_layers: int
+    :param cnn_size: 卷积层的隐层大小
+    :type cnn_size: int
     :param num_rnn_layers: 堆叠RNN层数
     :type num_rnn_layers: int
     :param rnn_size: RNN层大小
@@ -45,6 +44,6 @@ class DeepSpeech2Model(nn.Layer):
             x_lens (Tensor): [B]
         """
         x, x_lens = self.conv(audio, audio_len)
-        x = self.rnn(x, x_lens, init_state_h_box)  # [B, T, D]
+        x, _, _ = self.rnn(x, x_lens, init_state_h_box)  # [B, T, D]
         logits = self.fc(x)
         return logits, x_lens

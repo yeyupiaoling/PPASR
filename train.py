@@ -24,10 +24,10 @@ from utils.utils import labels_to_string, fuzzy_delete
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   16,                         '训练的批量大小')
+add_arg('batch_size',       int,   32,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   1e-3,                       '初始学习率的大小')
 add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
 add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('use_model',        str,   'deepspeech2',              '所使用的模型')
@@ -45,13 +45,11 @@ args = parser.parse_args()
 # 评估模型
 @paddle.no_grad()
 def evaluate(model, test_loader, vocabulary, ctc_loss):
-    c = []
-    l = []
+    c, l = [], []
     for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(test_loader()):
         # 执行识别
         outs, out_lens = model(inputs, input_lens)
         out = paddle.transpose(outs, perm=[1, 0, 2])
-
         # 计算损失
         loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
         loss = loss.mean().numpy()[0]
@@ -128,20 +126,14 @@ def train(args):
     else:
         raise Exception('没有该模型：%s' % args.use_model)
 
-    # if local_rank == 0:
-    #     print(f"{model}")
-    #     print('[{}] input_size的第三个参数是变长的，这里为了能查看输出的大小变化，指定了一个值！'.format(datetime.now()))
-    #     paddle.summary(model, input_size=[(None, train_dataset.feature_dim, 970), (None,), (4, None, 1024)],
-    #                    dtypes=[paddle.float32, paddle.int64, paddle.float32])
-
     # 设置优化方法
     grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
     # 获取预训练的epoch数
     last_epoch = int(re.findall(r'\d+', args.resume_model)[-1]) if args.resume_model is not None else 0
-    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.83, last_epoch=last_epoch - 1)
+    scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=args.learning_rate, gamma=0.9, last_epoch=last_epoch - 1)
     optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                       learning_rate=scheduler,
-                                      weight_decay=paddle.regularizer.L2Decay(1e-5),
+                                      weight_decay=paddle.regularizer.L2Decay(1e-06),
                                       grad_clip=grad_clip)
 
     # 设置支持多卡训练
@@ -192,7 +184,7 @@ def train(args):
 
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
-            loss = loss / inputs.shape[0]
+            loss = loss.mean()
             loss.backward()
             optimizer.step()
             optimizer.clear_grad()
@@ -202,13 +194,13 @@ def train(args):
                 eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                 print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
-                    datetime.now(), epoch, args.num_epoch, batch_id, len(train_loader), loss.mean().numpy()[0], scheduler.get_lr(), eta_str))
-                writer.add_scalar('Train loss', loss.mean(), train_step)
+                    datetime.now(), epoch, args.num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
+                writer.add_scalar('Train loss', loss, train_step)
                 train_step += 1
-            start = time.time()
             # 固定步数也要保存一次模型
             if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
                 save_model(args=args, epoch=epoch, model=model, optimizer=optimizer)
+            start = time.time()
 
         # 多卡训练只使用一个进程执行评估和保存模型
         if local_rank == 0:
