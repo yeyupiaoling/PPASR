@@ -1,200 +1,35 @@
 import argparse
 import functools
-import json
-import os
-import wave
-from collections import Counter
 
-import numpy as np
-from zhconv import convert
-
-import librosa
-import soundfile
-from tqdm import tqdm
-
-from utils.utils import add_arguments, print_arguments
-from data_utils.normalizer import FeatureNormalizer
+from ppasr.trainer import PPASRTrainer
+from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('--annotation_path',    str,  'dataset/annotation/',      '标注文件的路径')
-add_arg('manifest_prefix',      str,  'dataset/',                 '训练数据清单，包括音频路径和标注信息')
+add_arg('annotation_path',      str,  'dataset/annotation/',      '标注文件的路径')
+add_arg('train_manifest',       str,  'dataset/manifest.train',   '训练数据的数据列表路径')
+add_arg('test_manifest',        str,  'dataset/manifest.test',    '测试数据的数据列表路径')
 add_arg('is_change_frame_rate', bool, True,                       '是否统一改变音频为16000Hz，这会消耗大量的时间')
 add_arg('count_threshold',      int,  2,                          '字符计数的截断阈值，0为不做限制')
-add_arg('vocab_path',           str,  'dataset/vocabulary.txt',   '生成的数据字典文件')
-add_arg('manifest_path',        str,  'dataset/manifest.train',   '数据列表路径')
+add_arg('dataset_vocab',        str,  'dataset/vocabulary.txt',   '生成的数据字典文件')
 add_arg('num_workers',          int,   8,                         '读取数据的线程数量')
 add_arg('num_samples',          int,  -1,                         '用于计算均值和标准值得音频数量，当为-1使用全部数据')
-add_arg('output_path',          str,  './dataset/mean_std.npz',   '保存均值和标准值得numpy文件路径，后缀 (.npz).')
+add_arg('mean_std_path',        str,  'dataset/mean_std.npz',     '保存均值和标准值得numpy文件路径，后缀 (.npz).')
+add_arg('noise_path',           str,  'dataset/audio/noise',      '噪声音频存放的文件夹路径')
+add_arg('noise_manifest_path',  str,  'dataset/manifest.noise',   '噪声数据列表的路径')
 args = parser.parse_args()
+print_arguments(args)
 
 
-# 创建数据列表
-def create_manifest(annotation_path, manifest_path_prefix):
-    data_list = []
-    durations = []
-    for annotation_text in os.listdir(annotation_path):
-        annotation_text = os.path.join(annotation_path, annotation_text)
-        with open(annotation_text, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        for line in tqdm(lines):
-            audio_path = line.split('\t')[0]
-            # 重新调整音频格式并保存
-            if args.is_change_frame_rate:
-                change_rate(audio_path)
-            # 获取音频长度
-            f_wave = wave.open(audio_path, "rb")
-            duration = f_wave.getnframes() / f_wave.getframerate()
-            durations.append(duration)
-            # 过滤非法的字符
-            text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', ''))
-            # 保证全部都是简体
-            text = convert(text, 'zh-cn')
-            # 加入数据列表中
-            line = '{"audio_filepath":"%s", "duration":%.2f, "text":"%s"}' % (audio_path.replace('\\', '/'), duration, text)
-            data_list.append(line)
+trainer = PPASRTrainer(mean_std_path=args.mean_std_path,
+                       train_manifest=args.train_manifest,
+                       test_manifest=args.test_manifest,
+                       dataset_vocab=args.dataset_vocab,
+                       num_workers=args.num_workers)
 
-    # 按照音频长度降序
-    data_list.sort(key=lambda x: json.loads(x)["duration"], reverse=True)
-    # 数据写入到文件中
-    f_train = open(os.path.join(manifest_path_prefix, 'manifest.train'), 'w', encoding='utf-8')
-    f_test = open(os.path.join(manifest_path_prefix, 'manifest.test'), 'w', encoding='utf-8')
-    for i, line in enumerate(data_list):
-        if i % 100 == 0:
-            f_test.write(line + '\n')
-        else:
-            f_train.write(line + '\n')
-    f_train.close()
-    f_test.close()
-    print("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
-
-
-# 改变音频采样率为16000Hz
-def change_rate(audio_path):
-    data, sr = soundfile.read(audio_path)
-    if sr != 16000:
-        data = librosa.resample(data, sr, target_sr=16000)
-        soundfile.write(audio_path, data, samplerate=16000)
-
-
-# 过滤非法的字符
-def is_ustr(in_str):
-    out_str = ''
-    for i in range(len(in_str)):
-        if is_uchar(in_str[i]):
-            out_str = out_str + in_str[i]
-        else:
-            out_str = out_str + ' '
-    return ''.join(out_str.split())
-
-
-# 判断是否为中文文字字符
-def is_uchar(uchar):
-    if u'\u4e00' <= uchar <= u'\u9fa5':
-        return True
-    if u'\u0030' <= uchar <= u'\u0039':
-        return False
-    if (u'\u0041' <= uchar <= u'\u005a') or (u'\u0061' <= uchar <= u'\u007a'):
-        return False
-    if uchar in ('-', ',', '.', '>', '?'):
-        return False
-    return False
-
-
-# 生成噪声的数据列表
-def create_noise(path='dataset/audio/noise', min_duration=30):
-    if not os.path.exists(path):
-        print('噪声音频文件为空，已跳过！')
-        return
-    json_lines = []
-    print('正在创建噪声数据列表，路径：%s，请等待 ...' % path)
-    for file in tqdm(os.listdir(path)):
-        audio_path = os.path.join(path, file)
-        try:
-            # 噪声的标签可以标记为空
-            text = ""
-            # 重新调整音频格式并保存
-            if args.is_change_frame_rate:
-                change_rate(audio_path)
-            f_wave = wave.open(audio_path, "rb")
-            duration = f_wave.getnframes() / f_wave.getframerate()
-            # 拼接音频
-            if duration < min_duration:
-                wav = soundfile.read(audio_path)[0]
-                data = wav
-                for i in range(int(min_duration / duration) + 1):
-                    data = np.hstack([data, wav])
-                soundfile.write(audio_path, data, samplerate=16000)
-                f_wave = wave.open(audio_path, "rb")
-                duration = f_wave.getnframes() / f_wave.getframerate()
-            json_lines.append(
-                json.dumps(
-                    {
-                        'audio_filepath': audio_path.replace('\\', '/'),
-                        'duration': duration,
-                        'text': text
-                    },
-                    ensure_ascii=False))
-        except Exception as e:
-            continue
-    with open(os.path.join(args.manifest_prefix, 'manifest.noise'), 'w', encoding='utf-8') as f_noise:
-        for json_line in json_lines:
-            f_noise.write(json_line + '\n')
-
-
-# 获取全部字符
-def count_manifest(counter, manifest_path):
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        for line in tqdm(f.readlines()):
-            line = json.loads(line)
-            for char in line["text"].replace('\n', ''):
-                counter.update(char)
-    if os.path.exists(manifest_path.replace('train', 'test')):
-        with open(manifest_path.replace('train', 'test'), 'r', encoding='utf-8') as f:
-            for line in tqdm(f.readlines()):
-                line = json.loads(line)
-                for char in line["text"].replace('\n', ''):
-                    counter.update(char)
-
-
-# 计算数据集的均值和标准值
-def compute_mean_std(manifest_path, num_samples, output_path):
-    normalizer = FeatureNormalizer(mean_std_filepath=None,
-                                   manifest_path=manifest_path,
-                                   num_samples=num_samples,
-                                   num_workers=args.num_workers)
-    # 将计算的结果保存的文件中
-    normalizer.write_to_file(output_path)
-    print('计算的均值和标准值已保存在 %s！' % output_path)
-
-
-def main():
-    print_arguments(args)
-    print('开始生成数据列表...')
-    create_manifest(annotation_path=args.annotation_path,
-                    manifest_path_prefix=args.manifest_prefix)
-    print('='*70)
-    print('开始生成噪声数据列表...')
-    create_noise(path='dataset/audio/noise')
-    print('='*70)
-
-    print('开始生成数据字典...')
-    counter = Counter()
-    count_manifest(counter, args.manifest_path)
-
-    count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
-    with open(args.vocab_path, 'w', encoding='utf-8') as fout:
-        fout.write('<blank>\t-1\n')
-        for char, count in count_sorted:
-            # 跳过指定的字符阈值，超过这大小的字符都忽略
-            if count < args.count_threshold: break
-            fout.write('%s\t%d\n' % (char, count))
-    print('数据字典生成完成！')
-
-    print('='*70)
-    print('开始抽取%s条数据计算均值和标准值...' % args.num_samples)
-    compute_mean_std(args.manifest_path, args.num_samples, args.output_path)
-
-
-if __name__ == '__main__':
-    main()
+trainer.create_data(annotation_path=args.annotation_path,
+                    noise_manifest_path=args.noise_manifest_path,
+                    noise_path=args.noise_path,
+                    num_samples=args.num_samples,
+                    count_threshold=args.count_threshold,
+                    is_change_frame_rate=args.is_change_frame_rate)

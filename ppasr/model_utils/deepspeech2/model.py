@@ -1,7 +1,7 @@
 from paddle import nn
 
-from model_utils.deepspeech2.conv import ConvStack
-from model_utils.deepspeech2.rnn import RNNStack
+from ppasr.model_utils.deepspeech2.conv import ConvStack
+from ppasr.model_utils.deepspeech2.rnn import RNNStack
 
 __all__ = ['DeepSpeech2Model']
 
@@ -26,6 +26,8 @@ class DeepSpeech2Model(nn.Layer):
 
     def __init__(self, feat_size, vocab_size, cnn_size=32, num_rnn_layers=5, rnn_size=1024):
         super().__init__()
+        self.num_rnn_layers = num_rnn_layers
+        self.rnn_size = rnn_size
         # 卷积层堆
         self.conv = ConvStack(feat_size=feat_size, output_dim=cnn_size)
         # RNN层堆

@@ -1,6 +1,6 @@
 """Contain the resample augmentation model."""
 
-from data_utils.augmentor.base import AugmentorBase
+from ppasr.data_utils.augmentor.base import AugmentorBase
 
 
 class ResampleAugmentor(AugmentorBase):

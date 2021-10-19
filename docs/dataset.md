@@ -27,8 +27,20 @@ dataset/audio/wav/0175/H0175A0470.wav   据克而瑞研究中心监测
 dataset/audio/wav/0175/H0175A0180.wav   把温度加大到十八
 ```
 
-3. 最后执行下面的数据集处理脚本，这个是把我们的数据集生成三个JSON格式的数据列表，分别是`manifest.test、manifest.train、manifest.noise`。然后建立词汇表，把所有出现的字符都存放子在`vocabulary.txt`文件中，一行一个字符。最后计算均值和标准差用于归一化，默认使用全部的语音计算均值和标准差，并将结果保存在`mean_std.npz`中。以上生成的文件都存放在`PPASR/dataset/`目录下。
-```shell script
-# 生成数据列表
-python create_data.py
+3. 最后执行下面的数据集处理脚本，对应的代码在`create_data.py`，详细参数请查看该程序。这个程序是把我们的数据集生成三个JSON格式的数据列表，分别是`manifest.test、manifest.train、manifest.noise`。然后建立词汇表，把所有出现的字符都存放子在`vocabulary.txt`文件中，一行一个字符。最后计算均值和标准差用于归一化，默认使用全部的语音计算均值和标准差，并将结果保存在`mean_std.npz`中。以上生成的文件都存放在`PPASR/dataset/`目录下。
+```python
+from ppasr.trainer import PPASRTrainer
+
+trainer = PPASRTrainer(mean_std_path='dataset/mean_std.npz',
+                       train_manifest='dataset/manifest.train',
+                       test_manifest='dataset/manifest.test',
+                       dataset_vocab='dataset/vocabulary.txt',
+                       num_workers=8)
+
+trainer.create_data(annotation_path='dataset/annotation/',
+                    noise_manifest_path='dataset/manifest.noise',
+                    noise_path='dataset/audio/noise',
+                    num_samples=-1,
+                    count_threshold=2,
+                    is_change_frame_rate=True)
 ```

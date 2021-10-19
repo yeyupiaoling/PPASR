@@ -3,8 +3,8 @@ import math
 import paddle
 from paddle import ParamAttr, nn
 
-from model_utils.deepspeech2_light.mobilenet import MobileNetV1
-from model_utils.deepspeech2_light.rnn import BidirectionalGRU
+from ppasr.model_utils.deepspeech2_light.mobilenet import MobileNetV1
+from ppasr.model_utils.deepspeech2_light.rnn import BidirectionalGRU
 
 
 def get_para_bias_attr(l2_decay, k):

@@ -6,15 +6,13 @@ import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
 
-from data_utils.audio_process import AudioProcess
-from decoders.ctc_greedy_decoder import greedy_decoder
+from ppasr.data_utils.audio_process import AudioProcess
+from ppasr.decoders.ctc_greedy_decoder import greedy_decoder
 
 
 class Predictor:
-    def __init__(self, model_dir, audio_process: AudioProcess, decoder='ctc_greedy', alpha=1.2, beta=0.35,
-                 lang_model_path=None, beam_size=10, cutoff_prob=1.0, cutoff_top_n=40, use_gpu=True, gpu_mem=500,
-                 num_threads=10):
-        self.audio_process = audio_process
+    def __init__(self, model_dir, vocab_path, decoder='ctc_greedy', alpha=1.2, beta=0.35, lang_model_path=None,
+                 beam_size=10, cutoff_prob=1.0, cutoff_top_n=40, use_gpu=True, gpu_mem=500, num_threads=10):
         self.decoder = decoder
         self.alpha = alpha
         self.beta = beta
@@ -24,10 +22,11 @@ class Predictor:
         self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
         self.lac = None
+        self.audio_process = AudioProcess(vocab_filepath=vocab_path)
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
             try:
-                from decoders.beam_search_decoder import BeamSearchDecoder
+                from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
                 self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self.audio_process.vocab_list)
             except ModuleNotFoundError:
                 raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
@@ -56,6 +55,7 @@ class Predictor:
         # 获取输入层
         self.audio_data_handle = self.predictor.get_input_handle('audio')
         self.audio_len_handle = self.predictor.get_input_handle('audio_len')
+        self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
 
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
@@ -73,12 +73,16 @@ class Predictor:
         audio_feature = self.audio_process.process_utterance(audio_path)
         audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
         audio_len = np.array([audio_data.shape[2]]).astype('int64')
+        # 对RNN层的initial_states全零初始化
+        init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
 
         # 设置输入
         self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
         self.audio_len_handle.reshape([audio_data.shape[0]])
+        self.init_state_h_box_handle.reshape(init_state_h_box.shape)
         self.audio_data_handle.copy_from_cpu(audio_data)
         self.audio_len_handle.copy_from_cpu(audio_len)
+        self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
 
         # 运行predictor
         self.predictor.run()

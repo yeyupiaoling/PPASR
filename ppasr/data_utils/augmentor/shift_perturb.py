@@ -1,6 +1,6 @@
 """Contains the volume perturb augmentation model."""
 
-from data_utils.augmentor.base import AugmentorBase
+from ppasr.data_utils.augmentor.base import AugmentorBase
 
 
 class ShiftPerturbAugmentor(AugmentorBase):

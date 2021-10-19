@@ -1,6 +1,6 @@
 import numpy as np
 
-from data_utils.augmentor.base import AugmentorBase
+from ppasr.data_utils.augmentor.base import AugmentorBase
 
 
 class SpecAugmentor(AugmentorBase):

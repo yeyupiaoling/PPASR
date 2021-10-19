@@ -1,6 +1,6 @@
-from data_utils.featurizer.audio_featurizer import AudioFeaturizer
-from data_utils.featurizer.text_featurizer import TextFeaturizer
-from data_utils.audio import AudioSegment
+from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
+from ppasr.data_utils.audio import AudioSegment
 
 
 class AudioProcess(object):

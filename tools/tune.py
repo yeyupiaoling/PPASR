@@ -9,18 +9,18 @@ sys.path.append(os.path.abspath(os.path.join(__dir__, '..')))
 import numpy as np
 import argparse
 import functools
-from decoders.beam_search_decoder import BeamSearchDecoder
+from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
 import paddle
 from paddle.io import DataLoader
 from tqdm import tqdm
 
-from utils.utils import add_arguments, print_arguments
-from data_utils.reader import PPASRDataset
-from data_utils.collate_fn import collate_fn
-from model_utils.deepspeech2.model import DeepSpeech2Model
-from model_utils.deepspeech2_light.model import DeepSpeech2LightModel
-from utils.metrics import cer
-from utils.utils import labels_to_string
+from ppasr.utils.utils import add_arguments, print_arguments
+from ppasr.data_utils.reader import PPASRDataset
+from ppasr.data_utils.collate_fn import collate_fn
+from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
+from ppasr.model_utils.deepspeech2_light.model import DeepSpeech2LightModel
+from ppasr.utils.metrics import cer
+from ppasr.utils.utils import labels_to_string
 
 
 parser = argparse.ArgumentParser(description=__doc__)

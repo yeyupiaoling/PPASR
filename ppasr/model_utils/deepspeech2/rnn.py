@@ -40,7 +40,6 @@ class RNNStack(nn.Layer):
             init_state_list = paddle.split(init_state_h_box, self.num_rnn_layers, axis=0)
         else:
             init_state_list = [None] * self.num_rnn_layers
-
         final_chunk_state_list = []
         for i in range(0, self.num_rnn_layers):
             x, final_state = self.rnn[i](x, init_state_list[i], x_lens)  # [B, T, D]

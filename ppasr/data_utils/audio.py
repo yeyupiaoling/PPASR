@@ -1,8 +1,6 @@
 import copy
 import io
 import random
-import re
-import struct
 
 import numpy as np
 import resampy

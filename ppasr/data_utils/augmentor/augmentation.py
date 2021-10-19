@@ -5,12 +5,12 @@ import os
 import random
 import sys
 
-from data_utils.augmentor.volume_perturb import VolumePerturbAugmentor
-from data_utils.augmentor.shift_perturb import ShiftPerturbAugmentor
-from data_utils.augmentor.speed_perturb import SpeedPerturbAugmentor
-from data_utils.augmentor.noise_perturb import NoisePerturbAugmentor
-from data_utils.augmentor.spec_augment import SpecAugmentor
-from data_utils.augmentor.resample import ResampleAugmentor
+from ppasr.data_utils.augmentor.volume_perturb import VolumePerturbAugmentor
+from ppasr.data_utils.augmentor.shift_perturb import ShiftPerturbAugmentor
+from ppasr.data_utils.augmentor.speed_perturb import SpeedPerturbAugmentor
+from ppasr.data_utils.augmentor.noise_perturb import NoisePerturbAugmentor
+from ppasr.data_utils.augmentor.spec_augment import SpecAugmentor
+from ppasr.data_utils.augmentor.resample import ResampleAugmentor
 
 
 class AugmentationPipeline(object):

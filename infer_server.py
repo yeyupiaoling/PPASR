@@ -7,10 +7,9 @@ import time
 from flask import request, Flask, render_template
 from flask_cors import CORS
 
-from data_utils.audio_process import AudioProcess
-from utils.predict import Predictor
-from utils.audio_vad import crop_audio_vad
-from utils.utils import add_arguments, print_arguments
+from ppasr.predict import Predictor
+from ppasr.utils.audio_vad import crop_audio_vad
+from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -34,10 +33,7 @@ app = Flask(__name__, template_folder="templates", static_folder="static", stati
 # 允许跨越访问
 CORS(app)
 
-# 提取音频特征器和归一化器
-audio_process = AudioProcess(vocab_filepath=args.vocab_path)
-
-predictor = Predictor(model_dir=args.model_dir, audio_process=audio_process, decoder=args.decoder,
+predictor = Predictor(model_dir=args.model_dir, vocab_path=args.vocab_path, decoder=args.decoder,
                       alpha=args.alpha, beta=args.beta, lang_model_path=args.lang_model_path, beam_size=args.beam_size,
                       cutoff_prob=args.cutoff_prob, cutoff_top_n=args.cutoff_top_n, use_gpu=args.use_gpu)
 

@@ -3,10 +3,10 @@ import json
 import numpy as np
 from paddle.io import Dataset
 
-from data_utils.augmentor.augmentation import AugmentationPipeline
-from data_utils.featurizer.speech_featurizer import SpeechFeaturizer
-from data_utils.normalizer import FeatureNormalizer
-from data_utils.speech import SpeechSegment
+from ppasr.data_utils.augmentor.augmentation import AugmentationPipeline
+from ppasr.data_utils.featurizer.speech_featurizer import SpeechFeaturizer
+from ppasr.data_utils.normalizer import FeatureNormalizer
+from ppasr.data_utils.speech import SpeechSegment
 
 
 # 音频数据加载器

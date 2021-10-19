@@ -1,6 +1,6 @@
 import numpy as np
 
-from data_utils.audio import AudioSegment
+from ppasr.data_utils.audio import AudioSegment
 
 
 class AudioFeaturizer(object):

@@ -1,24 +1,13 @@
 import argparse
 import functools
-import os
 import time
 
-import paddle
-from paddle.io import DataLoader
-from tqdm import tqdm
-
-from utils.utils import add_arguments, print_arguments
-from data_utils.reader import PPASRDataset
-from data_utils.collate_fn import collate_fn
-from decoders.ctc_greedy_decoder import greedy_decoder_batch
-from model_utils.deepspeech2.model import DeepSpeech2Model
-from model_utils.deepspeech2_light.model import DeepSpeech2LightModel
-from utils.metrics import cer
-from utils.utils import labels_to_string
+from ppasr.trainer import PPASRTrainer
+from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,    32,                       '训练的批量大小')
+add_arg('batch_size',       int,    32,                       '评估的批量大小')
 add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
 add_arg('alpha',            float,  1.2,                      '集束搜索的LM系数')
 add_arg('beta',             float,  0.35,                     '集束搜索的WC系数')
@@ -34,74 +23,25 @@ add_arg('resume_model',     str,   'models/deepspeech2/epoch_50/', '模型的路
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
-
-
 print_arguments(args)
-# 获取测试数据
-test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, args.mean_std_path)
-test_loader = DataLoader(dataset=test_dataset,
-                         batch_size=args.batch_size,
-                         collate_fn=collate_fn,
-                         num_workers=args.num_workers,
-                         use_shared_memory=False)
-
-# 获取模型
-if args.use_model == 'deepspeech2':
-    model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
-elif args.use_model == 'deepspeech2_light':
-    model = DeepSpeech2LightModel(vocab_size=test_dataset.vocab_size)
-else:
-    raise Exception('没有该模型：%s' % args.use_model)
-
-assert os.path.exists(os.path.join(args.resume_model, 'model.pdparams')), "模型不存在！"
-model.set_state_dict(paddle.load(os.path.join(args.resume_model, 'model.pdparams')))
-model.eval()
-
-# 集束搜索方法的处理
-if args.decoder == "ctc_beam_search":
-    try:
-        from decoders.beam_search_decoder import BeamSearchDecoder
-        beam_search_decoder = BeamSearchDecoder(args.alpha, args.beta, args.lang_model_path, test_dataset.vocab_list)
-    except ModuleNotFoundError:
-        raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greedy。')
 
 
-# 执行解码
-def decoder(outs, vocabulary):
-    if args.decoder == 'ctc_greedy':
-        result = greedy_decoder_batch(outs, vocabulary)
-    else:
-        result = beam_search_decoder.decode_batch_beam_search(probs_split=outs,
-                                                              beam_alpha=args.alpha,
-                                                              beam_beta=args.beta,
-                                                              beam_size=args.beam_size,
-                                                              cutoff_prob=args.cutoff_prob,
-                                                              cutoff_top_n=args.cutoff_top_n,
-                                                              vocab_list=test_dataset.vocab_list,
-                                                              num_processes=args.num_proc_bsearch)
-    return result
+trainer = PPASRTrainer(use_model=args.use_model,
+                       mean_std_path=args.mean_std_path,
+                       test_manifest=args.test_manifest,
+                       dataset_vocab=args.dataset_vocab,
+                       num_workers=args.num_workers)
 
-
-# 评估模型
-@paddle.no_grad()
-def evaluate():
-    c = []
-    for inputs, labels, input_lens, _ in tqdm(test_loader()):
-        # 执行识别
-        outs, _ = model(inputs, input_lens)
-        outs = paddle.nn.functional.softmax(outs, 2)
-        # 解码获取识别结果
-        out_strings = decoder(outs.numpy(), test_dataset.vocab_list)
-        labels_str = labels_to_string(labels.numpy(), test_dataset.vocab_list)
-        for out_string, label in zip(*(out_strings, labels_str)):
-            # 计算字错率
-            c.append(cer(out_string, label) / float(len(label)))
-    c = float(sum(c) / len(c))
-    return c
-
-
-if __name__ == '__main__':
-    start = time.time()
-    cer = evaluate()
-    end = time.time()
-    print('评估消耗时间：%ds，字错率：%f' % ((end - start), cer))
+start = time.time()
+cer = trainer.evaluate(batch_size=args.batch_size,
+                       alpha=args.alpha,
+                       beta=args.beta,
+                       beam_size=args.beam_size,
+                       num_proc_bsearch=args.num_proc_bsearch,
+                       cutoff_prob=args.cutoff_prob,
+                       cutoff_top_n=args.cutoff_top_n,
+                       decoder=args.decoder,
+                       resume_model=args.resume_model,
+                       lang_model_path=args.lang_model_path)
+end = time.time()
+print('评估消耗时间：%ds，字错率：%f' % ((end - start), cer))

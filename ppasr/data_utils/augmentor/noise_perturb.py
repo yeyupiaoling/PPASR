@@ -1,8 +1,8 @@
 """Contains the noise perturb augmentation model."""
 
-from data_utils.augmentor.base import AugmentorBase
-from data_utils.utils import read_manifest
-from data_utils.audio import AudioSegment
+from ppasr.data_utils.augmentor.base import AugmentorBase
+from ppasr.data_utils.utils import read_manifest
+from ppasr.data_utils.audio import AudioSegment
 
 
 class NoisePerturbAugmentor(AugmentorBase):

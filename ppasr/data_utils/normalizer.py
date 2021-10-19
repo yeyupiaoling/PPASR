@@ -4,9 +4,9 @@ import numpy as np
 import random
 from tqdm import tqdm
 from paddle.io import Dataset, DataLoader
-from data_utils.utils import read_manifest
-from data_utils.audio import AudioSegment
-from data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from ppasr.data_utils.utils import read_manifest
+from ppasr.data_utils.audio import AudioSegment
+from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 
 
 class FeatureNormalizer(object):
