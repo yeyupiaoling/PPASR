@@ -13,3 +13,6 @@ tools/generate_audio/corpus.txt
 test.py
 android/
 convert_model.py
+build/
+dist/
+ppasr.egg-info/

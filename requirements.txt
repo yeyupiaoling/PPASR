@@ -1,11 +1,10 @@
-numpy==1.19.2
+numpy>=1.19.2
 scipy==1.6.1
 tqdm==4.59.0
-pytest-runner
 librosa==0.8.0
 python-Levenshtein==0.12.2
-visualdl==2.1.1
-SoundFile==0.9.0.post1
+visualdl>=2.1.1
+SoundFile~=0.10
 resampy==0.2.2
 python_speech_features==0.6
 zhconv==1.4.2
