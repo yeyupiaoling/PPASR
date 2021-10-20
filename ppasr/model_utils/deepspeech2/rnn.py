@@ -47,4 +47,4 @@ class RNNStack(nn.Layer):
             x = self.norm_list[i](x)
 
         final_chunk_state_h_box = paddle.concat(final_chunk_state_list, axis=0)
-        return x, x_lens, final_chunk_state_h_box
+        return x, final_chunk_state_h_box

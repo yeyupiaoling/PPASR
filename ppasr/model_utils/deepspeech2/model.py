@@ -24,7 +24,7 @@ class DeepSpeech2Model(nn.Layer):
     :rtype: nn.Layer
     """
 
-    def __init__(self, feat_size, vocab_size, cnn_size=32, num_rnn_layers=5, rnn_size=1024):
+    def __init__(self, feat_size, vocab_size, cnn_size=32, num_rnn_layers=3, rnn_size=1024):
         super().__init__()
         self.num_rnn_layers = num_rnn_layers
         self.rnn_size = rnn_size
@@ -45,7 +45,7 @@ class DeepSpeech2Model(nn.Layer):
             logits (Tensor): [B, T, D]
             x_lens (Tensor): [B]
         """
-        x, x_lens = self.conv(audio, audio_len)
-        x, _, _ = self.rnn(x, x_lens, init_state_h_box)  # [B, T, D]
+        x, x_lens = self.conv(audio, audio_len)  # [B, T, D]
+        x, final_chunk_state_h_box = self.rnn(x, x_lens, init_state_h_box)
         logits = self.fc(x)
-        return logits, x_lens
+        return logits, x_lens, final_chunk_state_h_box

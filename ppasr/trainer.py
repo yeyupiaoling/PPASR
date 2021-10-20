@@ -2,6 +2,7 @@ import io
 import os
 import re
 import shutil
+import sys
 import time
 from collections import Counter
 from datetime import datetime
@@ -23,7 +24,6 @@ from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
-from ppasr.model_utils.deepspeech2_light.model import DeepSpeech2LightModel
 from ppasr.model_utils.utils import Normalizer, Mask
 from ppasr.utils.metrics import cer
 from ppasr.utils.utils import fuzzy_delete, create_manifest, create_noise, count_manifest, compute_mean_std
@@ -135,8 +135,6 @@ class PPASRTrainer(object):
         # 获取模型
         if self.use_model == 'deepspeech2':
             model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
-        elif self.use_model == 'deepspeech2_light':
-            model = DeepSpeech2LightModel(vocab_size=test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：%s' % self.use_model)
 
@@ -170,7 +168,7 @@ class PPASRTrainer(object):
         c = []
         for inputs, labels, input_lens, _ in tqdm(test_loader()):
             # 执行识别
-            outs, _ = model(inputs, input_lens)
+            outs, _, _, _ = model(inputs, input_lens)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
             out_strings = decoder_result(outs.numpy(), test_dataset.vocab_list)
@@ -186,7 +184,7 @@ class PPASRTrainer(object):
               min_duration=0,
               max_duration=20,
               num_epoch=50,
-              learning_rate=1e-3,
+              learning_rate=1e-5,
               save_model_path='models/',
               resume_model=None,
               pretrained_model=None,
@@ -215,8 +213,12 @@ class PPASRTrainer(object):
             fleet.init(is_collective=True)
 
         # 获取训练数据
-        augmentation_config = io.open(augment_conf_path, mode='r',
-                                      encoding='utf8').read() if augment_conf_path is not None else '{}'
+        if augment_conf_path is not None and os.path.exists(augment_conf_path):
+            augmentation_config = io.open(augment_conf_path, mode='r', encoding='utf8').read()
+        else:
+            if augment_conf_path is not None and not os.path.exists(augment_conf_path):
+                print('[%s] 数据增强配置文件%s不存在' % (datetime.now(), augment_conf_path), file=sys.stderr)
+            augmentation_config = '{}'
         train_dataset = PPASRDataset(self.train_manifest, self.dataset_vocab,
                                      mean_std_filepath=self.mean_std_path,
                                      min_duration=min_duration,
@@ -243,8 +245,6 @@ class PPASRTrainer(object):
         # 获取模型
         if self.use_model == 'deepspeech2':
             model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
-        elif self.use_model == 'deepspeech2_light':
-            model = DeepSpeech2LightModel(vocab_size=train_dataset.vocab_size)
         else:
             raise Exception('没有该模型：%s' % self.use_model)
 
@@ -252,7 +252,7 @@ class PPASRTrainer(object):
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
         # 获取预训练的epoch数
         last_epoch = int(re.findall(r'\d+', resume_model)[-1]) if resume_model is not None else 0
-        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.9,
+        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.83,
                                                          last_epoch=last_epoch - 1)
         optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
                                           learning_rate=scheduler,
@@ -302,7 +302,7 @@ class PPASRTrainer(object):
             start_epoch = time.time()
             start = time.time()
             for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
-                out, out_lens = model(inputs, input_lens)
+                out, out_lens, _ = model(inputs, input_lens)
                 out = paddle.transpose(out, perm=[1, 0, 2])
 
                 # 计算损失
@@ -355,7 +355,7 @@ class PPASRTrainer(object):
         c, l = [], []
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(test_loader()):
             # 执行识别
-            outs, out_lens = model(inputs, input_lens)
+            outs, out_lens, _ = model(inputs, input_lens)
             out = paddle.transpose(outs, perm=[1, 0, 2])
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
@@ -404,8 +404,6 @@ class PPASRTrainer(object):
         # 获取模型
         if self.use_model == 'deepspeech2':
             base_model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim, vocab_size=text_featurizer.vocab_size)
-        elif self.use_model == 'deepspeech2_light':
-            base_model = DeepSpeech2LightModel(vocab_size=text_featurizer.vocab_size)
         else:
             raise Exception('没有该模型：%s' % self.use_model)
 
@@ -427,9 +425,9 @@ class PPASRTrainer(object):
             def forward(self, audio, audio_len, init_state_h_box):
                 x = self.normalizer(audio)
                 x = self.mask(x, audio_len)
-                logits, x_lensx = self.model(x, audio_len, init_state_h_box)
+                logits, _, final_chunk_state_h_box = self.model(x, audio_len, init_state_h_box)
                 output = self.softmax(logits)
-                return output
+                return output, final_chunk_state_h_box
 
         model = Model(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
         infer_model_path = os.path.join(save_model_path, self.use_model, 'infer')

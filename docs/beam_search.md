@@ -8,7 +8,7 @@ pip3 install swig_decoders-1.2-cp37-cp37m-linux_x86_64.whl
 
 如果不能正常安装，就需要自行编译`ctc_decoders`库，该编译只支持Ubuntu，其他Linux版本没测试过，执行下面命令完成编译。
 ```shell
-cd decoders
+cd ppasr/decoders
 sh setup.sh
 ```
 
@@ -32,4 +32,4 @@ python tools/tune.py --resume_model=models/deepspeech2/epoch_50
 
 # 使用集束搜索解码
 
-在需要使用到解码器的程序，如评估，预测，指定参数`--decoding_method`为`ctc_beam_search`即可，如果alpha和beta参数值有改动，修改对应的值即可。
+在需要使用到解码器的程序，如评估，预测，指定参数`--decoder`为`ctc_beam_search`即可，如果alpha和beta参数值有改动，修改对应的值即可。
