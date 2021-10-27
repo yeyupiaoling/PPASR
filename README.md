@@ -1,9 +1,10 @@
 # PPASR语音识别（最终级）
 
-![License](https://img.shields.io/badge/license-Apache%202-red.svg)
 ![python version](https://img.shields.io/badge/python-3.7+-orange.svg)
-![support os](https://img.shields.io/badge/os-linux-yellow.svg)
-![GitHub Repo stars](https://img.shields.io/github/stars/yeyupiaoling/PPASR?style=social)
+![GitHub forks](https://img.shields.io/github/forks/yeyupiaoling/PPASR)
+![GitHub Repo stars](https://img.shields.io/github/stars/yeyupiaoling/PPASR)
+![GitHub](https://img.shields.io/github/license/yeyupiaoling/PPASR)
+![支持系统](https://img.shields.io/badge/支持系统-Win/Linux/MAC-9cf)
 
 本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级，持续维护版本。
 
