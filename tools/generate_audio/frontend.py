@@ -5,7 +5,7 @@ from typing import List
 import numpy as np
 import paddle
 
-from parakeet.frontend.cn_frontend import Frontend as cnFrontend
+from parakeet.frontend.zh_frontend import Frontend as cnFrontend
 
 
 class Frontend():

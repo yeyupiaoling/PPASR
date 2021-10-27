@@ -6,10 +6,10 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('batch_size',       int,   32,                         '训练的批量大小')
+add_arg('batch_size',       int,   16,                         '训练的批量大小')
 add_arg('num_workers',      int,   8,                          '读取数据的线程数量')
 add_arg('num_epoch',        int,   50,                         '训练的轮数')
-add_arg('learning_rate',    int,   1e-5,                       '初始学习率的大小')
+add_arg('learning_rate',    int,   5e-4,                       '初始学习率的大小')
 add_arg('min_duration',     int,   0,                          '过滤最短的音频长度')
 add_arg('max_duration',     int,   20,                         '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('use_model',        str,   'deepspeech2',              '所使用的模型')

@@ -168,7 +168,7 @@ class PPASRTrainer(object):
         c = []
         for inputs, labels, input_lens, _ in tqdm(test_loader()):
             # 执行识别
-            outs, _, _, _ = model(inputs, input_lens)
+            outs, _, = model(inputs, input_lens)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
             out_strings = decoder_result(outs.numpy(), test_dataset.vocab_list)
@@ -302,7 +302,7 @@ class PPASRTrainer(object):
             start_epoch = time.time()
             start = time.time()
             for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
-                out, out_lens, _ = model(inputs, input_lens)
+                out, out_lens = model(inputs, input_lens)
                 out = paddle.transpose(out, perm=[1, 0, 2])
 
                 # 计算损失
@@ -355,7 +355,7 @@ class PPASRTrainer(object):
         c, l = [], []
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(test_loader()):
             # 执行识别
-            outs, out_lens, _ = model(inputs, input_lens)
+            outs, out_lens = model(inputs, input_lens)
             out = paddle.transpose(outs, perm=[1, 0, 2])
             # 计算损失
             loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
@@ -422,12 +422,12 @@ class PPASRTrainer(object):
                 self.model = model
                 self.softmax = paddle.nn.Softmax()
 
-            def forward(self, audio, audio_len, init_state_h_box):
+            def forward(self, audio, audio_len):
                 x = self.normalizer(audio)
                 x = self.mask(x, audio_len)
-                logits, _, final_chunk_state_h_box = self.model(x, audio_len, init_state_h_box)
+                logits, _ = self.model(x, audio_len)
                 output = self.softmax(logits)
-                return output, final_chunk_state_h_box
+                return output
 
         model = Model(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
         infer_model_path = os.path.join(save_model_path, self.use_model, 'infer')
@@ -436,6 +436,5 @@ class PPASRTrainer(object):
         paddle.jit.save(layer=model,
                         path=os.path.join(infer_model_path, 'model'),
                         input_spec=[InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
-                                    InputSpec(shape=(-1,), dtype=paddle.int64),
-                                    InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32)])
+                                    InputSpec(shape=(-1,), dtype=paddle.int64)])
         print("预测模型已保存：%s" % infer_model_path)

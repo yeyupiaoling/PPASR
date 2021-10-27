@@ -55,7 +55,6 @@ class Predictor:
         # 获取输入层
         self.audio_data_handle = self.predictor.get_input_handle('audio')
         self.audio_len_handle = self.predictor.get_input_handle('audio_len')
-        self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
 
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
@@ -73,16 +72,12 @@ class Predictor:
         audio_feature = self.audio_process.process_utterance(audio_path)
         audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
         audio_len = np.array([audio_data.shape[2]]).astype('int64')
-        # 对RNN层的initial_states全零初始化
-        init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
 
         # 设置输入
         self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
         self.audio_len_handle.reshape([audio_data.shape[0]])
-        self.init_state_h_box_handle.reshape(init_state_h_box.shape)
         self.audio_data_handle.copy_from_cpu(audio_data)
         self.audio_len_handle.copy_from_cpu(audio_len)
-        self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
 
         # 运行predictor
         self.predictor.run()
