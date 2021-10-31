@@ -46,7 +46,7 @@ def fuzzy_delete(dir, fuzzy_str):
 
 
 # 创建数据列表
-def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is_change_frame_rate=True):
+def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is_change_frame_rate=True, create_test_manifest=True):
     data_list = []
     durations = []
     for annotation_text in os.listdir(annotation_path):
@@ -74,10 +74,14 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     data_list.sort(key=lambda x: json.loads(x)["duration"], reverse=True)
     # 数据写入到文件中
     f_train = open(train_manifest_path, 'w', encoding='utf-8')
-    f_test = open(test_manifest_path, 'w', encoding='utf-8')
+    if create_test_manifest:
+        f_test = open(test_manifest_path, 'w', encoding='utf-8')
     for i, line in enumerate(data_list):
-        if i % 100 == 0:
-            f_test.write(line + '\n')
+        if i % 500 == 0:
+            if create_test_manifest:
+                f_test.write(line + '\n')
+            else:
+                f_train.write(line + '\n')
         else:
             f_train.write(line + '\n')
     f_train.close()

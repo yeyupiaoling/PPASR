@@ -24,7 +24,7 @@ from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
-from ppasr.model_utils.utils import Normalizer, Mask
+from ppasr.model_utils.utils import DeepSpeech2ModelExport
 from ppasr.utils.metrics import cer
 from ppasr.utils.utils import fuzzy_delete, create_manifest, create_noise, count_manifest, compute_mean_std
 from ppasr.utils.utils import labels_to_string
@@ -60,7 +60,8 @@ class PPASRTrainer(object):
                     noise_path='dataset/audio/noise',
                     num_samples=-1,
                     count_threshold=2,
-                    is_change_frame_rate=True):
+                    is_change_frame_rate=True,
+                    create_test_manifest=True):
         """
         创建数据列表和词汇表
         :param annotation_path: 标注文件的路径
@@ -69,12 +70,14 @@ class PPASRTrainer(object):
         :param num_samples: 用于计算均值和标准值得音频数量，当为-1使用全部数据
         :param count_threshold: 字符计数的截断阈值，0为不做限制
         :param is_change_frame_rate: 是否统一改变音频为16000Hz，这会消耗大量的时间
+        :param create_test_manifest: 是否生成测试数据列表
         """
         print('开始生成数据列表...')
         create_manifest(annotation_path=annotation_path,
                         train_manifest_path=self.train_manifest,
                         test_manifest_path=self.test_manifest,
-                        is_change_frame_rate=is_change_frame_rate)
+                        is_change_frame_rate=is_change_frame_rate,
+                        create_test_manifest=create_test_manifest)
         print('=' * 70)
         print('开始生成噪声数据列表...')
         create_noise(path=noise_path,
@@ -241,6 +244,8 @@ class PPASRTrainer(object):
                                  collate_fn=collate_fn,
                                  batch_sampler=test_batch_sampler,
                                  num_workers=self.num_workers)
+
+        # paddle.nn.initializer.set_global_initializer(paddle.nn.initializer.KaimingNormal(), paddle.nn.initializer.KaimingUniform())
 
         # 获取模型
         if self.use_model == 'deepspeech2':
@@ -413,28 +418,18 @@ class PPASRTrainer(object):
         base_model.set_state_dict(paddle.load(resume_model_path))
         print('[{}] 成功恢复模型参数和优化方法参数：{}'.format(datetime.now(), resume_model_path))
 
-        # 在输出层加上Softmax
-        class Model(paddle.nn.Layer):
-            def __init__(self, model, feature_mean, feature_std):
-                super(Model, self).__init__()
-                self.normalizer = Normalizer(feature_mean, feature_std)
-                self.mask = Mask()
-                self.model = model
-                self.softmax = paddle.nn.Softmax()
+        # 获取模型
+        if self.use_model == 'deepspeech2':
+            model = DeepSpeech2ModelExport(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
+            input_spec = [InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
+                          InputSpec(shape=(-1,), dtype=paddle.int64),
+                          InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32)]
+        else:
+            raise Exception('没有该模型：%s' % self.use_model)
 
-            def forward(self, audio, audio_len):
-                x = self.normalizer(audio)
-                x = self.mask(x, audio_len)
-                logits, _ = self.model(x, audio_len)
-                output = self.softmax(logits)
-                return output
-
-        model = Model(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
-        infer_model_path = os.path.join(save_model_path, self.use_model, 'infer')
-        if not os.path.exists(infer_model_path):
-            os.makedirs(infer_model_path)
-        paddle.jit.save(layer=model,
-                        path=os.path.join(infer_model_path, 'model'),
-                        input_spec=[InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
-                                    InputSpec(shape=(-1,), dtype=paddle.int64)])
-        print("预测模型已保存：%s" % infer_model_path)
+        infer_model_dir = os.path.join(save_model_path, self.use_model, 'infer')
+        if not os.path.exists(infer_model_dir):
+            os.makedirs(infer_model_dir)
+        infer_model_path = os.path.join(infer_model_dir, 'model')
+        paddle.jit.save(layer=model, path=infer_model_path, input_spec=input_spec)
+        print("预测模型已保存：%s" % infer_model_dir)

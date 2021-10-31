@@ -1,18 +1,21 @@
 import os
 import sys
 
-from LAC import LAC
 import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
+from LAC import LAC
 
-from ppasr.data_utils.audio_process import AudioProcess
+from ppasr.data_utils.audio import AudioSegment
+from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder
 
 
 class Predictor:
-    def __init__(self, model_dir, vocab_path, decoder='ctc_greedy', alpha=1.2, beta=0.35, lang_model_path=None,
-                 beam_size=10, cutoff_prob=1.0, cutoff_top_n=40, use_gpu=True, gpu_mem=500, num_threads=10):
+    def __init__(self, model_dir, vocab_path, num_rnn_layers=3, rnn_size=1024, decoder='ctc_greedy',
+                 alpha=1.2, beta=0.35, lang_model_path=None, beam_size=10, cutoff_prob=1.0, cutoff_top_n=40,
+                 use_gpu=True, gpu_mem=500, num_threads=10):
         self.decoder = decoder
         self.alpha = alpha
         self.beta = beta
@@ -21,13 +24,16 @@ class Predictor:
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
+        self.num_rnn_layers = num_rnn_layers
+        self.rnn_size = rnn_size
         self.lac = None
-        self.audio_process = AudioProcess(vocab_filepath=vocab_path)
+        self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
+        self._audio_featurizer = AudioFeaturizer()
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
             try:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self.audio_process.vocab_list)
+                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self._text_featurizer.vocab_list)
             except ModuleNotFoundError:
                 raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
 
@@ -55,6 +61,7 @@ class Predictor:
         # 获取输入层
         self.audio_data_handle = self.predictor.get_input_handle('audio')
         self.audio_len_handle = self.predictor.get_input_handle('audio_len')
+        self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
 
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
@@ -66,26 +73,8 @@ class Predictor:
         else:
             print('预热文件不存在，忽略预热！', file=sys.stderr)
 
-    # 预测图片
-    def predict(self, audio_path, to_an=False):
-        # 加载音频文件，并进行预处理
-        audio_feature = self.audio_process.process_utterance(audio_path)
-        audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
-        audio_len = np.array([audio_data.shape[2]]).astype('int64')
-
-        # 设置输入
-        self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
-        self.audio_len_handle.reshape([audio_data.shape[0]])
-        self.audio_data_handle.copy_from_cpu(audio_data)
-        self.audio_len_handle.copy_from_cpu(audio_len)
-
-        # 运行predictor
-        self.predictor.run()
-
-        # 获取输出
-        output_handle = self.predictor.get_output_handle(self.output_names[0])
-        output_data = output_handle.copy_to_cpu()[0]
-
+    # 解码模型输出结果
+    def decode(self, output_data, to_an):
         # 执行解码
         if self.decoder == 'ctc_beam_search':
             # 集束搜索解码策略
@@ -95,16 +84,55 @@ class Predictor:
                                                                  beam_size=self.beam_size,
                                                                  cutoff_prob=self.cutoff_prob,
                                                                  cutoff_top_n=self.cutoff_top_n,
-                                                                 vocab_list=self.audio_process.vocab_list)
+                                                                 vocab_list=self._text_featurizer.vocab_list)
         else:
             # 贪心解码策略
-            result = greedy_decoder(probs_seq=output_data, vocabulary=self.audio_process.vocab_list)
+            result = greedy_decoder(probs_seq=output_data, vocabulary=self._text_featurizer.vocab_list)
 
         score, text = result[0], result[1]
         # 是否转为阿拉伯数字
         if to_an:
             text = self.cn2an(text)
         return score, text
+
+    # 预测图片
+    def predict(self, audio_path=None, audio_bytes=None, audio_ndarray=None, init_state_h_box=None, to_an=False):
+        assert audio_path is not None or audio_bytes is not None or audio_ndarray is not None, \
+            'audio_path，audio_bytes和audio_ndarray至少有一个不为None！'
+        # 加载音频文件，并进行预处理
+        if audio_path is not None:
+            audio_data = AudioSegment.from_file(audio_path)
+        elif audio_ndarray is not None:
+            audio_data = AudioSegment.from_ndarray(audio_ndarray)
+        else:
+            audio_data = AudioSegment.from_wave_bytes(audio_bytes)
+        audio_feature = self._audio_featurizer.featurize(audio_data)
+        audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
+        audio_len = np.array([audio_data.shape[2]]).astype('int64')
+
+        # 设置输入
+        self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
+        self.audio_len_handle.reshape([audio_data.shape[0]])
+        self.audio_data_handle.copy_from_cpu(audio_data)
+        self.audio_len_handle.copy_from_cpu(audio_len)
+
+        if init_state_h_box is None:
+            # 对RNN层的initial_states全零初始化
+            init_state_h_box = np.zeros(shape=(self.num_rnn_layers, audio_data.shape[0], self.rnn_size)).astype('float32')
+        self.init_state_h_box_handle.reshape(init_state_h_box.shape)
+        self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
+
+        # 运行predictor
+        self.predictor.run()
+
+        # 获取输出
+        output_handle = self.predictor.get_output_handle(self.output_names[0])
+        output_data = output_handle.copy_to_cpu()[0]
+        output_state_handle = self.predictor.get_output_handle(self.output_names[1])
+        output_state = output_state_handle.copy_to_cpu()
+        # 解码
+        score, text = self.decode(output_data=output_data, to_an=to_an)
+        return score, text, output_state
 
     # 是否转为阿拉伯数字
     def cn2an(self, text):

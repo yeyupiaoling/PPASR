@@ -10,6 +10,7 @@ add_arg('annotation_path',      str,  'dataset/annotation/',      '标注文件�
 add_arg('train_manifest',       str,  'dataset/manifest.train',   '训练数据的数据列表路径')
 add_arg('test_manifest',        str,  'dataset/manifest.test',    '测试数据的数据列表路径')
 add_arg('is_change_frame_rate', bool, True,                       '是否统一改变音频为16000Hz，这会消耗大量的时间')
+add_arg('create_test_manifest', bool, True,                       '是否从数据中获取一部分作为测试数据')
 add_arg('count_threshold',      int,  2,                          '字符计数的截断阈值，0为不做限制')
 add_arg('dataset_vocab',        str,  'dataset/vocabulary.txt',   '生成的数据字典文件')
 add_arg('num_workers',          int,   8,                         '读取数据的线程数量')
@@ -32,4 +33,5 @@ trainer.create_data(annotation_path=args.annotation_path,
                     noise_path=args.noise_path,
                     num_samples=args.num_samples,
                     count_threshold=args.count_threshold,
-                    is_change_frame_rate=args.is_change_frame_rate)
+                    is_change_frame_rate=args.is_change_frame_rate,
+                    create_test_manifest=args.create_test_manifest)

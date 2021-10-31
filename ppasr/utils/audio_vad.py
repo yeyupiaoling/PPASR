@@ -123,13 +123,5 @@ def crop_audio_vad(audio_path, aggressiveness=1, frame_duration_ms=30):
     vad = webrtcvad.Vad(aggressiveness)
     frames = frame_generator(frame_duration_ms, audio, sample_rate)
     frames = list(frames)
-    segments = vad_collector(sample_rate, frame_duration_ms, 300, vad, frames)
-    audios_path = []
-    save_path = os.path.join(os.path.dirname(audio_path), 'crop_audio')
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    for i, segment in enumerate(segments):
-        path = os.path.join(save_path, '%s_%d.wav' % (os.path.basename(audio_path)[:-4], i))
-        write_wave(path, segment, sample_rate)
-        audios_path.append(path)
-    return audios_path
+    audios_bytes = vad_collector(sample_rate, frame_duration_ms, 300, vad, frames)
+    return audios_bytes

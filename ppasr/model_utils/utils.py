@@ -2,10 +2,12 @@ import math
 
 import paddle
 from paddle import nn
+from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
 
-__all__ = ['Mask']
+__all__ = ['Mask', 'Normalizer', 'DeepSpeech2ModelExport']
 
 
+# 掩码模型
 class Mask(nn.Layer):
     def __init__(self):
         super().__init__()
@@ -28,6 +30,7 @@ class Mask(nn.Layer):
         return x
 
 
+# 对数据归一化模型
 class Normalizer(nn.Layer):
     def __init__(self, mean, std):
         super().__init__()
@@ -38,6 +41,24 @@ class Normalizer(nn.Layer):
     def forward(self, x):
         x = (x - self.mean) / (self.std + self.eps)
         return x
+
+
+# 导出使用的DeepSpeech2Model模型
+class DeepSpeech2ModelExport(paddle.nn.Layer):
+    def __init__(self, model:DeepSpeech2Model, feature_mean, feature_std):
+        super(DeepSpeech2ModelExport, self).__init__()
+        self.normalizer = Normalizer(feature_mean, feature_std)
+        # self.mask = Mask()
+        self.model = model
+        # 在输出层加上Softmax
+        self.softmax = paddle.nn.Softmax()
+
+    def forward(self, audio, audio_len, init_state_h_box):
+        x = self.normalizer(audio)
+        # x = self.mask(x, audio_len)
+        logits, _, final_chunk_state_h_box = self.model(x, audio_len, init_state_h_box)
+        output = self.softmax(logits)
+        return output, final_chunk_state_h_box
 
 
 class LinearSpecgram(nn.Layer):

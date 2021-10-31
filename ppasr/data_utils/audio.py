@@ -7,6 +7,8 @@ import resampy
 import soundfile
 from scipy import signal
 
+from ppasr.data_utils.utils import buf_to_float
+
 
 class AudioSegment(object):
     """Monaural audio segment abstraction.
@@ -100,21 +102,47 @@ class AudioSegment(object):
 
     @classmethod
     def from_bytes(cls, bytes):
-        """从包含音频样本的字节字符串创建音频段
-        
-        :param bytes: Byte string containing audio samples.
-        :type bytes: str
-        :return: Audio segment instance.
+        """从包含音频样本的字节创建音频段
+
+        :param bytes: 包含音频样本的字节
+        :type bytes: bytes
+        :return: 音频部分实例
         :rtype: AudioSegment
         """
         samples, sample_rate = soundfile.read(io.BytesIO(bytes), dtype='float32')
         return cls(samples, sample_rate)
 
     @classmethod
+    def from_wave_bytes(cls, bytes, sample_rate=16000):
+        """从包含音频样本的字节创建音频段，字节的来源是wave.open或者pyaudio.PyAudio()，
+        音频格式nchannels=1, sampwidth=2(PyAudio的是format=pyaudio.paInt16), framerate=16000
+
+        :param bytes: 包含音频样本的字节
+        :type bytes: bytes
+        :return: 音频部分实例
+        :rtype: AudioSegment
+        """
+        samples = buf_to_float(bytes)
+        return cls(samples, sample_rate)
+
+    @classmethod
+    def from_ndarray(cls, data, sample_rate=16000):
+        """从numpy.ndarray创建音频段
+
+        :param data: numpy.ndarray类型的音频数据
+        :type data: ndarray
+        :param sample_rate: 包含音频样本的字节字符串
+        :type sample_rate: int
+        :return: 音频部分实例
+        :rtype: AudioSegment
+        """
+        return cls(data, sample_rate)
+
+    @classmethod
     def concatenate(cls, *segments):
         """将任意数量的音频片段连接在一起
 
-        :param *segments: Input audio segments to be concatenated.
+        :param *segments: 输入音频片段被连接
         :type *segments: tuple of AudioSegment
         :return: Audio segment instance as concatenating results.
         :rtype: AudioSegment
@@ -138,11 +166,11 @@ class AudioSegment(object):
     def make_silence(cls, duration, sample_rate):
         """创建给定持续时间和采样率的静音音频段
 
-        :param duration: Length of silence in seconds.
+        :param duration: 静音的时间，以秒为单位
         :type duration: float
-        :param sample_rate: Sample rate.
+        :param sample_rate: 音频采样率
         :type sample_rate: float
-        :return: Silent AudioSegment instance of the given duration.
+        :return: 给定持续时间的静音AudioSegment实例
         :rtype: AudioSegment
         """
         samples = np.zeros(int(duration * sample_rate))
@@ -151,8 +179,7 @@ class AudioSegment(object):
     def to_wav_file(self, filepath, dtype='float32'):
         """保存音频段到磁盘为wav文件
         
-        :param filepath: WAV filepath or file object to save the
-                         audio segment.
+        :param filepath: WAV文件路径或文件对象，以保存音频段
         :type filepath: str|file
         :param dtype: Subtype for audio file. Options: 'int16', 'int32',
                       'float32', 'float64'. Default is 'float32'.
@@ -176,13 +203,10 @@ class AudioSegment(object):
     def superimpose(self, other):
         """将另一个段的样本添加到这个段的样本中(以样本方式添加，而不是段连接)。
 
-        Note that this is an in-place transformation.
-
-        :param other: Segment containing samples to be added in.
+        :param other: 包含样品的片段被添加进去
         :type other: AudioSegments
-        :raise TypeError: If type of two segments don't match.
-        :raise ValueError: If the sample rates of the two segments are not
-                           equal, or if the lengths of segments don't match.
+        :raise TypeError: 如果两个片段的类型不匹配
+        :raise ValueError: 不能添加不同类型的段
         """
         if isinstance(other, type(self)):
             raise TypeError("不能添加不同类型的段: %s 和 %s" % (type(self), type(other)))
@@ -217,8 +241,6 @@ class AudioSegment(object):
     def change_speed(self, speed_rate):
         """通过线性插值改变音频速度
 
-        Note that this is an in-place transformation.
-        
         :param speed_rate: Rate of speed change:
                            speed_rate > 1.0, speed up the audio;
                            speed_rate = 1.0, unchanged;
@@ -237,8 +259,6 @@ class AudioSegment(object):
 
     def normalize(self, target_db=-20, max_gain_db=300.0):
         """将音频归一化，使其具有所需的有效值(以分贝为单位)
-
-        Note that this is an in-place transformation.
 
         :param target_db: Target RMS value in decibels. This value should be
                           less than 0.0 as 0.0 is full-scale audio.

@@ -38,7 +38,7 @@ class SpeechRecognitionApp:
         self.stream = None
         self.to_an = True
         # 最大录音时长
-        self.max_record = 20
+        self.max_record = 600
         # 录音保存的路径
         self.output_path = 'dataset/record'
         # 创建一个播放器
@@ -101,7 +101,7 @@ class SpeechRecognitionApp:
         self.predicting = True
         try:
             start = time.time()
-            score, text = self.predictor.predict(audio_path=wav_path, to_an=self.to_an)
+            score, text, _ = self.predictor.predict(audio_path=wav_path, to_an=self.to_an)
             self.result_text.insert(END, "消耗时间：%dms, 识别结果: %s, 得分: %d\n" % (
             round((time.time() - start) * 1000), text, score))
         except Exception as e:
@@ -126,12 +126,12 @@ class SpeechRecognitionApp:
         try:
             start = time.time()
             # 分割长音频
-            audios_path = crop_audio_vad(wav_path)
+            audios_bytes = crop_audio_vad(wav_path)
             texts = ''
             scores = []
             # 执行识别
-            for i, audio_path in enumerate(audios_path):
-                score, text = self.predictor.predict(audio_path=audio_path, to_an=self.to_an)
+            for i, audio_bytes in enumerate(audios_bytes):
+                score, text, _ = self.predictor.predict(audio_bytes=audio_bytes, to_an=self.to_an)
                 texts = texts + '，' + text
                 scores.append(score)
                 self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
@@ -157,47 +157,49 @@ class SpeechRecognitionApp:
     def record_audio(self):
         self.record_button.configure(text='停止录音')
         self.recording = True
-        # 录音参数
-        chunk = 1024
+        # 识别间隔时间
+        interval_time = 2
+        CHUNK = 16000 * interval_time
         format = pyaudio.paInt16
         channels = 1
         rate = 16000
+        state = None
+        result = []
 
         # 打开录音
         self.stream = self.p.open(format=format,
                                   channels=channels,
                                   rate=rate,
                                   input=True,
-                                  frames_per_buffer=chunk)
-        self.result_text.insert(END, "正在录音...\n")
+                                  frames_per_buffer=CHUNK)
         start = time.time()
         frames = []
         while True:
             if not self.recording:break
-            data = self.stream.read(chunk)
+            data = self.stream.read(CHUNK)
             frames.append(data)
-            if len(frames) % 15 == 0:
-                self.result_text.insert(END, "已录音%.2f秒\n" % (time.time() - start))
-            if (time.time() - start) > self.max_record:
+            # 实时识别
+            core, text, state = self.predictor.predict(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
+            result.append(text)
+            self.result_text.delete('1.0', 'end')
+            self.result_text.insert(END, ''.join(result))
+            # 超出最大录制时间
+            if len(frames) * 2 > self.max_record:
                 self.result_text.insert(END, "录音已超过最大限制时长，强制停止录音！")
                 break
 
+        # 保存录音
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
-        save_path = os.path.join(self.output_path, '%s.wav' % str(int(time.time())))
-        wf = wave.open(save_path, 'wb')
+        self.wav_path = os.path.join(self.output_path, '%s.wav' % str(int(time.time())))
+        wf = wave.open(self.wav_path, 'wb')
         wf.setnchannels(channels)
         wf.setsampwidth(self.p.get_sample_size(format))
         wf.setframerate(rate)
         wf.writeframes(b''.join(frames))
         wf.close()
         self.recording = False
-        self.result_text.insert(END, "录音已结束，录音文件保存在：%s\n" % save_path)
-        # 识别录音
-        self.result_text.insert(END, "正在识别中...\n")
-        self.wav_path = save_path
-        self.predict_audio(self.wav_path)
-        self.record_button.configure(text='录音识别')
+        self.result_text.insert(END, "录音已结束，录音文件保存在：%s\n" % self.wav_path)
 
     # 播放音频线程
     def play_audio_thread(self):
