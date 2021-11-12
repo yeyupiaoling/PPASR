@@ -18,7 +18,6 @@ from ppasr.utils.utils import add_arguments, print_arguments
 from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.collate_fn import collate_fn
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
-from ppasr.model_utils.deepspeech2_light.model import DeepSpeech2LightModel
 from ppasr.utils.metrics import cer
 from ppasr.utils.utils import labels_to_string
 
@@ -27,7 +26,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('num_data',         int,    -1,    "用于评估的数据数量，当为-1时使用全部数据")
 add_arg('batch_size',       int,    16,    "评估是每一批数据的大小")
-add_arg('beam_size',        int,    10,    "定向搜索的大小，范围:[5, 500]")
+add_arg('beam_size',        int,    100,   "定向搜索的大小，范围建议:[5, 500]")
 add_arg('num_proc_bsearch', int,    8,     "定向搜索方法使用CPU数量")
 add_arg('num_alphas',       int,    45,    "用于调优的alpha候选项")
 add_arg('num_betas',        int,    8,     "用于调优的beta候选项")
@@ -35,7 +34,7 @@ add_arg('alpha_from',       float,  1.0,   "alpha调优开始大小")
 add_arg('alpha_to',         float,  3.2,   "alpha调优结速大小")
 add_arg('beta_from',        float,  0.1,   "beta调优开始大小")
 add_arg('beta_to',          float,  0.45,  "beta调优结速大小")
-add_arg('cutoff_prob',      float,  1.0,   "剪枝的概率")
+add_arg('cutoff_prob',      float,  0.99,  "剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,    "剪枝的最大值")
 add_arg('use_model',        str,   'deepspeech2',             '所使用的模型')
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
@@ -65,8 +64,6 @@ def tune():
     # 获取模型
     if args.use_model == 'deepspeech2':
         model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
-    elif args.use_model == 'deepspeech2_light':
-        model = DeepSpeech2LightModel(vocab_size=test_dataset.vocab_size)
     else:
         raise Exception('没有该模型：%s' % args.use_model)
 

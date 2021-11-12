@@ -11,14 +11,15 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('wav_path',         str,    './dataset/test.wav', "预测音频的路径")
 add_arg('is_long_audio',    bool,   False,  "是否为长语音")
-add_arg('real_time_demo',   bool,   False,  "是否使用实时语音识别演示")
+add_arg('real_time_demo',   bool,   True,  "是否使用实时语音识别演示")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('to_an',            bool,   True,   "是否转为阿拉伯数字")
-add_arg('beam_size',        int,    10,     "集束搜索解码相关参数，搜索的大小，范围:[5, 500]")
+add_arg('beam_size',        int,    100,     "集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]")
 add_arg('alpha',            float,  1.2,    "集束搜索解码相关参数，LM系数")
 add_arg('beta',             float,  0.35,   "集束搜索解码相关参数，WC系数")
-add_arg('cutoff_prob',      float,  1.0,    "集束搜索解码相关参数，剪枝的概率")
+add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
+add_arg('use_model',        str,    'deepspeech2',               "所使用的模型")
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',   "集束搜索解码相关参数，语言模型文件路径")
@@ -28,9 +29,10 @@ print_arguments(args)
 
 
 # 获取识别器
-predictor = Predictor(model_dir=args.model_dir, vocab_path=args.vocab_path, decoder=args.decoder, alpha=args.alpha,
-                      beta=args.beta, lang_model_path=args.lang_model_path, beam_size=args.beam_size,
-                      cutoff_prob=args.cutoff_prob, cutoff_top_n=args.cutoff_top_n, use_gpu=args.use_gpu)
+predictor = Predictor(model_dir=args.model_dir, vocab_path=args.vocab_path, use_model=args.use_model,
+                      decoder=args.decoder, alpha=args.alpha, beta=args.beta, lang_model_path=args.lang_model_path,
+                      beam_size=args.beam_size, cutoff_prob=args.cutoff_prob, cutoff_top_n=args.cutoff_top_n,
+                      use_gpu=args.use_gpu)
 
 
 # 长语音识别
@@ -63,17 +65,22 @@ def real_time_predict_demo():
     # 识别间隔时间
     interval_time = 2
     CHUNK = 16000 * interval_time
-
+    all_data = []
     # 读取数据
     wf = wave.open(args.wav_path, 'rb')
     data = wf.readframes(CHUNK)
     # 播放
     while data != b'':
+        all_data.append(data)
         start = time.time()
         score, text, state = predictor.predict(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
         result.append(text)
         print("分段结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, ''.join(result), score))
         data = wf.readframes(CHUNK)
+    all_data = b''.join(all_data)
+    start = time.time()
+    score, text, state = predictor.predict(audio_bytes=all_data, to_an=args.to_an, init_state_h_box=None)
+    print("整一句结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, text, score))
 
 
 if __name__ == "__main__":

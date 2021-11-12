@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import re
 import shutil
@@ -58,10 +59,10 @@ class PPASRTrainer(object):
                     annotation_path='dataset/annotation/',
                     noise_manifest_path='dataset/manifest.noise',
                     noise_path='dataset/audio/noise',
-                    num_samples=-1,
+                    num_samples=1000000,
                     count_threshold=2,
                     is_change_frame_rate=True,
-                    create_test_manifest=True):
+                    max_test_manifest=10000):
         """
         创建数据列表和词汇表
         :param annotation_path: 标注文件的路径
@@ -70,14 +71,14 @@ class PPASRTrainer(object):
         :param num_samples: 用于计算均值和标准值得音频数量，当为-1使用全部数据
         :param count_threshold: 字符计数的截断阈值，0为不做限制
         :param is_change_frame_rate: 是否统一改变音频为16000Hz，这会消耗大量的时间
-        :param create_test_manifest: 是否生成测试数据列表
+        :param max_test_manifest: 生成测试数据列表的最大数量，如果annotation_path包含了test.txt，就全部使用test.txt的数据
         """
         print('开始生成数据列表...')
         create_manifest(annotation_path=annotation_path,
                         train_manifest_path=self.train_manifest,
                         test_manifest_path=self.test_manifest,
                         is_change_frame_rate=is_change_frame_rate,
-                        create_test_manifest=create_test_manifest)
+                        max_test_manifest=max_test_manifest)
         print('=' * 70)
         print('开始生成噪声数据列表...')
         create_noise(path=noise_path,
@@ -183,11 +184,11 @@ class PPASRTrainer(object):
         return cer_result
 
     def train(self,
-              batch_size=32,
+              batch_size=64,
               min_duration=0,
               max_duration=20,
               num_epoch=50,
-              learning_rate=1e-5,
+              learning_rate=5e-4,
               save_model_path='models/',
               resume_model=None,
               pretrained_model=None,
@@ -208,7 +209,7 @@ class PPASRTrainer(object):
         nranks = paddle.distributed.get_world_size()
         local_rank = paddle.distributed.get_rank()
         if local_rank == 0:
-            fuzzy_delete('log', 'vdlrecords')
+            # fuzzy_delete('log', 'vdlrecords')
             # 日志记录器
             writer = LogWriter(logdir='log')
         if nranks > 1:
@@ -229,23 +230,30 @@ class PPASRTrainer(object):
                                      augmentation_config=augmentation_config)
         # 设置支持多卡训练
         if nranks > 1:
-            train_batch_sampler = SortagradDistributedBatchSampler(train_dataset, batch_size=batch_size,
+            train_batch_sampler = SortagradDistributedBatchSampler(train_dataset,
+                                                                   batch_size=batch_size,
+                                                                   sortagrad=True,
+                                                                   drop_last=True,
                                                                    shuffle=True)
         else:
-            train_batch_sampler = SortagradBatchSampler(train_dataset, batch_size=batch_size, shuffle=True)
+            train_batch_sampler = SortagradBatchSampler(train_dataset,
+                                                        batch_size=batch_size,
+                                                        sortagrad=True,
+                                                        drop_last=True,
+                                                        shuffle=True)
         train_loader = DataLoader(dataset=train_dataset,
                                   collate_fn=collate_fn,
                                   batch_sampler=train_batch_sampler,
                                   num_workers=self.num_workers)
         # 获取测试数据
-        test_dataset = PPASRDataset(self.test_manifest, self.dataset_vocab, mean_std_filepath=self.mean_std_path)
-        test_batch_sampler = SortagradBatchSampler(test_dataset, batch_size=batch_size)
+        test_dataset = PPASRDataset(self.test_manifest, self.dataset_vocab,
+                                    mean_std_filepath=self.mean_std_path,
+                                    min_duration=min_duration,
+                                    max_duration=max_duration)
         test_loader = DataLoader(dataset=test_dataset,
+                                 batch_size=batch_size,
                                  collate_fn=collate_fn,
-                                 batch_sampler=test_batch_sampler,
                                  num_workers=self.num_workers)
-
-        # paddle.nn.initializer.set_global_initializer(paddle.nn.initializer.KaimingNormal(), paddle.nn.initializer.KaimingUniform())
 
         # 获取模型
         if self.use_model == 'deepspeech2':
@@ -254,15 +262,12 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：%s' % self.use_model)
 
         # 设置优化方法
-        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=400.0)
-        # 获取预训练的epoch数
-        last_epoch = int(re.findall(r'\d+', resume_model)[-1]) if resume_model is not None else 0
-        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.83,
-                                                         last_epoch=last_epoch - 1)
-        optimizer = paddle.optimizer.Adam(parameters=model.parameters(),
-                                          learning_rate=scheduler,
-                                          weight_decay=paddle.regularizer.L2Decay(1e-06),
-                                          grad_clip=grad_clip)
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
+        scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.93)
+        optimizer = paddle.optimizer.AdamW(parameters=model.parameters(),
+                                           learning_rate=scheduler,
+                                           weight_decay=5e-4,
+                                           grad_clip=grad_clip)
 
         # 设置支持多卡训练
         if nranks > 1:
@@ -288,111 +293,144 @@ class PPASRTrainer(object):
             print('[{}] 成功加载预训练模型：{}'.format(datetime.now(), pretrained_model))
 
         # 加载恢复模型
-        if resume_model is not None:
+        last_epoch = 0
+        last_model_dir = os.path.join(save_model_path, self.use_model, 'last_model')
+        if resume_model is not None or (os.path.exists(os.path.join(last_model_dir, 'model.pdparams'))
+                                        and os.path.exists(os.path.join(last_model_dir, 'optimizer.pdopt'))):
+            # 自动获取最新保存的模型
+            if resume_model is None: resume_model = last_model_dir
             assert os.path.exists(os.path.join(resume_model, 'model.pdparams')), "模型参数文件不存在！"
             assert os.path.exists(os.path.join(resume_model, 'optimizer.pdopt')), "优化方法参数文件不存在！"
             model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
             optimizer.set_state_dict(paddle.load(os.path.join(resume_model, 'optimizer.pdopt')))
+            with open(os.path.join(resume_model, 'model.state'), 'r', encoding='utf-8') as f:
+                last_epoch = json.load(f)['last_epoch'] - 1
             print('[{}] 成功恢复模型参数和优化方法参数：{}'.format(datetime.now(), resume_model))
 
         # 获取损失函数
         ctc_loss = paddle.nn.CTCLoss(reduction='none')
 
-        train_step = 0
-        test_step = 0
+        test_step, train_step = 0, 0
+        best_test_cer = 1
         sum_batch = len(train_loader) * num_epoch
-        # 开始训练
-        for epoch in range(last_epoch, num_epoch):
-            epoch += 1
-            start_epoch = time.time()
-            start = time.time()
-            for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
-                out, out_lens = model(inputs, input_lens)
-                out = paddle.transpose(out, perm=[1, 0, 2])
-
-                # 计算损失
-                loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
-                loss = loss.mean()
-                loss.backward()
-                optimizer.step()
-                optimizer.clear_grad()
-
-                # 多卡训练只使用一个进程打印
-                if batch_id % 100 == 0 and local_rank == 0:
-                    eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
-                    eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
-                    print(
-                        '[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
-                            datetime.now(), epoch, num_epoch, batch_id, len(train_loader), loss.numpy()[0],
-                            scheduler.get_lr(), eta_str))
-                    writer.add_scalar('Train loss', loss, train_step)
-                    train_step += 1
-                # 固定步数也要保存一次模型
-                if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
-                    self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
-                                    optimizer=optimizer)
+        try:
+            # 开始训练
+            for epoch in range(last_epoch, num_epoch):
+                epoch += 1
+                start_epoch = time.time()
                 start = time.time()
+                for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(train_loader()):
+                    out, out_lens = model(inputs, input_lens)
+                    out = paddle.transpose(out, perm=[1, 0, 2])
 
-            # 多卡训练只使用一个进程执行评估和保存模型
+                    # 计算损失
+                    loss = ctc_loss(out, labels, out_lens, label_lens)
+                    loss = loss.mean()
+                    loss.backward()
+                    optimizer.step()
+                    optimizer.clear_grad()
+
+                    # 多卡训练只使用一个进程打印
+                    if batch_id % 100 == 0 and local_rank == 0:
+                        eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
+                        eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
+                        print(
+                            '[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
+                                datetime.now(), epoch, num_epoch, batch_id, len(train_loader), loss.numpy()[0],
+                                scheduler.get_lr(), eta_str))
+                        writer.add_scalar('Train loss', loss, train_step)
+                        train_step += 1
+                    # 固定步数也要保存一次模型
+                    if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
+                        self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch,
+                                        model=model, optimizer=optimizer)
+                    start = time.time()
+
+                # 多卡训练只使用一个进程执行评估和保存模型
+                if local_rank == 0:
+                    # 执行评估
+                    model.eval()
+                    print('\n', '=' * 70)
+                    c, l = self.__test(model, test_loader, test_dataset.vocab_list, ctc_loss)
+                    print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, cer: {:.5f}'.format(
+                        datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, c))
+                    print('=' * 70, '\n')
+                    writer.add_scalar('Test cer', c, test_step)
+                    writer.add_scalar('Test loss', l, test_step)
+                    test_step += 1
+                    model.train()
+
+                    # 记录学习率
+                    writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
+                    # 保存最优模型
+                    if c <= best_test_cer:
+                        best_test_cer = c
+                        self.save_model(save_model_path=save_model_path, use_model=self.use_model, model=model,
+                                        optimizer=optimizer, epoch=epoch, test_cer=c, test_loss=l, best_model=True)
+                    # 保存模型
+                    self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
+                                    test_cer=c, test_loss=l, optimizer=optimizer)
+                scheduler.step()
+        except KeyboardInterrupt:
+            # Ctrl+C退出时保存模型
             if local_rank == 0:
-                # 执行评估
-                model.eval()
-                print('\n', '=' * 70)
-                c, l = self.__test(model, test_loader, test_dataset.vocab_list, ctc_loss)
-                print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, cer: {:.5f}'.format(
-                    datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, c))
-                print('=' * 70, '\n')
-                writer.add_scalar('Test cer', c, test_step)
-                test_step += 1
-                model.train()
-
-                # 记录学习率
-                writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
-
-                # 保存模型
                 self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
                                 optimizer=optimizer)
-            scheduler.step()
 
     # 评估模型
     @paddle.no_grad()
     def __test(self, model, test_loader, vocabulary, ctc_loss):
-        c, l = [], []
+        cer_result, test_loss = [], []
         for batch_id, (inputs, labels, input_lens, label_lens) in enumerate(test_loader()):
             # 执行识别
             outs, out_lens = model(inputs, input_lens)
             out = paddle.transpose(outs, perm=[1, 0, 2])
             # 计算损失
-            loss = ctc_loss(out, labels, out_lens, label_lens, norm_by_times=True)
+            loss = ctc_loss(out, labels, out_lens, label_lens)
             loss = loss.mean().numpy()[0]
-            l.append(loss)
+            test_loss.append(loss)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
             out_strings = greedy_decoder_batch(outs.numpy(), vocabulary)
             labels_str = labels_to_string(labels.numpy(), vocabulary)
+            cer_batch = []
             for out_string, label in zip(*(out_strings, labels_str)):
                 # 计算字错率
-                c.append(cer(out_string, label) / float(len(label)))
-            if batch_id % 100 == 0:
+                c = cer(out_string, label) / float(len(label))
+                cer_result.append(c)
+                cer_batch.append(c)
+            if batch_id % 10 == 0:
                 print('[{}] Test batch: [{}/{}], loss: {:.5f}, cer: {:.5f}'.format(datetime.now(), batch_id,
                                                                                    len(test_loader),
-                                                                                   loss, float(sum(c) / len(c))))
-        c = float(sum(c) / len(c))
-        l = float(sum(l) / len(l))
-        return c, l
+                                                                                   loss, float(sum(cer_batch) / len(cer_batch))))
+        cer_result = float(sum(cer_result) / len(cer_result))
+        test_loss = float(sum(test_loss) / len(test_loss))
+        return cer_result, test_loss
 
     # 保存模型
     @staticmethod
-    def save_model(save_model_path, use_model, epoch, model, optimizer):
-        model_path = os.path.join(save_model_path, use_model, 'epoch_%d' % epoch)
-        if not os.path.exists(model_path):
-            os.makedirs(model_path)
-        paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
-        paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
-        # 删除旧的模型
-        old_model_path = os.path.join(save_model_path, use_model, 'epoch_%d' % (epoch - 3))
-        if os.path.exists(old_model_path):
-            shutil.rmtree(old_model_path)
+    def save_model(save_model_path, use_model, epoch, model, optimizer, test_cer=-1., test_loss=-1., best_model=False):
+        if not best_model:
+            model_path = os.path.join(save_model_path, use_model, 'epoch_%d' % epoch)
+            os.makedirs(model_path, exist_ok=True)
+            paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
+            paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
+            with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
+                f.write('{"last_epoch": %d, "test_cer": %f, "test_loss": %f}' % (epoch, test_cer, test_loss))
+            last_model_path = os.path.join(save_model_path, use_model, 'last_model')
+            shutil.rmtree(last_model_path, ignore_errors=True)
+            shutil.copytree(model_path, last_model_path)
+            # 删除旧的模型
+            old_model_path = os.path.join(save_model_path, use_model, 'epoch_%d' % (epoch - 3))
+            if os.path.exists(old_model_path):
+                shutil.rmtree(old_model_path)
+        else:
+            model_path = os.path.join(save_model_path, use_model, 'best_model')
+            paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
+            paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
+            with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
+                f.write('{"last_epoch": %d, "test_cer": %f, "test_loss": %f}' % (epoch, test_cer, test_loss))
+        print('[{}] 已保存模型：{}'.format(datetime.now(), model_path))
 
     def export(self, save_model_path='models/', resume_model='models/deepspeech2/epoch_50'):
         """
@@ -428,8 +466,7 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：%s' % self.use_model)
 
         infer_model_dir = os.path.join(save_model_path, self.use_model, 'infer')
-        if not os.path.exists(infer_model_dir):
-            os.makedirs(infer_model_dir)
+        os.makedirs(infer_model_dir, exist_ok=True)
         infer_model_path = os.path.join(infer_model_dir, 'model')
         paddle.jit.save(layer=model, path=infer_model_path, input_spec=input_spec)
         print("预测模型已保存：%s" % infer_model_dir)

@@ -69,7 +69,7 @@ class FeatureNormalizer(object):
     def _compute_mean_std(self, manifest_path, num_samples, num_workers):
         """从随机抽样的实例中计算均值和标准值"""
         manifest = read_manifest(manifest_path)
-        if num_samples < 0:
+        if num_samples < 0 or num_samples > len(manifest):
             sampled_manifest = manifest
         else:
             sampled_manifest = self._rng.sample(manifest, num_samples)

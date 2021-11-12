@@ -18,6 +18,7 @@ PPASR（最终级）基于PaddlePaddle2实现的端到端自动语音识别，�
 
 ## 更新记录
 
+ - 2021.11.09: 增加制作WenetSpeech数据集脚本和文档。
  - 2021.10.10: 提供三个公开数据集的DeepSpeech2预训练模型下载。
  - 2021.09.30: 在导出模型时，把归一化放在模型用，推理时直接在模型中完成数据归一化，不需要额外对数据归一化再输入到网络模型中。
  - 2021.09.18: 初步完成基本程序。
@@ -39,6 +40,7 @@ PPASR（最终级）基于PaddlePaddle2实现的端到端自动语音识别，�
 
 - [快速安装](./docs/install.md)
 - [数据准备](./docs/dataset.md)
+- [WenetSpeech数据集](./docs/wenetspeech.md)
 - [合成语音数据](./docs/generate_audio.md)
 - [数据增强](./docs/augment.md)
 - [训练模型](./docs/train.md)
@@ -104,3 +106,9 @@ python infer_path.py --wav_path=./dataset/test_vad.wav --is_long_audio=True
  - 基于PaddlePaddle实现的声纹识别：[VoiceprintRecognition-PaddlePaddle](https://github.com/yeyupiaoling/VoiceprintRecognition-PaddlePaddle)
  - 基于PaddlePaddle静态图实现的语音识别：[PaddlePaddle-DeepSpeech](https://github.com/yeyupiaoling/PaddlePaddle-DeepSpeech)
  - 基于Pytorch实现的语音识别：[MASR](https://github.com/yeyupiaoling/MASR)
+
+
+## 参考资料
+ - https://github.com/paddlePaddle/DeepSpeech
+ - https://github.com/paddlePaddle/DeepSpeech
+ - https://github.com/wenet-e2e/WenetSpeech

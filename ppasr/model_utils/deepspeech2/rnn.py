@@ -19,7 +19,7 @@ class RNNForward(nn.Layer):
 
 
 class RNNStack(nn.Layer):
-    """RNN组与堆叠双向简单RNN或GRU层
+    """堆叠单向GRU层
 
     :param i_size: GRU层的输入大小
     :type i_size: int

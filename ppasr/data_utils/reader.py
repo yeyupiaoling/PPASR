@@ -11,7 +11,7 @@ from ppasr.data_utils.speech import SpeechSegment
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, vocab_filepath, mean_std_filepath, min_duration=0, max_duration=30,
+    def __init__(self, data_list, vocab_filepath, mean_std_filepath, min_duration=0, max_duration=20,
                  augmentation_config='{}'):
         super(PPASRDataset, self).__init__()
         self._normalizer = FeatureNormalizer(mean_std_filepath)

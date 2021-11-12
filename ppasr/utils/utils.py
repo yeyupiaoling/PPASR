@@ -46,12 +46,13 @@ def fuzzy_delete(dir, fuzzy_str):
 
 
 # 创建数据列表
-def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is_change_frame_rate=True, create_test_manifest=True):
+def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is_change_frame_rate=True, max_test_manifest=10000):
     data_list = []
+    test_list = []
     durations = []
     for annotation_text in os.listdir(annotation_path):
-        annotation_text = os.path.join(annotation_path, annotation_text)
-        with open(annotation_text, 'r', encoding='utf-8') as f:
+        annotation_text_path = os.path.join(annotation_path, annotation_text)
+        with open(annotation_text_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         for line in tqdm(lines):
             audio_path = line.split('\t')[0]
@@ -68,17 +69,26 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
             text = convert(text, 'zh-cn')
             # 加入数据列表中
             line = '{"audio_filepath":"%s", "duration":%.2f, "text":"%s"}' % (audio_path.replace('\\', '/'), duration, text)
-            data_list.append(line)
+            if annotation_text == 'test.txt':
+                test_list.append(line)
+            else:
+                data_list.append(line)
 
     # 按照音频长度降序
     data_list.sort(key=lambda x: json.loads(x)["duration"], reverse=True)
+    if len(test_list) > 0:
+        test_list.sort(key=lambda x: json.loads(x)["duration"], reverse=True)
     # 数据写入到文件中
     f_train = open(train_manifest_path, 'w', encoding='utf-8')
-    if create_test_manifest:
-        f_test = open(test_manifest_path, 'w', encoding='utf-8')
+    f_test = open(test_manifest_path, 'w', encoding='utf-8')
+    for line in test_list:
+        f_test.write(line + '\n')
+    interval = 500
+    if len(data_list) / 500 > max_test_manifest:
+        interval = len(data_list) // max_test_manifest
     for i, line in enumerate(data_list):
-        if i % 500 == 0:
-            if create_test_manifest:
+        if i % interval == 0:
+            if len(test_list) == 0:
                 f_test.write(line + '\n')
             else:
                 f_train.write(line + '\n')

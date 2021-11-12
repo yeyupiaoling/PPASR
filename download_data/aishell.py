@@ -24,7 +24,11 @@ def create_annotation_text(data_dir, annotation_path):
     print('Create Aishell annotation text ...')
     if not os.path.exists(annotation_path):
         os.makedirs(annotation_path)
-    f_a = open(os.path.join(annotation_path, 'aishell.txt'), 'w', encoding='utf-8')
+    f_train = open(os.path.join(annotation_path, 'aishell.txt'), 'w', encoding='utf-8')
+    if not os.path.exists(os.path.join(annotation_path, 'test.txt')):
+        f_test = open(os.path.join(annotation_path, 'test.txt'), 'w', encoding='utf-8')
+    else:
+        f_test = open(os.path.join(annotation_path, 'test.txt'), 'a', encoding='utf-8')
     transcript_path = os.path.join(data_dir, 'transcript', 'aishell_transcript_v0.8.txt')
     transcript_dict = {}
     for line in open(transcript_path, 'r', encoding='utf-8'):
@@ -34,7 +38,7 @@ def create_annotation_text(data_dir, annotation_path):
         # remove space
         text = ''.join(text.split())
         transcript_dict[audio_id] = text
-    data_types = ['train', 'dev', 'test']
+    data_types = ['train', 'dev']
     for type in data_types:
         audio_dir = os.path.join(data_dir, 'wav', type)
         for subfolder, _, filelist in sorted(os.walk(audio_dir)):
@@ -45,8 +49,18 @@ def create_annotation_text(data_dir, annotation_path):
                 if audio_id not in transcript_dict:
                     continue
                 text = transcript_dict[audio_id]
-                f_a.write(audio_path[3:] + '\t' + text + '\n')
-    f_a.close()
+                f_train.write(audio_path[3:] + '\t' + text + '\n')
+    audio_dir = os.path.join(data_dir, 'wav', 'test')
+    for subfolder, _, filelist in sorted(os.walk(audio_dir)):
+        for fname in filelist:
+            audio_path = os.path.join(subfolder, fname)
+            audio_id = fname[:-4]
+            # if no transcription for audio then skipped
+            if audio_id not in transcript_dict:
+                continue
+            text = transcript_dict[audio_id]
+            f_test.write(audio_path[3:] + '\t' + text + '\n')
+    f_train.close()
 
 
 def prepare_dataset(url, md5sum, target_dir, annotation_path):

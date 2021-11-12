@@ -13,10 +13,38 @@ from ppasr.decoders.ctc_greedy_decoder import greedy_decoder
 
 
 class Predictor:
-    def __init__(self, model_dir, vocab_path, num_rnn_layers=3, rnn_size=1024, decoder='ctc_greedy',
-                 alpha=1.2, beta=0.35, lang_model_path=None, beam_size=10, cutoff_prob=1.0, cutoff_top_n=40,
-                 use_gpu=True, gpu_mem=500, num_threads=10):
+    def __init__(self,
+                 model_dir,
+                 vocab_path,
+                 use_model='deepspeech2',
+                 decoder='ctc_greedy',
+                 alpha=1.2,
+                 beta=0.35,
+                 lang_model_path=None,
+                 beam_size=10,
+                 cutoff_prob=1.0,
+                 cutoff_top_n=40,
+                 use_gpu=True,
+                 gpu_mem=500,
+                 num_threads=10):
+        """
+        语音识别预测工具
+        :param model_dir: 导出的预测模型文件夹路径
+        :param vocab_path: 数据集的词汇表文件路径
+        :param use_model: 所使用的模型
+        :param decoder: 结果解码方法，有集束搜索(ctc_beam_search)、贪婪策略(ctc_greedy)
+        :param alpha: 集束搜索解码相关参数，LM系数
+        :param beta: 集束搜索解码相关参数，WC系数
+        :param lang_model_path: 集束搜索解码相关参数，语言模型文件路径
+        :param beam_size: 集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]
+        :param cutoff_prob: 集束搜索解码相关参数，剪枝的概率
+        :param cutoff_top_n: 集束搜索解码相关参数，剪枝的最大值
+        :param use_gpu: 是否使用GPU预测
+        :param gpu_mem: 预先分配的GPU显存大小
+        :param num_threads: 只用CPU预测的线程数量
+        """
         self.decoder = decoder
+        self.use_model = use_model
         self.alpha = alpha
         self.beta = beta
         self.lang_model_path = lang_model_path
@@ -24,8 +52,6 @@ class Predictor:
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
-        self.num_rnn_layers = num_rnn_layers
-        self.rnn_size = rnn_size
         self.lac = None
         self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
         self._audio_featurizer = AudioFeaturizer()
@@ -96,7 +122,21 @@ class Predictor:
         return score, text
 
     # 预测图片
-    def predict(self, audio_path=None, audio_bytes=None, audio_ndarray=None, init_state_h_box=None, to_an=False):
+    def predict(self,
+                audio_path=None,
+                audio_bytes=None,
+                audio_ndarray=None,
+                init_state_h_box=None,
+                to_an=False):
+        """
+        预测函数
+        :param audio_path: 需要预测音频的路径
+        :param audio_bytes: 需要预测的音频wave读取的字节流
+        :param audio_ndarray: 需要预测的音频未预处理的numpy值
+        :param init_state_h_box: 模型上次输出的状态，如果不是流式识别，这个为None
+        :param to_an: 是否转为阿拉伯数字
+        :return: 识别的文本结果和解码的得分数
+        """
         assert audio_path is not None or audio_bytes is not None or audio_ndarray is not None, \
             'audio_path，audio_bytes和audio_ndarray至少有一个不为None！'
         # 加载音频文件，并进行预处理
@@ -118,7 +158,7 @@ class Predictor:
 
         if init_state_h_box is None:
             # 对RNN层的initial_states全零初始化
-            init_state_h_box = np.zeros(shape=(self.num_rnn_layers, audio_data.shape[0], self.rnn_size)).astype('float32')
+            init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
         self.init_state_h_box_handle.reshape(init_state_h_box.shape)
         self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
 
