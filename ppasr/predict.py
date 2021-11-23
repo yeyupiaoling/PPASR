@@ -61,7 +61,7 @@ class Predictor:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
                 self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self._text_featurizer.vocab_list)
             except ModuleNotFoundError:
-                raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greed。')
+                raise Exception('缺少swig_decoders库，请根据文档安装，如果是Windows系统，请使用ctc_greed。')
 
         # 创建 config
         model_path = os.path.join(model_dir, 'model.pdmodel')

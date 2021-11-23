@@ -9,7 +9,7 @@ def greedy_decoder(probs_seq, vocabulary, blank_index=0):
     由最可能的令牌组成的路径将被进一步后处理到去掉连续重复和所有空白
 
     :param probs_seq: 每一条都是2D的概率表。每个元素都是浮点数概率的列表一个字符
-    :type probs_seq: list
+    :type probs_seq: numpy.ndarray
     :param vocabulary: 词汇列表
     :type vocabulary: list
     :param blank_index 需要移除的空白索引

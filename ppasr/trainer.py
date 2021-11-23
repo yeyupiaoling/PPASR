@@ -152,7 +152,7 @@ class PPASRTrainer(object):
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
                 beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, test_dataset.vocab_list)
             except ModuleNotFoundError:
-                raise Exception('缺少ctc_decoders库，请在decoders目录中安装ctc_decoders库，如果是Windows系统，请使用ctc_greedy。')
+                raise Exception('缺少swig_decoders库，请根据文档安装，如果是Windows系统，请使用ctc_greedy。')
 
         # 执行解码
         def decoder_result(outs, vocabulary):
@@ -260,7 +260,10 @@ class PPASRTrainer(object):
             model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
         else:
             raise Exception('没有该模型：%s' % self.use_model)
-
+        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+                      paddle.to_tensor(200, dtype=paddle.int64),
+                      paddle.zeros([model.num_rnn_layers, 1, model.rnn_size], dtype=paddle.float32)]
+        # paddle.summary(net=model, input=input_data)
         # 设置优化方法
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.93)
@@ -312,7 +315,9 @@ class PPASRTrainer(object):
 
         test_step, train_step = 0, 0
         best_test_cer = 1
+        train_times = []
         sum_batch = len(train_loader) * num_epoch
+        writer.add_scalar('Train/lr', scheduler.last_lr, last_epoch)
         try:
             # 开始训练
             for epoch in range(last_epoch, num_epoch):
@@ -329,16 +334,14 @@ class PPASRTrainer(object):
                     loss.backward()
                     optimizer.step()
                     optimizer.clear_grad()
-
+                    train_times.append((time.time() - start) * 1000)
                     # 多卡训练只使用一个进程打印
                     if batch_id % 100 == 0 and local_rank == 0:
-                        eta_sec = ((time.time() - start) * 1000) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
+                        eta_sec = (sum(train_times) / len(train_times)) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
                         eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
-                        print(
-                            '[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
-                                datetime.now(), epoch, num_epoch, batch_id, len(train_loader), loss.numpy()[0],
-                                scheduler.get_lr(), eta_str))
-                        writer.add_scalar('Train loss', loss, train_step)
+                        print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
+                                datetime.now(), epoch, num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
+                        writer.add_scalar('Train/Loss', loss, train_step)
                         train_step += 1
                     # 固定步数也要保存一次模型
                     if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
@@ -355,13 +358,13 @@ class PPASRTrainer(object):
                     print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, cer: {:.5f}'.format(
                         datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, c))
                     print('=' * 70, '\n')
-                    writer.add_scalar('Test cer', c, test_step)
-                    writer.add_scalar('Test loss', l, test_step)
+                    writer.add_scalar('Test/Cer', c, test_step)
+                    writer.add_scalar('Test/Loss', l, test_step)
                     test_step += 1
                     model.train()
 
                     # 记录学习率
-                    writer.add_scalar('Learning rate', scheduler.last_lr, epoch)
+                    writer.add_scalar('Train/lr', scheduler.last_lr, epoch)
                     # 保存最优模型
                     if c <= best_test_cer:
                         best_test_cer = c

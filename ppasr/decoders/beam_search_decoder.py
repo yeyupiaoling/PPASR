@@ -1,5 +1,5 @@
-from ctc_decoders.swig_wrapper import Scorer
-from ctc_decoders.swig_wrapper import ctc_beam_search_decoder_batch, ctc_beam_search_decoder
+from ppasr.decoders.swig_wrapper import Scorer
+from ppasr.decoders.swig_wrapper import ctc_beam_search_decoder_batch, ctc_beam_search_decoder
 
 
 class BeamSearchDecoder:

@@ -1,17 +1,9 @@
 # 集束搜索解码
 
-本项目目前支持两种解码方法，分别是集束搜索(ctc_beam_search)和贪婪策略(ctc_greedy)，项目全部默认都是使用贪婪策略解码的，集束搜索解码只支持Linux，如果要使用集束搜索方法，首先要安装`ctc_decoders`库，项目中作者提供了编译好的`ctc_decoders`库，执行项目命令即可安装完成。
+本项目目前支持两种解码方法，分别是集束搜索(ctc_beam_search)和贪婪策略(ctc_greedy)，项目全部默认都是使用贪婪策略解码的，集束搜索解码只支持Linux且Python为3.7的，如果要使用集束搜索方法，首先要安装`ctc_decoders`库，执行以下命令即可安装完成。
 ```shell
-cd tools
-pip3 install swig_decoders-1.2-cp37-cp37m-linux_x86_64.whl
+pip3 install paddlespeech-ctcdecoders==0.0.2a0
 ```
-
-如果不能正常安装，就需要自行编译`ctc_decoders`库，该编译只支持Ubuntu，其他Linux版本没测试过，执行下面命令完成编译。
-```shell
-cd ppasr/decoders
-sh setup.sh
-```
-
 
 # 语言模型
 
