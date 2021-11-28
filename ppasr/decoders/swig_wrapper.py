@@ -58,7 +58,7 @@ def ctc_beam_search_decoder(probs_seq,
     :param blank_id 空白索引
     :type blank_id int
     :param ext_scoring_func: 外部评分功能部分解码句子，如字计数或语言模型
-    :type external_scoring_func: callable
+    :type ext_scoring_func: callable
     :return: 解码结果为log概率和句子的元组列表，按概率降序排列
     :rtype: list
     """

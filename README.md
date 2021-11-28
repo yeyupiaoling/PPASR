@@ -1,4 +1,4 @@
-# PPASR语音识别（最终级）
+# PPASR语音识别
 
 ![python version](https://img.shields.io/badge/python-3.7+-orange.svg)
 ![GitHub forks](https://img.shields.io/github/forks/yeyupiaoling/PPASR)
@@ -6,14 +6,12 @@
 ![GitHub](https://img.shields.io/github/license/yeyupiaoling/PPASR)
 ![支持系统](https://img.shields.io/badge/支持系统-Win/Linux/MAC-9cf)
 
-本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级，持续维护版本。
-
-PPASR（最终级）基于PaddlePaddle2实现的端到端自动语音识别，相比进阶级，最终级完善了部署上，使该项目能够在各个设备上部署使用。
+本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级，持续维护版本。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。
 
 本项目使用的环境：
  - Anaconda 3
  - Python 3.7
- - PaddlePaddle 2.1.3
+ - PaddlePaddle 2.2.0
  - Windows 10 or Ubuntu 18.04
 
 ## 更新记录
@@ -26,7 +24,7 @@ PPASR（最终级）基于PaddlePaddle2实现的端到端自动语音识别，�
 ## 模型下载
 | 数据集 | 使用模型 | 测试集字错率 | 下载地址 |
 | :---: | :---: | :---: | :---: |
-| aishell(179小时) | deepspeech2 | 0.094837 | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
+| aishell(179小时) | deepspeech2 | 0.122783 | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
 | free_st_chinese_mandarin_corpus(109小时) | deepspeech2 | 0.171830 | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
 | thchs_30(34小时) | deepspeech2 | 0.011276 | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
 | 超大数据集(1600多小时真实数据)+(1300多小时合成数据) | deepspeech2 | 训练中 | [训练中]() |
@@ -109,6 +107,6 @@ python infer_path.py --wav_path=./dataset/test_vad.wav --is_long_audio=True
 
 
 ## 参考资料
- - https://github.com/paddlePaddle/DeepSpeech
- - https://github.com/paddlePaddle/DeepSpeech
+ - https://github.com/PaddlePaddle/PaddleSpeech
+ - https://github.com/jiwidi/DeepSpeech-pytorch
  - https://github.com/wenet-e2e/WenetSpeech

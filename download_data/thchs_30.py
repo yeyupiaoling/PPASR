@@ -24,34 +24,16 @@ def create_annotation_text(data_dir, annotation_path):
     if not os.path.exists(annotation_path):
         os.makedirs(annotation_path)
     print('Create THCHS-30 annotation text ...')
-    f_train = open(os.path.join(annotation_path, 'thchs_30.txt'), 'w', encoding='utf-8')
-    if not os.path.exists(os.path.join(annotation_path, 'test.txt')):
-        f_test = open(os.path.join(annotation_path, 'test.txt'), 'w', encoding='utf-8')
-    else:
-        f_test = open(os.path.join(annotation_path, 'test.txt'), 'a', encoding='utf-8')
-    data_types = ['train', 'dev']
-    for type in data_types:
-        for file in os.listdir(os.path.join(data_dir, type)):
-            if '.trn' in file:
-                file = os.path.join(data_dir, type, file)
-                with open(file, 'r', encoding='utf-8') as f:
-                    line = f.readline()
-                    line = ''.join(line.split())
-                with open(os.path.join(data_dir, type, line), 'r', encoding='utf-8') as f:
-                    line = f.readline()
-                    line = ''.join(line.split())
-                f_train.write(file[3:-4] + '\t' + line + '\n')
-    for file in os.listdir(os.path.join(data_dir, 'test')):
+    f_a = open(os.path.join(annotation_path, 'thchs_30.txt'), 'w', encoding='utf-8')
+    data_path = 'data'
+    for file in os.listdir(os.path.join(data_dir, data_path)):
         if '.trn' in file:
-            file = os.path.join(data_dir, 'test', file)
+            file = os.path.join(data_dir, data_path, file)
             with open(file, 'r', encoding='utf-8') as f:
                 line = f.readline()
                 line = ''.join(line.split())
-            with open(os.path.join(data_dir, 'test', line), 'r', encoding='utf-8') as f:
-                line = f.readline()
-                line = ''.join(line.split())
-            f_test.write(file[3:-4] + '\t' + line + '\n')
-    f_train.close()
+            f_a.write(file[3:-4] + '\t' + line + '\n')
+    f_a.close()
 
 
 def prepare_dataset(url, md5sum, target_dir, annotation_path):

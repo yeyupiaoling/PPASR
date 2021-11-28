@@ -249,6 +249,8 @@ class AudioSegment(object):
         :type speed_rate: float
         :raises ValueError: If speed_rate <= 0.0.
         """
+        if speed_rate == 1.0:
+            return
         if speed_rate <= 0:
             raise ValueError("速度速率应大于零")
         old_length = self._samples.shape[0]

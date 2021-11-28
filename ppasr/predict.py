@@ -61,7 +61,11 @@ class Predictor:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
                 self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self._text_featurizer.vocab_list)
             except ModuleNotFoundError:
-                raise Exception('缺少swig_decoders库，请根据文档安装，如果是Windows系统，请使用ctc_greed。')
+                print('\n==================================================================', file=sys.stderr)
+                print('缺少swig_decoders库，请根据文档安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
+                print('【注意】已自动切换为ctc_greedy解码器。', file=sys.stderr)
+                print('==================================================================\n', file=sys.stderr)
+                self.decoder = 'ctc_greedy'
 
         # 创建 config
         model_path = os.path.join(model_dir, 'model.pdmodel')

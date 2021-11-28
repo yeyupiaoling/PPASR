@@ -1,7 +1,6 @@
 import io
 import json
 import os
-import re
 import shutil
 import sys
 import time
@@ -9,7 +8,6 @@ from collections import Counter
 from datetime import datetime
 from datetime import timedelta
 
-import numpy as np
 import paddle
 from paddle.distributed import fleet
 from paddle.io import DataLoader
@@ -27,7 +25,7 @@ from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
 from ppasr.model_utils.utils import DeepSpeech2ModelExport
 from ppasr.utils.metrics import cer
-from ppasr.utils.utils import fuzzy_delete, create_manifest, create_noise, count_manifest, compute_mean_std
+from ppasr.utils.utils import create_manifest, create_noise, count_manifest, compute_mean_std
 from ppasr.utils.utils import labels_to_string
 
 
@@ -38,7 +36,15 @@ class PPASRTrainer(object):
                  train_manifest='dataset/manifest.train',
                  test_manifest='dataset/manifest.test',
                  dataset_vocab='dataset/vocabulary.txt',
-                 num_workers=8):
+                 num_workers=8,
+                 alpha=2.2,
+                 beta=4.3,
+                 beam_size=300,
+                 num_proc_bsearch=10,
+                 cutoff_prob=0.99,
+                 cutoff_top_n=40,
+                 decoder='ctc_greedy',
+                 lang_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm'):
         """
         PPASR集成工具类
         :param use_model: 所使用的模型
@@ -47,6 +53,14 @@ class PPASRTrainer(object):
         :param test_manifest: 测试数据的数据列表路径
         :param dataset_vocab: 数据字典的路径
         :param num_workers: 读取数据的线程数量
+        :param alpha: 集束搜索的LM系数
+        :param beta: 集束搜索的WC系数
+        :param beam_size: 集束搜索的大小，范围:[5, 500]
+        :param num_proc_bsearch: 集束搜索方法使用CPU数量
+        :param cutoff_prob: 剪枝的概率
+        :param cutoff_top_n: 剪枝的最大值
+        :param decoder: 结果解码方法，支持ctc_beam_search和ctc_greedy
+        :param lang_model_path: 语言模型文件路径
         """
         self.use_model = use_model
         self.mean_std_path = mean_std_path
@@ -54,6 +68,15 @@ class PPASRTrainer(object):
         self.test_manifest = test_manifest
         self.dataset_vocab = dataset_vocab
         self.num_workers = num_workers
+        self.alpha = alpha
+        self.beta = beta
+        self.beam_size = beam_size
+        self.num_proc_bsearch = num_proc_bsearch
+        self.cutoff_prob = cutoff_prob
+        self.cutoff_top_n = cutoff_top_n
+        self.decoder = decoder
+        self.lang_model_path = lang_model_path
+        self.beam_search_decoder = None
 
     def create_data(self,
                     annotation_path='dataset/annotation/',
@@ -105,27 +128,11 @@ class PPASRTrainer(object):
 
     def evaluate(self,
                  batch_size=32,
-                 alpha=1.2,
-                 beta=0.35,
-                 beam_size=10,
-                 num_proc_bsearch=8,
-                 cutoff_prob=1.0,
-                 cutoff_top_n=40,
-                 decoder='ctc_greedy',
-                 resume_model='models/deepspeech2/epoch_50/',
-                 lang_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm'):
+                 resume_model='models/deepspeech2/epoch_50/'):
         """
         评估模型
         :param batch_size: 评估的批量大小
-        :param alpha: 集束搜索的LM系数
-        :param beta: 集束搜索的WC系数
-        :param beam_size: 集束搜索的大小，范围:[5, 500]
-        :param num_proc_bsearch: 集束搜索方法使用CPU数量
-        :param cutoff_prob: 剪枝的概率
-        :param cutoff_top_n: 剪枝的最大值
-        :param decoder: 结果解码方法，支持ctc_beam_search和ctc_greedy
         :param resume_model: 所使用的模型
-        :param lang_model_path: 语言模型文件路径
         :return: 评估结果
         """
         # 获取测试数据
@@ -146,36 +153,13 @@ class PPASRTrainer(object):
         model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
         model.eval()
 
-        # 集束搜索方法的处理
-        if decoder == "ctc_beam_search":
-            try:
-                from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, test_dataset.vocab_list)
-            except ModuleNotFoundError:
-                raise Exception('缺少swig_decoders库，请根据文档安装，如果是Windows系统，请使用ctc_greedy。')
-
-        # 执行解码
-        def decoder_result(outs, vocabulary):
-            if decoder == 'ctc_greedy':
-                result = greedy_decoder_batch(outs, vocabulary)
-            else:
-                result = beam_search_decoder.decode_batch_beam_search(probs_split=outs,
-                                                                      beam_alpha=alpha,
-                                                                      beam_beta=beta,
-                                                                      beam_size=beam_size,
-                                                                      cutoff_prob=cutoff_prob,
-                                                                      cutoff_top_n=cutoff_top_n,
-                                                                      vocab_list=test_dataset.vocab_list,
-                                                                      num_processes=num_proc_bsearch)
-            return result
-
         c = []
         for inputs, labels, input_lens, _ in tqdm(test_loader()):
             # 执行识别
             outs, _, = model(inputs, input_lens)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
-            out_strings = decoder_result(outs.numpy(), test_dataset.vocab_list)
+            out_strings = self.decoder_result(outs.numpy(), test_dataset.vocab_list)
             labels_str = labels_to_string(labels.numpy(), test_dataset.vocab_list)
             for out_string, label in zip(*(out_strings, labels_str)):
                 # 计算字错率
@@ -209,7 +193,6 @@ class PPASRTrainer(object):
         nranks = paddle.distributed.get_world_size()
         local_rank = paddle.distributed.get_rank()
         if local_rank == 0:
-            # fuzzy_delete('log', 'vdlrecords')
             # 日志记录器
             writer = LogWriter(logdir='log')
         if nranks > 1:
@@ -317,6 +300,7 @@ class PPASRTrainer(object):
         best_test_cer = 1
         train_times = []
         sum_batch = len(train_loader) * num_epoch
+        train_batch_sampler.epoch = last_epoch
         writer.add_scalar('Train/lr', scheduler.last_lr, last_epoch)
         try:
             # 开始训练
@@ -343,6 +327,7 @@ class PPASRTrainer(object):
                                 datetime.now(), epoch, num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
                         writer.add_scalar('Train/Loss', loss, train_step)
                         train_step += 1
+                        train_times = []
                     # 固定步数也要保存一次模型
                     if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
                         self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch,
@@ -377,6 +362,7 @@ class PPASRTrainer(object):
         except KeyboardInterrupt:
             # Ctrl+C退出时保存模型
             if local_rank == 0:
+                print('请等一下，正在保存模型...')
                 self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
                                 optimizer=optimizer)
 
@@ -394,7 +380,7 @@ class PPASRTrainer(object):
             test_loss.append(loss)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
-            out_strings = greedy_decoder_batch(outs.numpy(), vocabulary)
+            out_strings = self.decoder_result(outs.numpy(), vocabulary)
             labels_str = labels_to_string(labels.numpy(), vocabulary)
             cer_batch = []
             for out_string, label in zip(*(out_strings, labels_str)):
@@ -434,6 +420,33 @@ class PPASRTrainer(object):
             with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
                 f.write('{"last_epoch": %d, "test_cer": %f, "test_loss": %f}' % (epoch, test_cer, test_loss))
         print('[{}] 已保存模型：{}'.format(datetime.now(), model_path))
+
+    def decoder_result(self, outs, vocabulary):
+        # 集束搜索方法的处理
+        if self.decoder == "ctc_beam_search" and self.beam_search_decoder is None:
+            try:
+                from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
+                self.beam_search_decoder = BeamSearchDecoder(self.alpha, self.beta, self.lang_model_path, vocabulary)
+            except ModuleNotFoundError:
+                print('\n==================================================================', file=sys.stderr)
+                print('缺少swig_decoders库，请根据文档安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
+                print('【注意】已自动切换为ctc_greedy解码器。', file=sys.stderr)
+                print('==================================================================\n', file=sys.stderr)
+                self.decoder = 'ctc_greedy'
+
+        # 执行解码
+        if self.decoder == 'ctc_greedy':
+            result = greedy_decoder_batch(outs, vocabulary)
+        else:
+            result = self.beam_search_decoder.decode_batch_beam_search(probs_split=outs,
+                                                                       beam_alpha=self.alpha,
+                                                                       beam_beta=self.beta,
+                                                                       beam_size=self.beam_size,
+                                                                       cutoff_prob=self.cutoff_prob,
+                                                                       cutoff_top_n=self.cutoff_top_n,
+                                                                       vocab_list=vocabulary,
+                                                                       num_processes=self.num_proc_bsearch)
+        return result
 
     def export(self, save_model_path='models/', resume_model='models/deepspeech2/epoch_50'):
         """

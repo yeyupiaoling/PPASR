@@ -2,7 +2,7 @@
 
  - 训练流程，首先是准备数据集，具体看[数据准备](./dataset.md)部分，重点是执行`create_data.py`程序，执行完成之后检查是否在`dataset`目录下生成了`manifest.test`、`manifest.train`、`mean_std.npz`、`vocabulary.txt`这四个文件，并确定里面已经包含数据。然后才能往下执行开始训练。
 
- - 执行训练脚本，开始训练语音识别模型，详细参数请查看该程序。每训练一轮和每10000个batch都会保存一次模型，模型保存在`models/<use_model>/epoch_*/`目录下，默认会使用数据增强训练，如何不想使用数据增强，只需要将参数`augment_conf_path`设置为`None`即可。关于数据增强，请查看[数据增强](./faq.md)部分。如果没有关闭测试，在每一轮训练结果之后，都会执行一次测试计算模型在测试集的准确率。如果模型文件夹下包含`last_model`文件夹，在训练的时候会自动加载里面的模型，这是为了方便中断训练的之后继续训练，无需手动指定，如果手动指定了`resume_model`参数，则以`resume_model`指定的路径优先加载。如果不是原来的数据集或者模型结构，需要删除`last_model`这个文件夹。
+ - 执行训练脚本，开始训练语音识别模型，详细参数请查看该程序。每训练一轮和每10000个batch都会保存一次模型，模型保存在`models/<use_model>/epoch_*/`目录下，默认会使用数据增强训练，如何不想使用数据增强，只需要将参数`augment_conf_path`设置为`None`即可。关于数据增强，请查看[数据增强](./faq.md)部分。如果没有关闭测试，在每一轮训练结果之后，都会执行一次测试计算模型在测试集的准确率，注意为了加快训练速度，默认使用的是ctc_greedy解码器，如果需要使用ctc_beam_search解码器，请设置`decoder`参数。如果模型文件夹下包含`last_model`文件夹，在训练的时候会自动加载里面的模型，这是为了方便中断训练的之后继续训练，无需手动指定，如果手动指定了`resume_model`参数，则以`resume_model`指定的路径优先加载。如果不是原来的数据集或者模型结构，需要删除`last_model`这个文件夹。
 ```shell
 # 单卡训练
 python3 train.py
@@ -13,14 +13,22 @@ python -m paddle.distributed.launch --gpus '0,1' train.py
 训练输出结果如下：
 ```
 -----------  Configuration Arguments -----------
+alpha: 2.2
 augment_conf_path: conf/augmentation.json
 batch_size: 32
+beam_size: 300
+beta: 4.3
+cutoff_prob: 0.99
+cutoff_top_n: 40
 dataset_vocab: dataset/vocabulary.txt
-learning_rate: 0.001
+decoder: ctc_greedy
+lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
+learning_rate: 5e-05
 max_duration: 20
 mean_std_path: dataset/mean_std.npz
-min_duration: 0
-num_epoch: 50
+min_duration: 0.5
+num_epoch: 65
+num_proc_bsearch: 10
 num_workers: 8
 pretrained_model: None
 resume_model: None

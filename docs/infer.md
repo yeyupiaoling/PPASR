@@ -8,18 +8,20 @@ python infer_path.py --wav_path=./dataset/test.wav
 输出结果：
 ```
 -----------  Configuration Arguments -----------
-alpha: 1.2
-beam_size: 10
-beta: 0.35
-cutoff_prob: 1.0
+alpha: 2.2
+beam_size: 300
+beta: 4.3
+cutoff_prob: 0.99
 cutoff_top_n: 40
-decoding_method: ctc_greedy
+decoder: ctc_beam_search
 is_long_audio: False
-lang_model_path: ./lm/zh_giga.no_cna_cmn.prune01244.klm
-model_dir: ./models/deepspeech2/infer/
+lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
+model_dir: models/deepspeech2/infer/
+real_time_demo: False
 to_an: True
 use_gpu: True
-vocab_path: ./dataset/zh_vocab.txt
+use_model: deepspeech2
+vocab_path: dataset/vocabulary.txt
 wav_path: ./dataset/test.wav
 ------------------------------------------------
 消耗时间：101, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
@@ -35,10 +37,10 @@ python infer_path.py --wav_path=./dataset/test_vad.wav --is_long_audio=True
 输出结果：
 ```
 -----------  Configuration Arguments -----------
-alpha: 1.2
-beam_size: 10
-beta: 0.35
-cutoff_prob: 1.0
+alpha: 2.2
+beam_size: 300
+beta: 4.3
+cutoff_prob: 0.99
 cutoff_top_n: 40
 decoding_method: ctc_greedy
 is_long_audio: 1
