@@ -128,7 +128,7 @@ class PPASRTrainer(object):
 
     def evaluate(self,
                  batch_size=32,
-                 resume_model='models/deepspeech2/epoch_50/'):
+                 resume_model='models/deepspeech2/best_model/'):
         """
         评估模型
         :param batch_size: 评估的批量大小
@@ -156,10 +156,10 @@ class PPASRTrainer(object):
         c = []
         for inputs, labels, input_lens, _ in tqdm(test_loader()):
             # 执行识别
-            outs, _, = model(inputs, input_lens)
+            outs, out_lens = model(inputs, input_lens)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
-            out_strings = self.decoder_result(outs.numpy(), test_dataset.vocab_list)
+            out_strings = self.decoder_result(outs.numpy(), out_lens, test_dataset.vocab_list)
             labels_str = labels_to_string(labels.numpy(), test_dataset.vocab_list)
             for out_string, label in zip(*(out_strings, labels_str)):
                 # 计算字错率
@@ -247,12 +247,13 @@ class PPASRTrainer(object):
                       paddle.to_tensor(200, dtype=paddle.int64),
                       paddle.zeros([model.num_rnn_layers, 1, model.rnn_size], dtype=paddle.float32)]
         # paddle.summary(net=model, input=input_data)
+        # print(f"{model}")
         # 设置优化方法
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.93)
         optimizer = paddle.optimizer.AdamW(parameters=model.parameters(),
                                            learning_rate=scheduler,
-                                           weight_decay=5e-4,
+                                           weight_decay=1e-6,
                                            grad_clip=grad_clip)
 
         # 设置支持多卡训练
@@ -380,7 +381,7 @@ class PPASRTrainer(object):
             test_loss.append(loss)
             outs = paddle.nn.functional.softmax(outs, 2)
             # 解码获取识别结果
-            out_strings = self.decoder_result(outs.numpy(), vocabulary)
+            out_strings = self.decoder_result(outs.numpy(), out_lens, vocabulary)
             labels_str = labels_to_string(labels.numpy(), vocabulary)
             cer_batch = []
             for out_string, label in zip(*(out_strings, labels_str)):
@@ -421,7 +422,7 @@ class PPASRTrainer(object):
                 f.write('{"last_epoch": %d, "test_cer": %f, "test_loss": %f}' % (epoch, test_cer, test_loss))
         print('[{}] 已保存模型：{}'.format(datetime.now(), model_path))
 
-    def decoder_result(self, outs, vocabulary):
+    def decoder_result(self, outs, outs_lens, vocabulary):
         # 集束搜索方法的处理
         if self.decoder == "ctc_beam_search" and self.beam_search_decoder is None:
             try:
@@ -435,6 +436,7 @@ class PPASRTrainer(object):
                 self.decoder = 'ctc_greedy'
 
         # 执行解码
+        outs = [outs[i, :l, :] for i, l in enumerate(outs_lens)]
         if self.decoder == 'ctc_greedy':
             result = greedy_decoder_batch(outs, vocabulary)
         else:

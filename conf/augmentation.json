@@ -1,6 +1,7 @@
 [
   {
     "type": "noise",
+    "aug_type": "audio",
     "params": {
       "min_snr_dB": 10,
       "max_snr_dB": 50,
@@ -10,14 +11,17 @@
   },
   {
     "type": "speed",
+    "aug_type": "audio",
     "params": {
       "min_speed_rate": 0.9,
-      "max_speed_rate": 1.1
+      "max_speed_rate": 1.1,
+      "num_rates": 3
     },
     "prob": 1.0
   },
   {
     "type": "shift",
+    "aug_type": "audio",
     "params": {
       "min_shift_ms": -5,
       "max_shift_ms": 5
@@ -26,6 +30,7 @@
   },
   {
     "type": "volume",
+    "aug_type": "audio",
     "params": {
       "min_gain_dBFS": -15,
       "max_gain_dBFS": 15
@@ -34,6 +39,7 @@
   },
   {
     "type": "specaug",
+    "aug_type": "feature",
     "params": {
       "W": 0,
       "warp_mode": "PIL",

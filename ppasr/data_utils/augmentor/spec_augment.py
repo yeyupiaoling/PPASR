@@ -138,8 +138,8 @@ class SpecAugmentor(AugmentorBase):
         """
         n_bins = x.shape[1]
         for i in range(0, self.n_freq_masks):
-            f = int(self._rng.uniform(low=0, high=self.F))
-            f_0 = int(self._rng.uniform(low=0, high=n_bins - f))
+            f = int(self._rng.uniform(a=0, b=self.F))
+            f_0 = int(self._rng.uniform(a=0, b=n_bins - f))
             assert f_0 <= f_0 + f
             if replace_with_zero:
                 x[:, f_0:f_0 + f] = 0
@@ -172,9 +172,9 @@ class SpecAugmentor(AugmentorBase):
             T = self.T
 
         for i in range(n_masks):
-            t = int(self._rng.uniform(low=0, high=T))
+            t = int(self._rng.uniform(a=0, b=T))
             t = min(t, int(n_frames * self.p))
-            t_0 = int(self._rng.uniform(low=0, high=n_frames - t))
+            t_0 = int(self._rng.uniform(a=0, b=n_frames - t))
             assert t_0 <= t_0 + t
             if replace_with_zero:
                 x[t_0:t_0 + t, :] = 0

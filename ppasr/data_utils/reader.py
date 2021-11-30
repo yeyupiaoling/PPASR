@@ -37,6 +37,7 @@ class PPASRDataset(Dataset):
         self._augmentation_pipeline.transform_audio(speech_segment)
         feature, transcript = self._speech_featurizer.featurize(speech_segment)
         feature = self._normalizer.apply(feature)
+        feature = self._augmentation_pipeline.transform_feature(feature)
         transcript = np.array(transcript, dtype='int32')
         return feature, transcript
 

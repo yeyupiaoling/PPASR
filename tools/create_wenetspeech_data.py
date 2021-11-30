@@ -54,6 +54,8 @@ def process_wenetspeech(wenetspeech_json, annotation_dir):
                             start_time = segment_file['begin_time']
                             end_time = segment_file['end_time']
                             text = segment_file['text']
+                            confidence = segment_file['confidence']
+                            if confidence < 0.95: continue
                         except Exception:
                             print(f'''Warning: {segment_file} something is wrong, skipped''')
                             continue

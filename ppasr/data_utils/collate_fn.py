@@ -13,7 +13,7 @@ def collate_fn(batch):
     max_label_length = len(batch_temp[0][1])
     # 以最大的长度创建0张量
     inputs = np.zeros((batch_size, freq_size, max_audio_length), dtype='float32')
-    labels = np.zeros((batch_size, max_label_length), dtype='int32')
+    labels = np.ones((batch_size, max_label_length), dtype='int32') * -1
     input_lens = []
     label_lens = []
     for x in range(batch_size):
