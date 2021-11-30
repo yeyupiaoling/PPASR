@@ -16,6 +16,7 @@
 
 ## 更新记录
 
+ - 2021.11.30: 全面修改为流式语音识别模型。
  - 2021.11.09: 增加制作WenetSpeech数据集脚本和文档。
  - 2021.10.10: 提供三个公开数据集的DeepSpeech2预训练模型下载。
  - 2021.09.30: 在导出模型时，把归一化放在模型用，推理时直接在模型中完成数据归一化，不需要额外对数据归一化再输入到网络模型中。
@@ -24,12 +25,15 @@
 ## 模型下载
 | 数据集 | 使用模型 | 测试集字错率 | 下载地址 |
 | :---: | :---: | :---: | :---: |
-| aishell(179小时) | deepspeech2 | 0.122783 | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
+| aishell(179小时) | deepspeech2 | 0.077042 | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
 | free_st_chinese_mandarin_corpus(109小时) | deepspeech2 | 0.171830 | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
-| thchs_30(34小时) | deepspeech2 | 0.011276 | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
+| thchs_30(34小时) | deepspeech2 | 0.062654 | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
 | 超大数据集(1600多小时真实数据)+(1300多小时合成数据) | deepspeech2 | 训练中 | [训练中]() |
 
-**说明：** 这里提供的是训练参数，不包括优化方法参数，如果要用于预测，还需要执行[导出模型](./docs/export_model.md)，使用的解码方法是贪心策略或集束搜索。
+**说明：** 
+1. 这里字错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
+2. 除了aishell数据集按照数据集本身划分的训练数据和测试数据，其他的都是按照项目设置的固定比例划分训练数据和测试数据。
+3. 下载的压缩文件已经包含了`mean_std.npz`和`vocabulary.txt`，需要把解压得到的全部文件复制到项目根目录下。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 

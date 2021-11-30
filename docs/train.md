@@ -58,6 +58,4 @@ visualdl --logdir=log --host=0.0.0.0
 
  - 然后再浏览器上访问`http://localhost:8040`可以查看结果显示，如下。
 
-![Learning rate](https://img-blog.csdnimg.cn/20210318165719805.png)
-![Test Cer](https://s3.ax1x.com/2021/03/01/6PJaZV.jpg)
-![Train Loss](https://s3.ax1x.com/2021/03/01/6PJNq0.jpg)
+![VisualDL](./images/visualdl.jpg)

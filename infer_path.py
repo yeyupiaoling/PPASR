@@ -63,7 +63,7 @@ def real_time_predict_demo():
     state = None
     result = []
     # 识别间隔时间
-    interval_time = 2
+    interval_time = 1
     CHUNK = 16000 * interval_time
     all_data = []
     # 读取数据

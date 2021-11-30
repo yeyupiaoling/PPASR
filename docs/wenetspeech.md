@@ -60,5 +60,3 @@ python create_wenetspeech_data.py --wenetspeech_json=/media/wenetspeech/WenetSpe
 ```shell
 python create_data.py
 ```
-
-**温馨提示：** 数据集超大，费时费资源，看自己的情况使用，无金刚钻就不要揽瓷器活。
