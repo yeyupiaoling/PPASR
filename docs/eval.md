@@ -2,7 +2,7 @@
 
 执行下面这个脚本对模型进行评估，通过字符错误率来评价模型的性能，详细参数请查看该程序。
 ```shell
-python eval.py --resume_model=models/deepspeech2/epoch_50
+python eval.py --resume_model=models/deepspeech2/best_model
 ```
 
 输出结果：

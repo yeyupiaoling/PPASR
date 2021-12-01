@@ -1,4 +1,4 @@
-# PPASR语音识别
+# PPASR流式与非流式语音识别
 
 ![python version](https://img.shields.io/badge/python-3.7+-orange.svg)
 ![GitHub forks](https://img.shields.io/github/forks/yeyupiaoling/PPASR)
@@ -26,7 +26,7 @@
 | 数据集 | 使用模型 | 测试集字错率 | 下载地址 |
 | :---: | :---: | :---: | :---: |
 | aishell(179小时) | deepspeech2 | 0.077042 | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
-| free_st_chinese_mandarin_corpus(109小时) | deepspeech2 | 0.171830 | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
+| free_st_chinese_mandarin_corpus(109小时) | deepspeech2 | 0.137442 | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
 | thchs_30(34小时) | deepspeech2 | 0.062654 | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
 | 超大数据集(1600多小时真实数据)+(1300多小时合成数据) | deepspeech2 | 训练中 | [训练中]() |
 
