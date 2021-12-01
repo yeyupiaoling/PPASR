@@ -1,10 +1,13 @@
+import os
+import sys
+
 from ppasr.decoders.swig_wrapper import Scorer
 from ppasr.decoders.swig_wrapper import ctc_beam_search_decoder_batch, ctc_beam_search_decoder
 
 
 class BeamSearchDecoder:
     def __init__(self, beam_alpha, beam_beta, language_model_path, vocab_list):
-        if language_model_path != 'None' and language_model_path != '' and language_model_path is not None:
+        if language_model_path != 'None' and language_model_path != '' and language_model_path is not None and os.path.exists(language_model_path):
             print('=' * 70)
             print("初始化解码器...")
             self._ext_scorer = Scorer(beam_alpha, beam_beta, language_model_path, vocab_list)
@@ -19,7 +22,7 @@ class BeamSearchDecoder:
             print('=' * 70)
         else:
             self._ext_scorer = None
-            print("没有语言模型，解码由纯集束搜索，解码速度慢！")
+            raise Exception("没有语言模型，请按照文档下载并指定语音模型路径！")
 
     # 单个数据解码
     def decode_beam_search(self, probs_split, beam_alpha, beam_beta,
