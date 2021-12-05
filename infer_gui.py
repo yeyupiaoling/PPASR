@@ -101,7 +101,7 @@ class SpeechRecognitionApp:
         self.predicting = True
         try:
             start = time.time()
-            score, text, _ = self.predictor.predict(audio_path=wav_path, to_an=self.to_an)
+            score, text = self.predictor.predict(audio_path=wav_path, to_an=self.to_an)
             self.result_text.insert(END, "消耗时间：%dms, 识别结果: %s, 得分: %d\n" % (
             round((time.time() - start) * 1000), text, score))
         except Exception as e:
@@ -131,7 +131,7 @@ class SpeechRecognitionApp:
             scores = []
             # 执行识别
             for i, audio_bytes in enumerate(audios_bytes):
-                score, text, _ = self.predictor.predict(audio_bytes=audio_bytes, to_an=self.to_an)
+                score, text = self.predictor.predict(audio_bytes=audio_bytes, to_an=self.to_an)
                 texts = texts + '，' + text
                 scores.append(score)
                 self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
@@ -179,7 +179,7 @@ class SpeechRecognitionApp:
             data = self.stream.read(CHUNK)
             frames.append(data)
             # 实时识别
-            core, text, state = self.predictor.predict(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
+            core, text, state = self.predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
             result.append(text)
             self.result_text.delete('1.0', 'end')
             self.result_text.insert(END, ''.join(result))

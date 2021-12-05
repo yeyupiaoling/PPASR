@@ -53,13 +53,15 @@ class Predictor:
         self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
         self.lac = None
+        self.last_audio_data = []
         self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
         self._audio_featurizer = AudioFeaturizer()
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
             try:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path, self._text_featurizer.vocab_list)
+                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path,
+                                                             self._text_featurizer.vocab_list)
             except ModuleNotFoundError:
                 print('\n==================================================================', file=sys.stderr)
                 print('缺少swig_decoders库，请根据文档安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
@@ -125,19 +127,17 @@ class Predictor:
             text = self.cn2an(text)
         return score, text
 
-    # 预测图片
+    # 预测音频
     def predict(self,
                 audio_path=None,
                 audio_bytes=None,
                 audio_ndarray=None,
-                init_state_h_box=None,
                 to_an=False):
         """
-        预测函数
+        预测函数，只预测完整的一句话。
         :param audio_path: 需要预测音频的路径
         :param audio_bytes: 需要预测的音频wave读取的字节流
         :param audio_ndarray: 需要预测的音频未预处理的numpy值
-        :param init_state_h_box: 模型上次输出的状态，如果不是流式识别，这个为None
         :param to_an: 是否转为阿拉伯数字
         :return: 识别的文本结果和解码的得分数
         """
@@ -160,6 +160,57 @@ class Predictor:
         self.audio_data_handle.copy_from_cpu(audio_data)
         self.audio_len_handle.copy_from_cpu(audio_len)
 
+        # 对RNN层的initial_states全零初始化
+        init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
+        self.init_state_h_box_handle.reshape(init_state_h_box.shape)
+        self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
+
+        # 运行predictor
+        self.predictor.run()
+
+        # 获取输出
+        output_handle = self.predictor.get_output_handle(self.output_names[0])
+        output_data = output_handle.copy_to_cpu()[0]
+        # 解码
+        score, text = self.decode(output_data=output_data, to_an=to_an)
+        return score, text
+
+    # 预测音频
+    def predict_stream(self,
+                       audio_bytes=None,
+                       audio_ndarray=None,
+                       init_state_h_box=None,
+                       is_end=False,
+                       to_an=False):
+        """
+        预测函数，流式预测，通过一直输入音频数据，实现实现实时识别。
+        :param audio_bytes: 需要预测的音频wave读取的字节流
+        :param audio_ndarray: 需要预测的音频未预处理的numpy值
+        :param init_state_h_box: 模型上次输出的状态，如果不是流式识别，这个为None
+        :param is_end: 是否结束语音识别
+        :param to_an: 是否转为阿拉伯数字
+        :return: 识别的文本结果和解码的得分数
+        """
+        assert audio_bytes is not None or audio_ndarray is not None, \
+            'audio_bytes和audio_ndarray至少有一个不为None！'
+        # 利用VAD检测语音是否停顿
+        is_interrupt = False
+        # 加载音频文件，并进行预处理
+        if audio_ndarray is not None:
+            audio_data = AudioSegment.from_ndarray(audio_ndarray)
+        else:
+            audio_data = AudioSegment.from_wave_bytes(audio_bytes)
+        audio_feature = self._audio_featurizer.featurize(audio_data)
+        audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
+        audio_len = np.array([audio_data.shape[2]]).astype('int64')
+        self.last_audio_data.append([audio_data, audio_len])
+
+        # 设置输入
+        self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
+        self.audio_len_handle.reshape([audio_data.shape[0]])
+        self.audio_data_handle.copy_from_cpu(audio_data)
+        self.audio_len_handle.copy_from_cpu(audio_len)
+
         if init_state_h_box is None:
             # 对RNN层的initial_states全零初始化
             init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
@@ -174,8 +225,13 @@ class Predictor:
         output_data = output_handle.copy_to_cpu()[0]
         output_state_handle = self.predictor.get_output_handle(self.output_names[1])
         output_state = output_state_handle.copy_to_cpu()
-        # 解码
-        score, text = self.decode(output_data=output_data, to_an=to_an)
+        if is_end or is_interrupt:
+            # 完整解码
+            score, text = self.decode(output_data=output_data, to_an=to_an)
+        else:
+            # 说话的中心使用贪心解码策略，快速解码
+            result = greedy_decoder(probs_seq=output_data, vocabulary=self._text_featurizer.vocab_list)
+            score, text = result[0], result[1]
         return score, text, output_state
 
     # 是否转为阿拉伯数字

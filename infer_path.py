@@ -11,7 +11,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('wav_path',         str,    './dataset/test.wav', "预测音频的路径")
 add_arg('is_long_audio',    bool,   False,  "是否为长语音")
-add_arg('real_time_demo',   bool,   False,  "是否使用实时语音识别演示")
+add_arg('real_time_demo',   bool,   True,  "是否使用实时语音识别演示")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('to_an',            bool,   True,   "是否转为阿拉伯数字")
 add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]")
@@ -44,7 +44,7 @@ def predict_long_audio():
     scores = []
     # 执行识别
     for i, audio_bytes in enumerate(audios_bytes):
-        score, text, _ = predictor.predict(audio_bytes=audio_bytes, to_an=args.to_an)
+        score, text = predictor.predict(audio_bytes=audio_bytes, to_an=args.to_an)
         texts = texts + '，' + text
         scores.append(score)
         print("第%d个分割音频, 得分: %d, 识别结果: %s" % (i, score, text))
@@ -54,7 +54,7 @@ def predict_long_audio():
 # 短语音识别
 def predict_audio():
     start = time.time()
-    score, text, _ = predictor.predict(audio_path=args.wav_path, to_an=args.to_an)
+    score, text = predictor.predict(audio_path=args.wav_path, to_an=args.to_an)
     print("消耗时间：%dms, 识别结果: %s, 得分: %d" % (round((time.time() - start) * 1000), text, score))
 
 
@@ -73,13 +73,13 @@ def real_time_predict_demo():
     while data != b'':
         all_data.append(data)
         start = time.time()
-        score, text, state = predictor.predict(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
+        score, text, state = predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
         result.append(text)
         print("分段结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, ''.join(result), score))
         data = wf.readframes(CHUNK)
     all_data = b''.join(all_data)
     start = time.time()
-    score, text, state = predictor.predict(audio_bytes=all_data, to_an=args.to_an, init_state_h_box=None)
+    score, text, state = predictor.predict_stream(audio_bytes=all_data, to_an=args.to_an, is_end=True)
     print("整一句结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, text, score))
 
 
