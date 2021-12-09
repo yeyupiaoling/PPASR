@@ -1,4 +1,6 @@
 import json
+import sys
+from datetime import datetime
 
 import numpy as np
 from paddle.io import Dataset
@@ -31,15 +33,20 @@ class PPASRDataset(Dataset):
             self.data_list.append([line["audio_filepath"], line["text"]])
 
     def __getitem__(self, idx):
-        # 分割音频路径和标签
-        audio_file, transcript = self.data_list[idx]
-        speech_segment = SpeechSegment.from_file(audio_file, transcript)
-        self._augmentation_pipeline.transform_audio(speech_segment)
-        feature, transcript = self._speech_featurizer.featurize(speech_segment)
-        feature = self._normalizer.apply(feature)
-        feature = self._augmentation_pipeline.transform_feature(feature)
-        transcript = np.array(transcript, dtype='int32')
-        return feature, transcript
+        try:
+            # 分割音频路径和标签
+            audio_file, transcript = self.data_list[idx]
+            speech_segment = SpeechSegment.from_file(audio_file, transcript)
+            self._augmentation_pipeline.transform_audio(speech_segment)
+            feature, transcript = self._speech_featurizer.featurize(speech_segment)
+            feature = self._normalizer.apply(feature)
+            feature = self._augmentation_pipeline.transform_feature(feature)
+            transcript = np.array(transcript, dtype='int32')
+            return feature, transcript
+        except Exception as ex:
+            print("[{}] 数据: {} 出错，错误信息: {}".format(datetime.now(), self.data_list[idx], ex), file=sys.stderr)
+            rnd_idx = np.random.randint(self.__len__())
+            return self.__getitem__(rnd_idx)
 
     def __len__(self):
         return len(self.data_list)

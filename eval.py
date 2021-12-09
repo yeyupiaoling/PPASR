@@ -44,4 +44,4 @@ start = time.time()
 cer = trainer.evaluate(batch_size=args.batch_size,
                        resume_model=args.resume_model)
 end = time.time()
-print('评估消耗时间：%ds，字错率：%f' % ((end - start), cer))
+print('评估消耗时间：{}s，字错率：{:.5f}'.format(int(end - start), cer))

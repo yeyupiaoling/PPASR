@@ -123,7 +123,7 @@ class PPASRTrainer(object):
         print('数据字典生成完成！')
 
         print('=' * 70)
-        print('开始抽取%s条数据计算均值和标准值...' % num_samples)
+        print('开始抽取{}条数据计算均值和标准值...'.format(num_samples))
         compute_mean_std(self.train_manifest, self.mean_std_path, num_samples=num_samples, num_workers=self.num_workers)
 
     def evaluate(self,
@@ -147,7 +147,7 @@ class PPASRTrainer(object):
         if self.use_model == 'deepspeech2':
             model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
         else:
-            raise Exception('没有该模型：%s' % self.use_model)
+            raise Exception('没有该模型：{}'.format(self.use_model))
 
         assert os.path.exists(os.path.join(resume_model, 'model.pdparams')), "模型不存在！"
         model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
@@ -204,7 +204,7 @@ class PPASRTrainer(object):
             augmentation_config = io.open(augment_conf_path, mode='r', encoding='utf8').read()
         else:
             if augment_conf_path is not None and not os.path.exists(augment_conf_path):
-                print('[%s] 数据增强配置文件%s不存在' % (datetime.now(), augment_conf_path), file=sys.stderr)
+                print('[{}] 数据增强配置文件{}不存在'.format(datetime.now(), augment_conf_path), file=sys.stderr)
             augmentation_config = '{}'
         train_dataset = PPASRDataset(self.train_manifest, self.dataset_vocab,
                                      mean_std_filepath=self.mean_std_path,
@@ -242,7 +242,7 @@ class PPASRTrainer(object):
         if self.use_model == 'deepspeech2':
             model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
         else:
-            raise Exception('没有该模型：%s' % self.use_model)
+            raise Exception('没有该模型：{}'.format(self.use_model))
         input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
                       paddle.to_tensor(200, dtype=paddle.int64),
                       paddle.zeros([model.num_rnn_layers, 1, model.rnn_size], dtype=paddle.float32)]
@@ -401,7 +401,7 @@ class PPASRTrainer(object):
     @staticmethod
     def save_model(save_model_path, use_model, epoch, model, optimizer, test_cer=-1., test_loss=-1., best_model=False):
         if not best_model:
-            model_path = os.path.join(save_model_path, use_model, 'epoch_%d' % epoch)
+            model_path = os.path.join(save_model_path, use_model, 'epoch_{}'.format(epoch))
             os.makedirs(model_path, exist_ok=True)
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
@@ -411,7 +411,7 @@ class PPASRTrainer(object):
             shutil.rmtree(last_model_path, ignore_errors=True)
             shutil.copytree(model_path, last_model_path)
             # 删除旧的模型
-            old_model_path = os.path.join(save_model_path, use_model, 'epoch_%d' % (epoch - 3))
+            old_model_path = os.path.join(save_model_path, use_model, 'epoch_{}'.format(epoch - 3))
             if os.path.exists(old_model_path):
                 shutil.rmtree(old_model_path)
         else:
@@ -466,7 +466,7 @@ class PPASRTrainer(object):
         if self.use_model == 'deepspeech2':
             base_model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim, vocab_size=text_featurizer.vocab_size)
         else:
-            raise Exception('没有该模型：%s' % self.use_model)
+            raise Exception('没有该模型：{}'.format(self.use_model))
 
         # 加载预训练模型
         resume_model_path = os.path.join(resume_model, 'model.pdparams')
@@ -481,10 +481,10 @@ class PPASRTrainer(object):
                           InputSpec(shape=(-1,), dtype=paddle.int64),
                           InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32)]
         else:
-            raise Exception('没有该模型：%s' % self.use_model)
+            raise Exception('没有该模型：{}'.format(self.use_model))
 
         infer_model_dir = os.path.join(save_model_path, self.use_model, 'infer')
         os.makedirs(infer_model_dir, exist_ok=True)
         infer_model_path = os.path.join(infer_model_dir, 'model')
         paddle.jit.save(layer=model, path=infer_model_path, input_spec=input_spec)
-        print("预测模型已保存：%s" % infer_model_dir)
+        print("预测模型已保存：{}".format(infer_model_dir))
