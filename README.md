@@ -41,6 +41,7 @@
 ## 文档教程
 
 - [快速安装](./docs/install.md)
+- [快速使用](./docs/GETTING_STARTED.md)
 - [数据准备](./docs/dataset.md)
 - [WenetSpeech数据集](./docs/wenetspeech.md)
 - [合成语音数据](./docs/generate_audio.md)
