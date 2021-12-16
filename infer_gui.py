@@ -97,11 +97,14 @@ class SpeechRecognitionApp:
             tkinter.messagebox.showwarning('警告', '正在预测，请等待上一轮预测结束！')
 
     # 预测短语音
-    def predict_audio(self, wav_path):
+    def predict_audio(self, wav_file):
         self.predicting = True
         try:
             start = time.time()
-            score, text = self.predictor.predict(audio_path=wav_path, to_an=self.to_an)
+            if isinstance(wav_file, str):
+                score, text = self.predictor.predict(audio_path=wav_file, to_an=self.to_an)
+            else:
+                score, text = self.predictor.predict(audio_bytes=wav_file, to_an=self.to_an)
             self.result_text.insert(END, "消耗时间：%dms, 识别结果: %s, 得分: %d\n" % (
             round((time.time() - start) * 1000), text, score))
         except Exception as e:
@@ -157,49 +160,48 @@ class SpeechRecognitionApp:
     def record_audio(self):
         self.record_button.configure(text='停止录音')
         self.recording = True
-        # 识别间隔时间
-        interval_time = 2
-        CHUNK = 16000 * interval_time
+        # 录音参数
+        chunk = 1024
         format = pyaudio.paInt16
         channels = 1
         rate = 16000
-        state = None
-        result = []
 
         # 打开录音
         self.stream = self.p.open(format=format,
                                   channels=channels,
                                   rate=rate,
                                   input=True,
-                                  frames_per_buffer=CHUNK)
+                                  frames_per_buffer=chunk)
+        self.result_text.insert(END, "正在录音...\n")
         start = time.time()
         frames = []
         while True:
             if not self.recording:break
-            data = self.stream.read(CHUNK)
+            data = self.stream.read(chunk)
             frames.append(data)
-            # 实时识别
-            core, text, state = self.predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
-            result.append(text)
-            self.result_text.delete('1.0', 'end')
-            self.result_text.insert(END, ''.join(result))
-            # 超出最大录制时间
-            if len(frames) * 2 > self.max_record:
+            if len(frames) % 15 == 0:
+                self.result_text.insert(END, "已录音%.2f秒\n" % (time.time() - start))
+            if (time.time() - start) > self.max_record:
                 self.result_text.insert(END, "录音已超过最大限制时长，强制停止录音！")
                 break
 
-        # 保存录音
-        if not os.path.exists(self.output_path):
-            os.makedirs(self.output_path)
+        # 录音的字节数据，用于后面的预测和保存
+        audio_bytes = b''.join(frames)
+        # 保存音频数据
+        os.makedirs(self.output_path, exist_ok=True)
         self.wav_path = os.path.join(self.output_path, '%s.wav' % str(int(time.time())))
         wf = wave.open(self.wav_path, 'wb')
         wf.setnchannels(channels)
         wf.setsampwidth(self.p.get_sample_size(format))
         wf.setframerate(rate)
-        wf.writeframes(b''.join(frames))
+        wf.writeframes(audio_bytes)
         wf.close()
         self.recording = False
         self.result_text.insert(END, "录音已结束，录音文件保存在：%s\n" % self.wav_path)
+        # 识别录音
+        self.result_text.insert(END, "正在识别中...\n")
+        self.predict_audio(audio_bytes)
+        self.record_button.configure(text='录音识别')
 
     # 播放音频线程
     def play_audio_thread(self):
