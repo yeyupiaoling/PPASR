@@ -35,8 +35,7 @@ def download_multi(url, target_dir, extra_args):
     """Download multiple files from url to target_dir."""
     if not os.path.exists(target_dir): os.makedirs(target_dir)
     print("Downloading %s ..." % url)
-    ret_code = os.system("wget -c " + url + ' ' + extra_args + " -P " +
-                         target_dir)
+    ret_code = os.system("wget -c " + url + ' ' + extra_args + " -P " + target_dir)
     return ret_code
 
 

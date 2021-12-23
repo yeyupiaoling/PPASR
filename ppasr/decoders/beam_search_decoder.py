@@ -1,28 +1,30 @@
 import os
-import sys
 
 from ppasr.decoders.swig_wrapper import Scorer
 from ppasr.decoders.swig_wrapper import ctc_beam_search_decoder_batch, ctc_beam_search_decoder
 
 
 class BeamSearchDecoder:
-    def __init__(self, beam_alpha, beam_beta, language_model_path, vocab_list):
-        if language_model_path != 'None' and language_model_path != '' and language_model_path is not None and os.path.exists(language_model_path):
+    def __init__(self, beam_alpha, beam_beta, language_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm', vocab_list=None):
+        if not os.path.exists(language_model_path):
             print('=' * 70)
-            print("初始化解码器...")
-            self._ext_scorer = Scorer(beam_alpha, beam_beta, language_model_path, vocab_list)
-            lm_char_based = self._ext_scorer.is_character_based()
-            lm_max_order = self._ext_scorer.get_max_order()
-            lm_dict_size = self._ext_scorer.get_dict_size()
-            print("language model: "
-                  "is_character_based = %d," % lm_char_based +
-                  " max_order = %d," % lm_max_order +
-                  " dict_size = %d" % lm_dict_size)
-            print("初始化解码器完成!")
+            language_model_url = 'https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm'
+            print("语言模型不存在，正在下载，下载地址： %s ..." % language_model_url)
+            os.makedirs(os.path.dirname(language_model_path), exist_ok=True)
+            os.system("wget -c " + language_model_url + " -O " + language_model_path)
             print('=' * 70)
-        else:
-            self._ext_scorer = None
-            raise Exception("没有语言模型，请按照文档下载并指定语音模型路径！")
+        print('=' * 70)
+        print("初始化解码器...")
+        self._ext_scorer = Scorer(beam_alpha, beam_beta, language_model_path, vocab_list)
+        lm_char_based = self._ext_scorer.is_character_based()
+        lm_max_order = self._ext_scorer.get_max_order()
+        lm_dict_size = self._ext_scorer.get_dict_size()
+        print("language model: "
+              "is_character_based = %d," % lm_char_based +
+              " max_order = %d," % lm_max_order +
+              " dict_size = %d" % lm_dict_size)
+        print("初始化解码器完成!")
+        print('=' * 70)
 
     # 单个数据解码
     def decode_beam_search(self, probs_split, beam_alpha, beam_beta,

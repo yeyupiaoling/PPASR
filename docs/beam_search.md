@@ -7,13 +7,8 @@ pip3 install paddlespeech-ctcdecoders
 
 # 语言模型
 
-集束搜索解码需要使用到语言模型，下载语言模型并放在lm目录下，下面下载的小语言模型，如何有足够大性能的机器，可以下载70G的超大语言模型，点击下载[Mandarin LM Large](https://deepspeech.bj.bcebos.com/zh_lm/zhidao_giga.klm) ，这个模型会大超多。
-```shell script
-cd PPASR/
-mkdir lm
-cd lm
-wget https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm
-```
+集束搜索解码需要使用到语言模型，在执行程序的时候，回自动下载语言模型，不过下载的是小语言模型，如何有足够大性能的机器，可以手动下载70G的超大语言模型，点击下载[Mandarin LM Large](https://deepspeech.bj.bcebos.com/zh_lm/zhidao_giga.klm) ，并指定语言模型的路径。
+``
 
 # 寻找最优的alpha和beta
 

@@ -430,7 +430,7 @@ class PPASRTrainer(object):
                 self.beam_search_decoder = BeamSearchDecoder(self.alpha, self.beta, self.lang_model_path, vocabulary)
             except ModuleNotFoundError:
                 print('\n==================================================================', file=sys.stderr)
-                print('缺少swig_decoders库，请根据文档安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
+                print('缺少 paddlespeech-ctcdecoders 库，请安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
                 print('【注意】已自动切换为ctc_greedy解码器。', file=sys.stderr)
                 print('==================================================================\n', file=sys.stderr)
                 self.decoder = 'ctc_greedy'
