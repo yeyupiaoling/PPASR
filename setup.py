@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-PPASR_VERSION = "0.2.0"
+PPASR_VERSION = "0.1.0"
 
 
 def readme():
@@ -9,8 +9,8 @@ def readme():
     return content
 
 
-def parse_requirements(fname):
-    with open(fname, encoding="utf-8-sig") as f:
+def parse_requirements():
+    with open('./requirements.txt', encoding="utf-8") as f:
         requirements = f.readlines()
     return requirements
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
         packages=find_packages(exclude='download_data/'),
         author='yeyupiaoling',
         version=PPASR_VERSION,
-        install_requires=parse_requirements('./requirements.txt'),
+        install_requires=parse_requirements(),
         description='Automatic speech recognition toolkit on PaddlePaddle',
         long_description=readme(),
         long_description_content_type='text/markdown',
@@ -37,7 +37,8 @@ if __name__ == "__main__":
             'Programming Language :: Python :: 3.5',
             'Programming Language :: Python :: 3.6',
             'Programming Language :: Python :: 3.7',
-            'Programming Language :: Python :: 3.8', 'Topic :: Utilities'
+            'Programming Language :: Python :: 3.8',
+            'Programming Language :: Python :: 3.9', 'Topic :: Utilities'
         ],
         license='Apache License 2.0',
         ext_modules=[])

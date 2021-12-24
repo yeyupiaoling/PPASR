@@ -168,11 +168,11 @@ class PPASRTrainer(object):
         return cer_result
 
     def train(self,
-              batch_size=64,
+              batch_size=32,
               min_duration=0,
               max_duration=20,
-              num_epoch=50,
-              learning_rate=5e-4,
+              num_epoch=65,
+              learning_rate=5e-5,
               save_model_path='models/',
               resume_model=None,
               pretrained_model=None,
@@ -450,7 +450,7 @@ class PPASRTrainer(object):
                                                                        num_processes=self.num_proc_bsearch)
         return result
 
-    def export(self, save_model_path='models/', resume_model='models/deepspeech2/epoch_50'):
+    def export(self, save_model_path='models/', resume_model='models/deepspeech2/best_model/'):
         """
         导出预测模型
         :param save_model_path: 模型保存的路径

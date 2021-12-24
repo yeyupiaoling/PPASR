@@ -8,6 +8,10 @@
 
 本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级，持续维护版本。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。
 
+## 在线使用
+
+**1. [在AI Studio平台训练预测](https://aistudio.baidu.com/aistudio/projectdetail/3290199)**
+
 本项目使用的环境：
  - Anaconda 3
  - Python 3.7
@@ -16,14 +20,15 @@
 
 ## 更新记录
 
- - 2021.11.30: 全面修改为流式语音识别模型。
- - 2021.11.09: 增加制作WenetSpeech数据集脚本和文档。
- - 2021.10.10: 提供三个公开数据集的DeepSpeech2预训练模型下载。
- - 2021.09.30: 在导出模型时，把归一化放在模型用，推理时直接在模型中完成数据归一化，不需要额外对数据归一化再输入到网络模型中。
- - 2021.09.18: 初步完成基本程序。
+  - 2021.12.23: 支持pip安装。
+  - 2021.11.30: 全面修改为流式语音识别模型。
+  - 2021.11.09: 增加制作WenetSpeech数据集脚本和文档。
+  - 2021.10.10: 提供三个公开数据集的DeepSpeech2预训练模型下载。
+  - 2021.09.30: 在导出模型时，把归一化放在模型用，推理时直接在模型中完成数据归一化，不需要额外对数据归一化再输入到网络模型中。
+  - 2021.09.18: 初步完成基本程序。
 
 ## 视频讲解
-[哔哩哔哩](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
+[知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
 
 ## 模型下载
 | 数据集 | 使用模型 | 测试集字错率 | 下载地址 |
