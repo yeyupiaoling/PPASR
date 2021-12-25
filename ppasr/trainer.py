@@ -302,7 +302,8 @@ class PPASRTrainer(object):
         train_times = []
         sum_batch = len(train_loader) * num_epoch
         train_batch_sampler.epoch = last_epoch
-        writer.add_scalar('Train/lr', scheduler.last_lr, last_epoch)
+        if local_rank == 0:
+            writer.add_scalar('Train/lr', scheduler.last_lr, last_epoch)
         try:
             # 开始训练
             for epoch in range(last_epoch, num_epoch):
