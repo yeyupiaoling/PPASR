@@ -119,6 +119,10 @@ python infer_path.py --wav_path=./dataset/test_vad.wav --is_long_audio=True
  - 基于Pytorch实现的语音识别：[MASR](https://github.com/yeyupiaoling/MASR)
 
 
+## 特别感谢
+
+ - 感谢 <img src="docs/images/PyCharm_icon.png" height="25" width="25" >[JetBrains开源社区](https://jb.gg/OpenSourceSupport) 提供开发工具。
+
 ## 参考资料
  - https://github.com/PaddlePaddle/PaddleSpeech
  - https://github.com/jiwidi/DeepSpeech-pytorch
