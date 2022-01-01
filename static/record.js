@@ -205,6 +205,7 @@ HZRecorder.get = function (callback, config) {
                     }
                 });
         } else {
+            window.alert('不是HTTP协议或者localhost地址，不能使用录音功能！')
             HZRecorder.throwErr('当前浏览器不支持录音功能。'); return;
         }
     }

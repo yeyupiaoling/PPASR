@@ -12,7 +12,11 @@
 
 **1. [在AI Studio平台训练预测](https://aistudio.baidu.com/aistudio/projectdetail/3290199)**
 
-本项目使用的环境：
+**2. [在线使用Dome](http://ppasr.yeyupiaoling.cn:8080)**
+
+<br/>
+
+**本项目使用的环境：**
  - Anaconda 3
  - Python 3.7
  - PaddlePaddle 2.2.0
