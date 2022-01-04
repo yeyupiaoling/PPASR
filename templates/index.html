@@ -27,6 +27,7 @@
 <script>
     var is_recording = false;
     var is_playing = false;
+    var host = location.origin;
     var recorder;
     var audio = document.querySelector('audio');
 
@@ -81,7 +82,7 @@
     }
 
     function uploadRecordAudio() {
-        recorder.upload(location.origin + "/recognition", function (state, e) {
+        recorder.upload(host + "/recognition", function (state, e) {
             switch (state) {
                 case 'uploading':
                     var percentComplete = Math.round(e.loaded * 100 / e.total) + '%';
@@ -108,7 +109,7 @@
         input.click();
         input.onchange = function(){
             var file = input.files[0];
-            upload_file(location.origin + "/recognition", file, function (state, e) {
+            upload_file(host + "/recognition", file, function (state, e) {
                 switch (state) {
                     case 'uploading':
                         var percentComplete = Math.round(e.loaded * 100 / e.total) + '%';
@@ -136,7 +137,7 @@
         input.click();
         input.onchange = function(){
             var file = input.files[0];
-            upload_file(location.origin + "/recognition_long_audio", file, function (state, e) {
+            upload_file(host + "/recognition_long_audio", file, function (state, e) {
                 switch (state) {
                     case 'uploading':
                         var percentComplete = Math.round(e.loaded * 100 / e.total) + '%';
