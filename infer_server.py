@@ -3,6 +3,7 @@ import functools
 import os
 import sys
 import time
+from datetime import datetime
 
 from flask import request, Flask, render_template
 from flask_cors import CORS
@@ -56,7 +57,8 @@ def recognition():
             print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
             result = str({"code": 0, "msg": "success", "result": text, "score": round(score, 3)}).replace("'", '"')
             return result
-        except:
+        except Exception as e:
+            print(f'[{datetime.now()}] 短语音识别失败，错误信息：{e}', file=sys.stderr)
             return str({"error": 1, "msg": "audio read fail!"})
     return str({"error": 3, "msg": "audio is None!"})
 
@@ -85,7 +87,7 @@ def recognition_long_audio():
             result = str({"code": 0, "msg": "success", "result": texts, "score": round(float(sum(scores) / len(scores)), 3)}).replace("'", '"')
             return result
         except Exception as e:
-            print(e, file=sys.stderr)
+            print(f'[{datetime.now()}] 短语音识别失败，错误信息：{e}', file=sys.stderr)
             return str({"error": 1, "msg": "audio read fail!"})
     return str({"error": 3, "msg": "audio is None!"})
 

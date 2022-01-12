@@ -60,7 +60,7 @@ class Predictor:
         if decoder == "ctc_beam_search":
             try:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, lang_model_path,
+                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, self.lang_model_path,
                                                              self._text_featurizer.vocab_list)
             except ModuleNotFoundError:
                 print('\n==================================================================', file=sys.stderr)
@@ -75,8 +75,6 @@ class Predictor:
         if not os.path.exists(model_path) or not os.path.exists(params_path):
             raise Exception("模型文件不存在，请检查%s和%s是否存在！" % (model_path, params_path))
         self.config = paddle_infer.Config(model_path, params_path)
-        self.config.enable_use_gpu(1000, 0)
-        self.config.enable_memory_optim()
 
         if self.use_gpu:
             self.config.enable_use_gpu(gpu_mem, 0)
@@ -99,11 +97,8 @@ class Predictor:
         self.output_names = self.predictor.get_output_names()
 
         # 预热
-        warmup_audio_path = 'dataset/test.wav'
-        if os.path.exists(warmup_audio_path):
-            self.predict(warmup_audio_path, to_an=True)
-        else:
-            print('预热文件不存在，忽略预热！', file=sys.stderr)
+        warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
+        self.predict(audio_ndarray=warmup_audio, to_an=True)
 
     # 解码模型输出结果
     def decode(self, output_data, to_an):

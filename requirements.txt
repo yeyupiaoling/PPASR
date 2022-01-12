@@ -6,6 +6,7 @@ python-Levenshtein==0.12.2
 visualdl>=2.1.1
 SoundFile~=0.10
 resampy==0.2.2
+numba>=0.53.0
 python_speech_features==0.6
 zhconv==1.4.2
 webrtcvad

@@ -25,3 +25,10 @@ export LLVM_CONFIG=/usr/local/llvm/bin/llvm-config
 ```shell script
 git clone https://github.com/yeyupiaoling/DeepSpeech.git
 ```
+
+
+# Linux 报错 OSError: sndfile library not found
+
+```shell
+sudo apt-get install libsndfile1
+```

@@ -2,6 +2,7 @@ import copy
 import io
 import random
 
+import librosa
 import numpy as np
 import resampy
 import soundfile
@@ -60,7 +61,10 @@ class AudioSegment(object):
         :return: 音频片段实例
         :rtype: AudioSegment
         """
-        samples, sample_rate = soundfile.read(file, dtype='float32')
+        try:
+            samples, sample_rate = soundfile.read(file, dtype='float32')
+        except:
+            samples, sample_rate = librosa.load(path=file)
         return cls(samples, sample_rate)
 
     @classmethod
