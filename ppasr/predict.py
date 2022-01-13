@@ -6,6 +6,7 @@ import numpy as np
 import paddle.inference as paddle_infer
 from LAC import LAC
 
+from ppasr.utils.text_utils import PunctuationExecutor
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
@@ -21,6 +22,8 @@ class Predictor:
                  alpha=2.2,
                  beta=4.3,
                  lang_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm',
+                 use_pun=False,
+                 pun_model_dir='models/pun_models/',
                  beam_size=300,
                  cutoff_prob=0.99,
                  cutoff_top_n=40,
@@ -36,6 +39,8 @@ class Predictor:
         :param alpha: 集束搜索解码相关参数，LM系数
         :param beta: 集束搜索解码相关参数，WC系数
         :param lang_model_path: 集束搜索解码相关参数，语言模型文件路径
+        :param use_pun: 是否使用加标点符号的模型
+        :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param beam_size: 集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]
         :param cutoff_prob: 集束搜索解码相关参数，剪枝的概率
         :param cutoff_top_n: 集束搜索解码相关参数，剪枝的最大值
@@ -52,6 +57,7 @@ class Predictor:
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
+        self.use_pun_model = use_pun
         self.lac = None
         self.last_audio_data = []
         self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
@@ -96,6 +102,13 @@ class Predictor:
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
 
+        # 加标点符号
+        if self.use_pun_model:
+            self.pun_executor = PunctuationExecutor(model_dir=pun_model_dir,
+                                                    use_gpu=use_gpu,
+                                                    gpu_mem=gpu_mem,
+                                                    num_threads=num_threads)
+
         # 预热
         warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
         self.predict(audio_ndarray=warmup_audio, to_an=True)
@@ -117,6 +130,9 @@ class Predictor:
             result = greedy_decoder(probs_seq=output_data, vocabulary=self._text_featurizer.vocab_list)
 
         score, text = result[0], result[1]
+        # 加标点符号
+        if self.use_pun_model and len(text) > 0:
+            text = self.pun_executor(text)
         # 是否转为阿拉伯数字
         if to_an:
             text = self.cn2an(text)

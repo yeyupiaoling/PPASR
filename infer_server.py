@@ -18,6 +18,7 @@ add_arg("host",             str,    "0.0.0.0",            "监听主机的IP地�
 add_arg("port",             int,    5000,                 "服务所使用的端口号")
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
+add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('to_an',            bool,   True,   "是否转为阿拉伯数字")
 add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索大小，范围:[5, 500]")
 add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM系数")
@@ -27,6 +28,7 @@ add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，�
 add_arg('use_model',        str,    'deepspeech2',               "所使用的模型")
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
+add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',    "集束搜索解码相关参数，语言模型文件路径")
 add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法", choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
@@ -38,7 +40,7 @@ CORS(app)
 predictor = Predictor(model_dir=args.model_dir, vocab_path=args.vocab_path, use_model=args.use_model,
                       decoder=args.decoder, alpha=args.alpha, beta=args.beta, lang_model_path=args.lang_model_path,
                       beam_size=args.beam_size, cutoff_prob=args.cutoff_prob, cutoff_top_n=args.cutoff_top_n,
-                      use_gpu=args.use_gpu)
+                      use_gpu=args.use_gpu, use_pun=args.use_pun, pun_model_dir=args.pun_model_dir)
 
 
 # 语音识别接口
@@ -80,7 +82,7 @@ def recognition_long_audio():
             # 执行识别
             for i, audio_bytes in enumerate(audios_bytes):
                 score, text = predictor.predict(audio_bytes=audio_bytes, to_an=args.to_an)
-                texts = texts + '，' + text
+                texts = texts + text if args.use_pun else texts + '，' + text
                 scores.append(score)
             end = time.time()
             print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), texts, sum(scores) / len(scores)))

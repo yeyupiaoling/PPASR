@@ -13,3 +13,4 @@ webrtcvad
 pydub
 lac
 cn2an
+paddlenlp

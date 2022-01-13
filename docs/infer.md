@@ -17,9 +17,11 @@ decoder: ctc_beam_search
 is_long_audio: False
 lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
 model_dir: models/deepspeech2/infer/
+pun_model_dir: models/pun_models/
 real_time_demo: False
 to_an: True
 use_gpu: True
+use_pun: True
 use_model: deepspeech2
 vocab_path: dataset/vocabulary.txt
 wav_path: ./dataset/test.wav
@@ -29,7 +31,7 @@ wav_path: ./dataset/test.wav
 language model: is_character_based = 1, max_order = 5, dict_size = 0
 初始化解码器完成!
 ======================================================================
-消耗时间：101, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
+消耗时间：101, 识别结果: 近几年，不但我用输给女儿压岁，也劝说亲朋，不要给女儿压岁钱，而改送压岁书。, 得分: 94
 ```
 
 ## 长语音预测
@@ -51,7 +53,9 @@ decoding_method: ctc_beam_search
 is_long_audio: 1
 lang_model_path: ./lm/zh_giga.no_cna_cmn.prune01244.klm
 model_dir: ./models/deepspeech2/infer/
+pun_model_dir: models/pun_models/
 to_an: True
+use_pun: False
 use_gpu: True
 vocab_path: ./dataset/zh_vocab.txt
 wav_path: dataset/test_long.wav
