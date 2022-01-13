@@ -12,12 +12,17 @@ def read_wave(path):
     """
     with contextlib.closing(wave.open(path, 'rb')) as wf:
         num_channels = wf.getnchannels()
-        assert num_channels == 1
         sample_width = wf.getsampwidth()
         assert sample_width == 2
         sample_rate = wf.getframerate()
         assert sample_rate in (8000, 16000, 32000, 48000)
         pcm_data = wf.readframes(wf.getnframes())
+        # 多通道通道转单通道
+        if num_channels != 1:
+            data = []
+            for i in range(0, len(pcm_data), sample_width * num_channels):
+                data.append(pcm_data[i:i + sample_width])
+            pcm_data = b''.join(data)
         return pcm_data, sample_rate
 
 
