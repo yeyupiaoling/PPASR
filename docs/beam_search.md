@@ -8,7 +8,11 @@ python -m pip install paddlespeech-ctcdecoders -i https://mirrors.aliyun.com/pyp
 # 语言模型
 
 集束搜索解码需要使用到语言模型，在执行程序的时候，回自动下载语言模型，不过下载的是小语言模型，如何有足够大性能的机器，可以手动下载70G的超大语言模型，点击下载[Mandarin LM Large](https://deepspeech.bj.bcebos.com/zh_lm/zhidao_giga.klm) ，并指定语言模型的路径。
-``
+
+注意，上面提到的语言模型都是中文语言模型，如果需要使用英文语言模型，需要手动下载，并指定语言模型路径。
+```shell
+https://deepspeech.bj.bcebos.com/en_lm/common_crawl_00.prune01111.trie.klm
+```
 
 # 寻找最优的alpha和beta
 

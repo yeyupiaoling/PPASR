@@ -24,7 +24,7 @@ from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributed
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
 from ppasr.model_utils.utils import DeepSpeech2ModelExport
-from ppasr.utils.metrics import cer
+from ppasr.utils.metrics import cer, wer
 from ppasr.utils.utils import create_manifest, create_noise, count_manifest, compute_mean_std
 from ppasr.utils.utils import labels_to_string
 
@@ -44,6 +44,7 @@ class PPASRTrainer(object):
                  cutoff_prob=0.99,
                  cutoff_top_n=40,
                  decoder='ctc_greedy',
+                 metrics_type='cer',
                  lang_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm'):
         """
         PPASR集成工具类
@@ -59,6 +60,7 @@ class PPASRTrainer(object):
         :param num_proc_bsearch: 集束搜索方法使用CPU数量
         :param cutoff_prob: 剪枝的概率
         :param cutoff_top_n: 剪枝的最大值
+        :param metrics_type: 计算错误方法
         :param decoder: 结果解码方法，支持ctc_beam_search和ctc_greedy
         :param lang_model_path: 语言模型文件路径
         """
@@ -75,6 +77,7 @@ class PPASRTrainer(object):
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
         self.decoder = decoder
+        self.metrics_type = metrics_type
         self.lang_model_path = lang_model_path
         self.beam_search_decoder = None
 
@@ -117,6 +120,7 @@ class PPASRTrainer(object):
         with open(self.dataset_vocab, 'w', encoding='utf-8') as fout:
             fout.write('<blank>\t-1\n')
             for char, count in count_sorted:
+                if char == ' ': char = '<space>'
                 # 跳过指定的字符阈值，超过这大小的字符都忽略
                 if count < count_threshold: break
                 fout.write('%s\t%d\n' % (char, count))
@@ -162,8 +166,11 @@ class PPASRTrainer(object):
             out_strings = self.decoder_result(outs.numpy(), out_lens, test_dataset.vocab_list)
             labels_str = labels_to_string(labels.numpy(), test_dataset.vocab_list)
             for out_string, label in zip(*(out_strings, labels_str)):
-                # 计算字错率
-                c.append(cer(out_string, label) / float(len(label)))
+                # 计算字错率或者词错率
+                if self.metrics_type == 'wer':
+                    c.append(wer(out_string, label))
+                else:
+                    c.append(cer(out_string, label))
         cer_result = float(sum(c) / len(c))
         return cer_result
 
@@ -386,14 +393,17 @@ class PPASRTrainer(object):
             labels_str = labels_to_string(labels.numpy(), vocabulary)
             cer_batch = []
             for out_string, label in zip(*(out_strings, labels_str)):
-                # 计算字错率
-                c = cer(out_string, label) / float(len(label))
+                # 计算字错率或者词错率
+                if self.metrics_type == 'wer':
+                    c = wer(out_string, label)
+                else:
+                    c = cer(out_string, label)
                 cer_result.append(c)
                 cer_batch.append(c)
             if batch_id % 10 == 0:
-                print('[{}] Test batch: [{}/{}], loss: {:.5f}, cer: {:.5f}'.format(datetime.now(), batch_id,
-                                                                                   len(test_loader),
-                                                                                   loss, float(sum(cer_batch) / len(cer_batch))))
+                print('[{}] Test batch: [{}/{}], loss: {:.5f}, '
+                      '{}: {:.5f}'.format(datetime.now(), batch_id, len(test_loader),loss,self.metrics_type,
+                                          float(sum(cer_batch) / len(cer_batch))))
         cer_result = float(sum(cer_result) / len(cer_result))
         test_loss = float(sum(test_loss) / len(test_loss))
         return cer_result, test_loss

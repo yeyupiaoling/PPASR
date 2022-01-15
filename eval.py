@@ -19,6 +19,7 @@ add_arg('use_model',        str,   'deepspeech2',             '所使用的模�
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
+add_arg('metrics_type',     str,   'cer',                     '计算错误率方法', choices=['cer', 'wer'])
 add_arg('decoder',          str,   'ctc_beam_search',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('resume_model',     str,   'models/deepspeech2/best_model/', '模型的路径')
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
@@ -38,10 +39,11 @@ trainer = PPASRTrainer(use_model=args.use_model,
                        cutoff_prob=args.cutoff_prob,
                        cutoff_top_n=args.cutoff_top_n,
                        decoder=args.decoder,
+                       metrics_type=args.metrics_type,
                        lang_model_path=args.lang_model_path)
 
 start = time.time()
-cer = trainer.evaluate(batch_size=args.batch_size,
-                       resume_model=args.resume_model)
+error_rate = trainer.evaluate(batch_size=args.batch_size,
+                              resume_model=args.resume_model)
 end = time.time()
-print('评估消耗时间：{}s，字错率：{:.5f}'.format(int(end - start), cer))
+print('评估消耗时间：{}s，{}：{:.5f}'.format(int(end - start), args.metrics_type, error_rate))

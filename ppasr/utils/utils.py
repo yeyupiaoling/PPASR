@@ -32,7 +32,7 @@ def labels_to_string(label, vocabulary, blank_index=0):
     labels = []
     for l in label:
         index_list = [index for index in l if index != blank_index and index != -1]
-        labels.append(''.join([vocabulary[index] for index in index_list]))
+        labels.append((''.join([vocabulary[index] for index in index_list])).replace('<space>', ' '))
     return labels
 
 
@@ -60,11 +60,12 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
             if is_change_frame_rate:
                 change_rate(audio_path)
             # 获取音频长度
-            f_wave = wave.open(audio_path, "rb")
-            duration = f_wave.getnframes() / f_wave.getframerate()
+            audio_data, samplerate = soundfile.read(audio_path)
+            duration = float(len(audio_data)) / samplerate
             durations.append(duration)
             # 过滤非法的字符
-            text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', ''))
+            text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', '')).lower()
+            if len(text) == 0:continue
             # 保证全部都是简体
             text = convert(text, 'zh-cn')
             # 加入数据列表中
@@ -113,19 +114,18 @@ def is_ustr(in_str):
     for i in range(len(in_str)):
         if is_uchar(in_str[i]):
             out_str = out_str + in_str[i]
-        else:
-            out_str = out_str + ' '
-    return ''.join(out_str.split())
+    return out_str
 
 
-# 判断是否为中文文字字符
+# 判断是否为中文字符或者英文字符
 def is_uchar(uchar):
+    if uchar == ' ':return True
     if u'\u4e00' <= uchar <= u'\u9fa5':
         return True
     if u'\u0030' <= uchar <= u'\u0039':
         return False
     if (u'\u0041' <= uchar <= u'\u005a') or (u'\u0061' <= uchar <= u'\u007a'):
-        return False
+        return True
     if uchar in ('-', ',', '.', '>', '?'):
         return False
     return False

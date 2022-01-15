@@ -26,7 +26,8 @@
 
 ## 更新记录
 
- - 2022.01.13: 支持给识别结果加标点符号
+ - 2022.01.15: 支持英文语音识别。
+ - 2022.01.13: 支持给识别结果加标点符号。
  - 2021.12.23: 支持pip安装。
  - 2021.11.30: 全面修改为流式语音识别模型。
  - 2021.11.09: 增加制作WenetSpeech数据集脚本和文档。
@@ -38,12 +39,13 @@
 [知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
 
 ## 模型下载
-| 数据集 | 使用模型 | 测试集字错率 | 下载地址 |
-| :---: | :---: | :---: | :---: |
-| aishell(179小时) | deepspeech2 | 0.077042 | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
-| free_st_chinese_mandarin_corpus(109小时) | deepspeech2 | 0.137442 | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
-| thchs_30(34小时) | deepspeech2 | 0.062654 | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
-| 超大数据集(1600多小时真实数据)+(1300多小时合成数据) | deepspeech2 | 0.056835 | [点击下载](https://download.csdn.net/download/qq_33200967/58036573) |
+|                                            数据集                                            |    使用模型     | 语言  | 测试集字错率（词错率） |                              下载地址                               |
+|:-----------------------------------------------------------------------------------------:|:-----------:|:---:|:-----------:|:---------------------------------------------------------------:|
+|             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             | deepspeech2 | 中文  |  0.077042   | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
+| [free_st_chinese_mandarin_corpus](https://openslr.magicdatatech.com/resources/38) (109小时) | deepspeech2 | 中文  |  0.137442   | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
+|             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             | deepspeech2 | 中文  |  0.062654   | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
+|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2 | 中文  |  0.056835   | [点击下载](https://download.csdn.net/download/qq_33200967/58036573) |
+|           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           | deepspeech2 | 英文  |     训练中     |                               训练中                               |
 
 **说明：** 
 1. 这里字错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。

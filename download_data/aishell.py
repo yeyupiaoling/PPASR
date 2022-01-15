@@ -60,6 +60,7 @@ def create_annotation_text(data_dir, annotation_path):
                 continue
             text = transcript_dict[audio_id]
             f_test.write(audio_path[3:] + '\t' + text + '\n')
+    f_test.close()
     f_train.close()
 
 

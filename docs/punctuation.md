@@ -6,7 +6,7 @@
 
 使用主要分为三4步：
 
-1. 首先是[下载模型](https://download.csdn.net/download/qq_33200967/75664996) ，并解压到`models/`目录下。
+1. 首先是[下载模型](https://download.csdn.net/download/qq_33200967/75664996) ，并解压到`models/`目录下，注意这个模型只支持中文。
 
 
 2. 需要使用PaddleNLP工具，所以需要提前安装PaddleNLP，安装命令如下：

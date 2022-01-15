@@ -20,8 +20,9 @@ class TextFeaturizer(object):
         tokens = self._char_tokenize(text)
         token_indices = []
         for token in tokens:
+            if token == ' ': token = '<space>'
             # 跳过词汇表不存在的字符
-            if token not in self._vocab_list:continue
+            if token not in self._vocab_list: continue
             token_indices.append(self._vocab_dict[token])
         return token_indices
 

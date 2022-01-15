@@ -19,7 +19,7 @@ add_arg("port",             int,    5000,                 "服务所使用的端
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
-add_arg('to_an',            bool,   True,   "是否转为阿拉伯数字")
+add_arg('to_an',            bool,   False,  "是否转为阿拉伯数字")
 add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索大小，范围:[5, 500]")
 add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM系数")
 add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC系数")

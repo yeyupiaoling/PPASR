@@ -112,7 +112,7 @@ def tune():
             labels_str = labels_to_string(label, test_dataset.vocab_list)
             for out_string, label in zip(*(out_strings, labels_str)):
                 # 计算字错率
-                c.append(cer(out_string, label) / float(len(label)))
+                c.append(cer(out_string, label))
         c = float(sum(c) / len(c))
         if c < best_cer:
             best_alpha = alpha

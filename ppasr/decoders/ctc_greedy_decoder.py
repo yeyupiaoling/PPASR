@@ -28,7 +28,7 @@ def greedy_decoder(probs_seq, vocabulary, blank_index=0):
     score = 0
     if len(max_prob_list) > 0:
         score = float(sum(max_prob_list) / len(max_prob_list)) * 100.0
-    return score, text
+    return score, text.replace('<space>', ' ')
 
 
 def greedy_decoder_batch(probs_split, vocabulary, blank_index=0):
