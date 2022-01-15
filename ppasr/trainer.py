@@ -349,10 +349,10 @@ class PPASRTrainer(object):
                     model.eval()
                     print('\n', '=' * 70)
                     c, l = self.__test(model, test_loader, test_dataset.vocab_list, ctc_loss)
-                    print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, cer: {:.5f}'.format(
-                        datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, c))
+                    print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, {}: {:.5f}'.format(
+                        datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, self.metrics_type, c))
                     print('=' * 70, '\n')
-                    writer.add_scalar('Test/Cer', c, test_step)
+                    writer.add_scalar('Test/{}'.format(self.metrics_type), c, test_step)
                     writer.add_scalar('Test/Loss', l, test_step)
                     test_step += 1
                     model.train()
@@ -363,10 +363,10 @@ class PPASRTrainer(object):
                     if c <= best_test_cer:
                         best_test_cer = c
                         self.save_model(save_model_path=save_model_path, use_model=self.use_model, model=model,
-                                        optimizer=optimizer, epoch=epoch, test_cer=c, test_loss=l, best_model=True)
+                                        optimizer=optimizer, epoch=epoch, error_type=self.metrics_type, error_rate=c, test_loss=l, best_model=True)
                     # 保存模型
                     self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
-                                    test_cer=c, test_loss=l, optimizer=optimizer)
+                                    error_type=self.metrics_type, error_rate=c, test_loss=l, optimizer=optimizer)
                 scheduler.step()
         except KeyboardInterrupt:
             # Ctrl+C退出时保存模型
@@ -410,14 +410,14 @@ class PPASRTrainer(object):
 
     # 保存模型
     @staticmethod
-    def save_model(save_model_path, use_model, epoch, model, optimizer, test_cer=-1., test_loss=-1., best_model=False):
+    def save_model(save_model_path, use_model, epoch, model, optimizer, error_type='cer', error_rate=-1., test_loss=-1., best_model=False):
         if not best_model:
             model_path = os.path.join(save_model_path, use_model, 'epoch_{}'.format(epoch))
             os.makedirs(model_path, exist_ok=True)
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
             with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
-                f.write('{"last_epoch": %d, "test_cer": %f, "test_loss": %f}' % (epoch, test_cer, test_loss))
+                f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (epoch, error_type, error_rate, test_loss))
             last_model_path = os.path.join(save_model_path, use_model, 'last_model')
             shutil.rmtree(last_model_path, ignore_errors=True)
             shutil.copytree(model_path, last_model_path)
@@ -430,7 +430,7 @@ class PPASRTrainer(object):
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
             with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
-                f.write('{"last_epoch": %d, "test_cer": %f, "test_loss": %f}' % (epoch, test_cer, test_loss))
+                f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (epoch, error_type, error_rate, test_loss))
         print('[{}] 已保存模型：{}'.format(datetime.now(), model_path))
 
     def decoder_result(self, outs, outs_lens, vocabulary):
