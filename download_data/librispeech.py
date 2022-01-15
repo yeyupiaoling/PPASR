@@ -82,26 +82,26 @@ def main():
                     md5sum=MD5_DEV_CLEAN,
                     target_dir=args.target_dir,
                     annotation_path=args.annotation_text)
-    # prepare_dataset(url=URL_TRAIN_CLEAN_100,
-    #                 md5sum=MD5_TRAIN_CLEAN_100,
-    #                 target_dir=args.target_dir,
-    #                 annotation_path=args.annotation_text)
-    # prepare_dataset(url=URL_TEST_OTHER,
-    #                 md5sum=MD5_TEST_OTHER,
-    #                 target_dir=args.target_dir,
-    #                 annotation_path=args.annotation_text)
-    # prepare_dataset(url=URL_DEV_OTHER,
-    #                 md5sum=MD5_DEV_OTHER,
-    #                 target_dir=args.target_dir,
-    #                 annotation_path=args.annotation_text)
-    # prepare_dataset(url=URL_TRAIN_CLEAN_360,
-    #                 md5sum=MD5_TRAIN_CLEAN_360,
-    #                 target_dir=args.target_dir,
-    #                 annotation_path=args.annotation_text)
-    # prepare_dataset(url=URL_TRAIN_OTHER_500,
-    #                 md5sum=MD5_TRAIN_OTHER_500,
-    #                 target_dir=args.target_dir,
-    #                 annotation_path=args.annotation_text)
+    prepare_dataset(url=URL_TRAIN_CLEAN_100,
+                    md5sum=MD5_TRAIN_CLEAN_100,
+                    target_dir=args.target_dir,
+                    annotation_path=args.annotation_text)
+    prepare_dataset(url=URL_TEST_OTHER,
+                    md5sum=MD5_TEST_OTHER,
+                    target_dir=args.target_dir,
+                    annotation_path=args.annotation_text)
+    prepare_dataset(url=URL_DEV_OTHER,
+                    md5sum=MD5_DEV_OTHER,
+                    target_dir=args.target_dir,
+                    annotation_path=args.annotation_text)
+    prepare_dataset(url=URL_TRAIN_CLEAN_360,
+                    md5sum=MD5_TRAIN_CLEAN_360,
+                    target_dir=args.target_dir,
+                    annotation_path=args.annotation_text)
+    prepare_dataset(url=URL_TRAIN_OTHER_500,
+                    md5sum=MD5_TRAIN_OTHER_500,
+                    target_dir=args.target_dir,
+                    annotation_path=args.annotation_text)
 
 
 if __name__ == '__main__':
