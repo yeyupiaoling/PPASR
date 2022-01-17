@@ -23,6 +23,7 @@ class Predictor:
                  beta=4.3,
                  lang_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm',
                  use_pun=False,
+                 feature_method='linear',
                  pun_model_dir='models/pun_models/',
                  beam_size=300,
                  cutoff_prob=0.99,
@@ -40,6 +41,7 @@ class Predictor:
         :param beta: 集束搜索解码相关参数，WC系数
         :param lang_model_path: 集束搜索解码相关参数，语言模型文件路径
         :param use_pun: 是否使用加标点符号的模型
+        :param feature_method: 所使用的预处理方法
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param beam_size: 集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]
         :param cutoff_prob: 集束搜索解码相关参数，剪枝的概率
@@ -61,7 +63,7 @@ class Predictor:
         self.lac = None
         self.last_audio_data = []
         self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
-        self._audio_featurizer = AudioFeaturizer()
+        self._audio_featurizer = AudioFeaturizer(feature_method=feature_method)
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
             try:

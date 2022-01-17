@@ -27,10 +27,12 @@ class FeatureNormalizer(object):
 
     def __init__(self,
                  mean_std_filepath,
+                 feature_method='linear',
                  manifest_path=None,
                  num_workers=4,
                  num_samples=5000,
                  random_seed=0):
+        self.feature_method = feature_method
         if not mean_std_filepath:
             if not manifest_path:
                 raise ValueError("如果mean_std_filepath是None，那么meanifest_path不应该是None")
@@ -73,7 +75,7 @@ class FeatureNormalizer(object):
             sampled_manifest = manifest
         else:
             sampled_manifest = self._rng.sample(manifest, num_samples)
-        dataset = NormalizerDataset(sampled_manifest)
+        dataset = NormalizerDataset(sampled_manifest, feature_method=self.feature_method)
         test_loader = DataLoader(dataset=dataset, batch_size=64, collate_fn=collate_fn, num_workers=num_workers)
         # 求总和
         std, means = None, None
@@ -100,9 +102,9 @@ class FeatureNormalizer(object):
 
 
 class NormalizerDataset(Dataset):
-    def __init__(self, sampled_manifest):
+    def __init__(self, sampled_manifest, feature_method='linear'):
         super(NormalizerDataset, self).__init__()
-        self.audio_featurizer = AudioFeaturizer()
+        self.audio_featurizer = AudioFeaturizer(feature_method=feature_method)
         self.sampled_manifest = sampled_manifest
 
     def __getitem__(self, idx):

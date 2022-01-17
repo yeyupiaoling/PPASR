@@ -42,6 +42,7 @@ add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的�
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
 add_arg('resume_model',     str,   'models/deepspeech2/epoch_50/', '模型的路径')
 add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
+add_arg('feature_method',   str,    'linear',            '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
 print_arguments(args)
@@ -55,7 +56,8 @@ def tune():
         raise ValueError("num_betas must be non-negative!")
 
     # 获取测试数据
-    test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, args.mean_std_path)
+    test_dataset = PPASRDataset(args.test_manifest, args.dataset_vocab, args.mean_std_path,
+                                feature_method=args.feature_method)
     test_loader = DataLoader(dataset=test_dataset,
                              batch_size=args.batch_size,
                              collate_fn=collate_fn,

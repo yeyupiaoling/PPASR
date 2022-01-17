@@ -13,12 +13,12 @@ from ppasr.data_utils.speech import SpeechSegment
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, vocab_filepath, mean_std_filepath, min_duration=0, max_duration=20,
-                 augmentation_config='{}'):
+    def __init__(self, data_list, vocab_filepath, mean_std_filepath, feature_method='linear',
+                 min_duration=0, max_duration=20, augmentation_config='{}'):
         super(PPASRDataset, self).__init__()
-        self._normalizer = FeatureNormalizer(mean_std_filepath)
+        self._normalizer = FeatureNormalizer(mean_std_filepath, feature_method=feature_method)
         self._augmentation_pipeline = AugmentationPipeline(augmentation_config=augmentation_config)
-        self._speech_featurizer = SpeechFeaturizer(vocab_filepath=vocab_filepath)
+        self._speech_featurizer = SpeechFeaturizer(vocab_filepath=vocab_filepath, feature_method=feature_method)
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
             lines = f.readlines()

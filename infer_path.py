@@ -25,7 +25,8 @@ add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的�
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',   "集束搜索解码相关参数，语言模型文件路径")
-add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法", choices=['ctc_beam_search', 'ctc_greedy'])
+add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
+add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法",   choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
 print_arguments(args)
 
@@ -34,7 +35,8 @@ print_arguments(args)
 predictor = Predictor(model_dir=args.model_dir, vocab_path=args.vocab_path, use_model=args.use_model,
                       decoder=args.decoder, alpha=args.alpha, beta=args.beta, lang_model_path=args.lang_model_path,
                       beam_size=args.beam_size, cutoff_prob=args.cutoff_prob, cutoff_top_n=args.cutoff_top_n,
-                      use_gpu=args.use_gpu, use_pun=args.use_pun, pun_model_dir=args.pun_model_dir)
+                      use_gpu=args.use_gpu, use_pun=args.use_pun, pun_model_dir=args.pun_model_dir,
+                      feature_method=args.feature_method)
 
 
 # 长语音识别

@@ -188,8 +188,9 @@ def count_manifest(counter, manifest_path):
 
 
 # 计算数据集的均值和标准值
-def compute_mean_std(manifest_path, output_path, num_samples=-1, num_workers=8):
-    normalizer = FeatureNormalizer(mean_std_filepath=None,
+def compute_mean_std(feature_method, manifest_path, output_path, num_samples=-1, num_workers=8):
+    normalizer = FeatureNormalizer(feature_method=feature_method,
+                                   mean_std_filepath=None,
                                    manifest_path=manifest_path,
                                    num_samples=num_samples,
                                    num_workers=num_workers)

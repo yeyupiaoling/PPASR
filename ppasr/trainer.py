@@ -32,6 +32,7 @@ from ppasr.utils.utils import labels_to_string
 class PPASRTrainer(object):
     def __init__(self,
                  use_model='deepspeech2',
+                 feature_method='linear',
                  mean_std_path='dataset/mean_std.npz',
                  train_manifest='dataset/manifest.train',
                  test_manifest='dataset/manifest.test',
@@ -49,6 +50,7 @@ class PPASRTrainer(object):
         """
         PPASR集成工具类
         :param use_model: 所使用的模型
+        :param feature_method: 所使用的预处理方法
         :param mean_std_path: 数据集的均值和标准值的npy文件路径
         :param train_manifest: 训练数据的数据列表路径
         :param test_manifest: 测试数据的数据列表路径
@@ -65,6 +67,7 @@ class PPASRTrainer(object):
         :param lang_model_path: 语言模型文件路径
         """
         self.use_model = use_model
+        self.feature_method = feature_method
         self.mean_std_path = mean_std_path
         self.train_manifest = train_manifest
         self.test_manifest = test_manifest
@@ -128,7 +131,11 @@ class PPASRTrainer(object):
 
         print('=' * 70)
         print('开始抽取{}条数据计算均值和标准值...'.format(num_samples))
-        compute_mean_std(self.train_manifest, self.mean_std_path, num_samples=num_samples, num_workers=self.num_workers)
+        compute_mean_std(feature_method=self.feature_method,
+                         manifest_path=self.train_manifest,
+                         output_path=self.mean_std_path,
+                         num_samples=num_samples,
+                         num_workers=self.num_workers)
 
     def evaluate(self,
                  batch_size=32,
@@ -140,7 +147,10 @@ class PPASRTrainer(object):
         :return: 评估结果
         """
         # 获取测试数据
-        test_dataset = PPASRDataset(self.test_manifest, self.dataset_vocab, self.mean_std_path)
+        test_dataset = PPASRDataset(data_list=self.test_manifest,
+                                    vocab_filepath=self.dataset_vocab,
+                                    mean_std_filepath=self.mean_std_path,
+                                    feature_method=self.feature_method)
         test_loader = DataLoader(dataset=test_dataset,
                                  batch_size=batch_size,
                                  collate_fn=collate_fn,
@@ -213,7 +223,9 @@ class PPASRTrainer(object):
             if augment_conf_path is not None and not os.path.exists(augment_conf_path):
                 print('[{}] 数据增强配置文件{}不存在'.format(datetime.now(), augment_conf_path), file=sys.stderr)
             augmentation_config = '{}'
-        train_dataset = PPASRDataset(self.train_manifest, self.dataset_vocab,
+        train_dataset = PPASRDataset(data_list=self.train_manifest,
+                                     vocab_filepath=self.dataset_vocab,
+                                     feature_method=self.feature_method,
                                      mean_std_filepath=self.mean_std_path,
                                      min_duration=min_duration,
                                      max_duration=max_duration,
@@ -236,7 +248,9 @@ class PPASRTrainer(object):
                                   batch_sampler=train_batch_sampler,
                                   num_workers=self.num_workers)
         # 获取测试数据
-        test_dataset = PPASRDataset(self.test_manifest, self.dataset_vocab,
+        test_dataset = PPASRDataset(data_list=self.test_manifest,
+                                    vocab_filepath=self.dataset_vocab,
+                                    feature_method=self.feature_method,
                                     mean_std_filepath=self.mean_std_path,
                                     min_duration=min_duration,
                                     max_duration=max_duration)
@@ -250,9 +264,9 @@ class PPASRTrainer(object):
             model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
-        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
-                      paddle.to_tensor(200, dtype=paddle.int64),
-                      paddle.zeros([model.num_rnn_layers, 1, model.rnn_size], dtype=paddle.float32)]
+        # input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+        #               paddle.to_tensor(200, dtype=paddle.int64),
+        #               paddle.zeros([model.num_rnn_layers, 1, model.rnn_size], dtype=paddle.float32)]
         # paddle.summary(net=model, input=input_data)
         # print(f"{model}")
         # 设置优化方法
@@ -469,9 +483,9 @@ class PPASRTrainer(object):
         :return:
         """
         # 获取训练数据
-        audio_featurizer = AudioFeaturizer()
+        audio_featurizer = AudioFeaturizer(feature_method=self.feature_method)
         text_featurizer = TextFeaturizer(self.dataset_vocab)
-        featureNormalizer = FeatureNormalizer(mean_std_filepath=self.mean_std_path)
+        featureNormalizer = FeatureNormalizer(mean_std_filepath=self.mean_std_path, feature_method=self.feature_method)
 
         # 获取模型
         if self.use_model == 'deepspeech2':

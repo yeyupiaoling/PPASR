@@ -37,7 +37,10 @@ def create_annotation_text(data_dir, annotation_path):
     print('Create Librispeech annotation text ...')
     if not os.path.exists(annotation_path):
         os.makedirs(annotation_path)
-    f_train = open(os.path.join(annotation_path, 'librispeech.txt'), 'w', encoding='utf-8')
+    if not os.path.exists(os.path.join(annotation_path, 'test.txt')):
+        f_train = open(os.path.join(annotation_path, 'librispeech.txt'), 'w', encoding='utf-8')
+    else:
+        f_train = open(os.path.join(annotation_path, 'librispeech.txt'), 'a', encoding='utf-8')
     if not os.path.exists(os.path.join(annotation_path, 'test.txt')):
         f_test = open(os.path.join(annotation_path, 'test.txt'), 'w', encoding='utf-8')
     else:

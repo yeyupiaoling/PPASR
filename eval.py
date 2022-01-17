@@ -20,6 +20,7 @@ add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的�
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
 add_arg('metrics_type',     str,   'cer',                     '计算错误率方法', choices=['cer', 'wer'])
+add_arg('feature_method',   str,   'linear',                  '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
 add_arg('decoder',          str,   'ctc_beam_search',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
 add_arg('resume_model',     str,   'models/deepspeech2/best_model/', '模型的路径')
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
@@ -28,6 +29,7 @@ print_arguments(args)
 
 
 trainer = PPASRTrainer(use_model=args.use_model,
+                       feature_method=args.feature_method,
                        mean_std_path=args.mean_std_path,
                        test_manifest=args.test_manifest,
                        dataset_vocab=args.dataset_vocab,
