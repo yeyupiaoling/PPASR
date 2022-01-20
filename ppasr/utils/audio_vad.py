@@ -7,9 +7,7 @@ import webrtcvad
 
 
 def read_wave(path):
-    """Reads a .wav file.
-    Takes the path, and returns (PCM audio data, sample rate).
-    """
+    """读取一个音频文件，得到音频的字节数据和采样率"""
     with contextlib.closing(wave.open(path, 'rb')) as wf:
         num_channels = wf.getnchannels()
         sample_width = wf.getsampwidth()
@@ -27,9 +25,7 @@ def read_wave(path):
 
 
 def write_wave(path, audio, sample_rate):
-    """Writes a .wav file.
-    Takes path, PCM audio data, and sample rate.
-    """
+    """将音频数据保存到本地"""
     with contextlib.closing(wave.open(path, 'wb')) as wf:
         wf.setnchannels(1)
         wf.setsampwidth(2)
@@ -38,7 +34,7 @@ def write_wave(path, audio, sample_rate):
 
 
 class Frame(object):
-    """Represents a "frame" of audio data."""
+    """创建一个音频对象，包括音频的字节数据、偏移、长度"""
     def __init__(self, bytes, timestamp, duration):
         self.bytes = bytes
         self.timestamp = timestamp
@@ -46,10 +42,7 @@ class Frame(object):
 
 
 def frame_generator(frame_duration_ms, audio, sample_rate):
-    """Generates audio frames from PCM audio data.
-    Takes the desired frame duration in milliseconds, the PCM data, and the sample rate.
-    Yields Frames of the requested duration.
-    """
+    """将音频数据按照指定长度分割层多段音频"""
     n = int(sample_rate * (frame_duration_ms / 1000.0) * 2)
     offset = 0
     timestamp = 0.0

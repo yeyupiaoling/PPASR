@@ -4,9 +4,7 @@ import sys
 import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
-from LAC import LAC
 
-from ppasr.utils.text_utils import PunctuationExecutor
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
@@ -106,6 +104,7 @@ class Predictor:
 
         # 加标点符号
         if self.use_pun_model:
+            from ppasr.utils.text_utils import PunctuationExecutor
             self.pun_executor = PunctuationExecutor(model_dir=pun_model_dir,
                                                     use_gpu=use_gpu,
                                                     gpu_mem=gpu_mem,
@@ -113,7 +112,7 @@ class Predictor:
 
         # 预热
         warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
-        self.predict(audio_ndarray=warmup_audio, to_an=True)
+        self.predict(audio_ndarray=warmup_audio, to_an=False)
 
     # 解码模型输出结果
     def decode(self, output_data, to_an):
@@ -251,6 +250,7 @@ class Predictor:
     def cn2an(self, text):
         # 获取分词模型
         if self.lac is None:
+            from LAC import LAC
             self.lac = LAC(mode='lac', use_cuda=self.use_gpu)
         lac_result = self.lac.run(text)
         result_text = ''

@@ -4,7 +4,8 @@ import functools
 import time
 import tkinter.messagebox
 import wave
-from tkinter.filedialog import *
+from tkinter import *
+from tkinter.filedialog import askopenfilename
 
 import pyaudio
 
@@ -40,7 +41,7 @@ class SpeechRecognitionApp:
         self.playing = False
         self.recording = False
         self.stream = None
-        self.to_an = True
+        self.to_an = False
         # 最大录音时长
         self.max_record = 600
         # 录音保存的路径
@@ -74,7 +75,6 @@ class SpeechRecognitionApp:
         self.check_var = BooleanVar()
         self.to_an_check = Checkbutton(self.an_frame, text='中文数字转阿拉伯数字', variable=self.check_var, command=self.to_an_state)
         self.to_an_check.grid(row=0)
-        self.to_an_check.select()
         self.an_frame.grid(row=1)
         self.an_frame.place(x=700, y=10)
 
