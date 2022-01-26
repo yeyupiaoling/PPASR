@@ -18,7 +18,7 @@ from ppasr.utils.utils import add_arguments, print_arguments
 from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.collate_fn import collate_fn
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
-from ppasr.utils.metrics import cer
+from ppasr.utils.metrics import cer, wer
 from ppasr.utils.utils import labels_to_string
 
 
@@ -40,8 +40,8 @@ add_arg('use_model',        str,   'deepspeech2',             '所使用的模�
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')
-add_arg('resume_model',     str,   'models/deepspeech2/epoch_50/', '模型的路径')
-add_arg('decoder',          str,   'ctc_greedy',         '结果解码方法', choices=['ctc_beam_search', 'ctc_greedy'])
+add_arg('resume_model',     str,   'models/deepspeech2/best_model/', '模型的路径')
+add_arg('metrics_type',     str,    'cer',               '计算错误率方法', choices=['cer', 'wer'])
 add_arg('feature_method',   str,    'linear',            '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
 add_arg('lang_model_path',  str,   'lm/zh_giga.no_cna_cmn.prune01244.klm',        "语言模型文件路径")
 args = parser.parse_args()
@@ -113,15 +113,18 @@ def tune():
                                                                        num_processes=args.num_proc_bsearch)
             labels_str = labels_to_string(label, test_dataset.vocab_list)
             for out_string, label in zip(*(out_strings, labels_str)):
-                # 计算字错率
-                c.append(cer(out_string, label))
+                # 计算字错率或者词错率
+                if args.metrics_type == 'wer':
+                    c.append(wer(out_string, label))
+                else:
+                    c.append(cer(out_string, label))
         c = float(sum(c) / len(c))
         if c < best_cer:
             best_alpha = alpha
             best_beta = beta
             best_cer = c
-        print('当alpha为：%f, beta为：%f，字错率为：%f' % (alpha, beta, c))
-    print('【最后结果】当alpha为：%f, beta为：%f，字错率最低，为：%f' % (best_alpha, best_beta, best_cer))
+        print('当alpha为：%f, beta为：%f，%s：%f' % (alpha, beta, args.metrics_type, c))
+    print('【最后结果】当alpha为：%f, beta为：%f，%s最低，为：%f' % (best_alpha, best_beta, args.metrics_type, best_cer))
 
 
 if __name__ == '__main__':

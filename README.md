@@ -40,13 +40,13 @@
 [知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
 
 ## 模型下载
-|                                            数据集                                            |    使用模型     | 语言  | 测试集字错率（词错率） |                              下载地址                               |
-|:-----------------------------------------------------------------------------------------:|:-----------:|:---:|:-----------:|:---------------------------------------------------------------:|
-|             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             | deepspeech2 | 中文  |  0.077042   | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
-| [free_st_chinese_mandarin_corpus](https://openslr.magicdatatech.com/resources/38) (109小时) | deepspeech2 | 中文  |  0.137442   | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
-|             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             | deepspeech2 | 中文  |  0.062654   | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
-|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2 | 中文  |  0.056835   | [点击下载](https://download.csdn.net/download/qq_33200967/58036573) |
-|           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           | deepspeech2 | 英文  |     训练中     |                               训练中                               |
+|                                            数据集                                            |    使用模型     | 语言  |                                     解码参数                                      | 测试集字错率（词错率） |                              下载地址                               |
+|:-----------------------------------------------------------------------------------------:|:-----------:|:---:|:-----------------------------------------------------------------------------:|:-----------:|:---------------------------------------------------------------:|
+|             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.077042   | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
+| [free st chinese mandarin corpus](https://openslr.magicdatatech.com/resources/38) (109小时) | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.137442   | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
+|             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.062654   | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
+|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.056835   | [点击下载](https://download.csdn.net/download/qq_33200967/58036573) |
+|           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           | deepspeech2 | 英文  | alpha=1.9<br>beta=0.3<br>beam_size=500<br>cutoff_prob=1.0<br>cutoff_top_n=40  |   0.10855   | [点击下载](https://download.csdn.net/download/qq_33200967/77978970) |
 
 **说明：** 
 1. 这里字错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
