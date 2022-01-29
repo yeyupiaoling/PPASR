@@ -139,10 +139,14 @@ class PPASRTrainer(object):
 
     def evaluate(self,
                  batch_size=32,
+                 min_duration=0,
+                 max_duration=-1,
                  resume_model='models/deepspeech2/best_model/'):
         """
         评估模型
         :param batch_size: 评估的批量大小
+        :param min_duration: 过滤最短的音频长度
+        :param max_duration: 过滤最长的音频长度，当为-1的时候不限制长度
         :param resume_model: 所使用的模型
         :return: 评估结果
         """
@@ -150,6 +154,8 @@ class PPASRTrainer(object):
         test_dataset = PPASRDataset(data_list=self.test_manifest,
                                     vocab_filepath=self.dataset_vocab,
                                     mean_std_filepath=self.mean_std_path,
+                                    min_duration=min_duration,
+                                    max_duration=max_duration,
                                     feature_method=self.feature_method)
         test_loader = DataLoader(dataset=test_dataset,
                                  batch_size=batch_size,

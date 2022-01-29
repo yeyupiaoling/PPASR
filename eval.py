@@ -8,6 +8,8 @@ from ppasr.utils.utils import add_arguments, print_arguments
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('batch_size',       int,    32,                       '评估的批量大小')
+add_arg('min_duration',     int,    0.5,                      '过滤最短的音频长度')
+add_arg('max_duration',     int,    35,                       '过滤最长的音频长度，当为-1的时候不限制长度')
 add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
 add_arg('alpha',            float,  2.2,                      '集束搜索的LM系数')
 add_arg('beta',             float,  4.3,                      '集束搜索的WC系数')
@@ -46,6 +48,8 @@ trainer = PPASRTrainer(use_model=args.use_model,
 
 start = time.time()
 error_rate = trainer.evaluate(batch_size=args.batch_size,
+                              min_duration=args.min_duration,
+                              max_duration=args.max_duration,
                               resume_model=args.resume_model)
 end = time.time()
 print('评估消耗时间：{}s，{}：{:.5f}'.format(int(end - start), args.metrics_type, error_rate))
