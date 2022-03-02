@@ -12,9 +12,7 @@ python setup.py install
 https://download.csdn.net/download/qq_33200967/33826147
 ```
 
-3. 把需要说话人的语音放在`tools/generate_audio/speaker_audio`目录下，可以使用`dataset/test.wav`文件，可以到找多个人的音频放在`tools/generate_audio/speaker_audio`目录下，开发者也可以尝试入自己的音频放入该目录，这样训练出来的模型能更好识别开发者的语音，采样率最好是16000Hz。
-
-4. 然后下载一个语料，如果开发者有其他更好的语料也可以替换。然后解压`dgk_lost_conv/results`目录下的压缩文件，windows用户可以手动解压。
+3. 然后下载一个语料，如果开发者有其他更好的语料也可以替换。然后解压`dgk_lost_conv/results`目录下的压缩文件，windows用户可以手动解压。
 ```shell
 cd tools/generate_audio
 git clone https://github.com/aceimnorstuvwxz/dgk_lost_conv.git
@@ -24,13 +22,13 @@ unzip xiaohuangji50w_fenciA.conv.zip
 unzip xiaohuangji50w_nofenci.conv.zip
 ```
 
-5. 接着执行下面命令生成中文语料数据集，生成的中文语料存放在`tools/generate_audio/corpus.txt`。
+4. 接着执行下面命令生成中文语料数据集，生成的中文语料存放在`tools/generate_audio/corpus.txt`。
 ```shell
 cd tools/generate_audio/
 python generate_corpus.py
 ```
 
-6. 最后执行以下命令即可自动合成语音，合成的语音会放在`dataset/audio/generate`， 标注文件会放在`dataset/annotation/generate.txt`。
+5. 最后执行以下命令即可自动合成语音，合成时会随机获取说话人进行合成语音，合成的语音会放在`dataset/audio/generate`， 标注文件会放在`dataset/annotation/generate.txt`。
 ```shell
 cd tools/generate_audio/
 python generate_audio.py
