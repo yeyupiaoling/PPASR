@@ -1,5 +1,5 @@
 numpy>=1.19.2
-scipy==1.6.1
+scipy>=1.6.1
 tqdm==4.59.0
 librosa==0.8.0
 python-Levenshtein==0.12.2
@@ -7,7 +7,7 @@ visualdl>=2.1.1
 SoundFile~=0.10
 resampy==0.2.2
 numba>=0.53.0
-zhconv==1.4.2
+zhconv>=1.4.2
 paddlespeech_feat
 webrtcvad
 pydub
