@@ -8,7 +8,7 @@ SoundFile~=0.10
 resampy==0.2.2
 numba>=0.53.0
 zhconv>=1.4.2
-paddlespeech_feat
+paddlespeech_feat==0.1.1
 webrtcvad
 pydub
 cn2an
