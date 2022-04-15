@@ -42,7 +42,6 @@
     "aug_type": "feature",
     "params": {
       "W": 0,
-      "warp_mode": "PIL",
       "F": 10,
       "n_freq_masks": 2,
       "T": 50,

@@ -27,30 +27,35 @@ class SpecAugmentor(AugmentorBase):
                  adaptive_number_ratio=0,
                  adaptive_size_ratio=0,
                  max_n_time_masks=20,
-                 replace_with_zero=True,
-                 warp_mode='PIL'):
+                 replace_with_zero=True):
         """SpecAugment class.
         Args:
-            rng (random.Random): random generator object.
-            F (int): parameter for frequency masking
-            T (int): parameter for time masking
-            n_freq_masks (int): number of frequency masks
-            n_time_masks (int): number of time masks
-            p (float): parameter for upperbound of the time mask
-            W (int): parameter for time warping
-            adaptive_number_ratio (float): adaptive multiplicity ratio for time masking
-            adaptive_size_ratio (float): adaptive size ratio for time masking
-            max_n_time_masks (int): maximum number of time masking
-            replace_with_zero (bool): pad zero on mask if true else use mean
-            warp_mode (str):  "PIL" (default, fast, not differentiable)
-                 or "sparse_image_warp" (slow, differentiable)
+            :param F: 频率屏蔽参数
+            :type F: int
+            :param T: 时间屏蔽参数
+            :type T: int
+            :param n_freq_masks: 频率屏蔽数量
+            :type n_freq_masks: int
+            :param n_time_masks: 时间屏蔽数量
+            :type n_time_masks: int
+            :param p: 时间屏蔽上限参数
+            :type p: float
+            :param W: 时间变形参数
+            :type W: int
+            :param adaptive_number_ratio: 时间屏蔽的自适应多重比
+            :type adaptive_number_ratio: float
+            :param adaptive_size_ratio: 时间屏蔽的自适应大小比
+            :type adaptive_size_ratio: float
+            :param max_n_time_masks: 时间屏蔽的最大数目
+            :type max_n_time_masks: int
+            :param replace_with_zero: 如果真的话，在pad补0，否则使用平均值
+            :type replace_with_zero: bool
         """
         super().__init__()
         self._rng = rng
         self.inplace = True
         self.replace_with_zero = replace_with_zero
 
-        self.mode = warp_mode
         self.W = W
         self.F = F
         self.T = T
@@ -97,34 +102,23 @@ class SpecAugmentor(AugmentorBase):
         Returns:
             np.ndarray: time warped spectrogram (time, freq)
         """
-        window = max_time_warp = self.W
+        window = self.W
         if window == 0:
             return x
 
-        if mode == "PIL":
-            t = x.shape[0]
-            if t - window <= window:
-                return x
-            # NOTE: randrange(a, b) emits a, a + 1, ..., b - 1
-            center = random.randrange(window, t - window)
-            warped = random.randrange(center - window, center +
-                                      window) + 1  # 1 ... t - 1
-
-            left = Image.fromarray(x[:center]).resize((x.shape[1], warped),
-                                                      BICUBIC)
-            right = Image.fromarray(x[center:]).resize((x.shape[1], t - warped),
-                                                       BICUBIC)
-            if self.inplace:
-                x[:warped] = left
-                x[warped:] = right
-                return x
-            return np.concatenate((left, right), 0)
-        elif mode == "sparse_image_warp":
-            raise NotImplementedError('sparse_image_warp')
-        else:
-            raise NotImplementedError(
-                "unknown resize mode: " + mode +
-                ", choose one from (PIL, sparse_image_warp).")
+        t = x.shape[0]
+        if t - window <= window:
+            return x
+        # NOTE: randrange(a, b) emits a, a + 1, ..., b - 1
+        center = random.randrange(window, t - window)
+        warped = random.randrange(center - window, center + window) + 1  # 1 ... t - 1
+        left = Image.fromarray(x[:center]).resize((x.shape[1], warped), BICUBIC)
+        right = Image.fromarray(x[center:]).resize((x.shape[1], t - warped), BICUBIC)
+        if self.inplace:
+            x[:warped] = left
+            x[warped:] = right
+            return x
+        return np.concatenate((left, right), 0)
 
     def mask_freq(self, x, replace_with_zero=False):
         """freq mask
@@ -197,7 +191,7 @@ class SpecAugmentor(AugmentorBase):
         """
         assert isinstance(x, np.ndarray)
         assert x.ndim == 2
-        x = self.time_warp(x, self.mode)
+        x = self.time_warp(x)
         x = self.mask_freq(x, self.replace_with_zero)
         x = self.mask_time(x, self.replace_with_zero)
         return x
