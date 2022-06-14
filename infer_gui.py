@@ -22,7 +22,7 @@ add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM
 add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC系数")
 add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
-add_arg('use_model',        str,   'deepspeech2',                "所使用的模型")
+add_arg('use_model',        str,   'deepspeech2',                "所使用的模型", choices=['deepspeech2', 'deepspeech2_big'])
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")

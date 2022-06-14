@@ -17,7 +17,7 @@ add_arg('beam_size',        int,    300,                      '集束搜索的�
 add_arg('num_proc_bsearch', int,    10,                       '集束搜索方法使用CPU数量')
 add_arg('cutoff_prob',      float,  0.99,                     '剪枝的概率')
 add_arg('cutoff_top_n',     int,    40,                       '剪枝的最大值')
-add_arg('use_model',        str,   'deepspeech2',             '所使用的模型')
+add_arg('use_model',        str,   'deepspeech2',             '所使用的模型', choices=['deepspeech2', 'deepspeech2_big'])
 add_arg('test_manifest',    str,   'dataset/manifest.test',   '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,   'dataset/vocabulary.txt',  '数据字典的路径')
 add_arg('mean_std_path',    str,   'dataset/mean_std.npz',    '数据集的均值和标准值的npy文件路径')

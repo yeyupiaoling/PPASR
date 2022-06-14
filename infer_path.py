@@ -20,7 +20,7 @@ add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM
 add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC系数")
 add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
-add_arg('use_model',        str,    'deepspeech2',               "所使用的模型")
+add_arg('use_model',        str,    'deepspeech2',               "所使用的模型", choices=['deepspeech2', 'deepspeech2_big'])
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
@@ -64,7 +64,7 @@ def predict_audio():
 
 # 实时识别模拟
 def real_time_predict_demo():
-    state = None
+    state_h, state_c = None, None
     result = []
     # 识别间隔时间
     interval_time = 1
@@ -77,13 +77,13 @@ def real_time_predict_demo():
     while data != b'':
         all_data.append(data)
         start = time.time()
-        score, text, state = predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state)
+        score, text, state_h, state_c = predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state_h, init_state_c_box=state_c)
         result.append(text)
         print("分段结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, ''.join(result), score))
         data = wf.readframes(CHUNK)
     all_data = b''.join(all_data)
     start = time.time()
-    score, text, state = predictor.predict_stream(audio_bytes=all_data, to_an=args.to_an, is_end=True)
+    score, text, _, _ = predictor.predict_stream(audio_bytes=all_data, to_an=args.to_an, is_end=True)
     print("整一句结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, text, score))
 
 

@@ -22,11 +22,12 @@ from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
-from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
+from ppasr.model_utils.deepspeech2.model import deepspeech2, deepspeech2_big
 from ppasr.model_utils.utils import DeepSpeech2ModelExport
 from ppasr.utils.metrics import cer, wer
 from ppasr.utils.utils import create_manifest, create_noise, count_manifest, compute_mean_std
 from ppasr.utils.utils import labels_to_string
+from ppasr.utils.model_summary import summary
 
 
 class PPASRTrainer(object):
@@ -165,10 +166,15 @@ class PPASRTrainer(object):
 
         # 获取模型
         if self.use_model == 'deepspeech2':
-            model = DeepSpeech2Model(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
+            model = deepspeech2(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
+        elif self.use_model == 'deepspeech2_big':
+            model = deepspeech2_big(feat_size=test_dataset.feature_dim, vocab_size=test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
-
+        # 打印模型
+        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+                      paddle.to_tensor(200, dtype=paddle.int64)]
+        summary(net=model, input=input_data)
         assert os.path.exists(os.path.join(resume_model, 'model.pdparams')), "模型不存在！"
         model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
         model.eval()
@@ -267,14 +273,15 @@ class PPASRTrainer(object):
 
         # 获取模型
         if self.use_model == 'deepspeech2':
-            model = DeepSpeech2Model(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
+            model = deepspeech2(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
+        elif self.use_model == 'deepspeech2_big':
+            model = deepspeech2_big(feat_size=train_dataset.feature_dim, vocab_size=train_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
-        # input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
-        #               paddle.to_tensor(200, dtype=paddle.int64),
-        #               paddle.zeros([model.num_rnn_layers, 1, model.rnn_size], dtype=paddle.float32)]
-        # paddle.summary(net=model, input=input_data)
-        # print(f"{model}")
+        # 打印模型
+        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+                      paddle.to_tensor(200, dtype=paddle.int64)]
+        summary(net=model, input=input_data)
         # 设置优化方法
         grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.93)
@@ -495,10 +502,15 @@ class PPASRTrainer(object):
 
         # 获取模型
         if self.use_model == 'deepspeech2':
-            base_model = DeepSpeech2Model(feat_size=audio_featurizer.feature_dim, vocab_size=text_featurizer.vocab_size)
+            base_model = deepspeech2(feat_size=audio_featurizer.feature_dim, vocab_size=text_featurizer.vocab_size)
+        elif self.use_model == 'deepspeech2_big':
+            base_model = deepspeech2_big(feat_size=audio_featurizer.feature_dim, vocab_size=text_featurizer.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
-
+        # 打印模型
+        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+                      paddle.to_tensor(200, dtype=paddle.int64)]
+        summary(net=base_model, input=input_data)
         # 加载预训练模型
         resume_model_path = os.path.join(resume_model, 'model.pdparams')
         assert os.path.exists(resume_model_path), "恢复模型不存在！"
@@ -506,10 +518,11 @@ class PPASRTrainer(object):
         print('[{}] 成功恢复模型参数和优化方法参数：{}'.format(datetime.now(), resume_model_path))
 
         # 获取模型
-        if self.use_model == 'deepspeech2':
+        if 'deepspeech2' in self.use_model:
             model = DeepSpeech2ModelExport(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
             input_spec = [InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
                           InputSpec(shape=(-1,), dtype=paddle.int64),
+                          InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32),
                           InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32)]
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))

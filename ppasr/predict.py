@@ -98,6 +98,7 @@ class Predictor:
         self.audio_data_handle = self.predictor.get_input_handle('audio')
         self.audio_len_handle = self.predictor.get_input_handle('audio_len')
         self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
+        self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
 
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
@@ -176,6 +177,8 @@ class Predictor:
         init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
         self.init_state_h_box_handle.reshape(init_state_h_box.shape)
         self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
+        self.init_state_c_box_handle.reshape(init_state_h_box.shape)
+        self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
 
         # 运行predictor
         self.predictor.run()
@@ -192,6 +195,7 @@ class Predictor:
                        audio_bytes=None,
                        audio_ndarray=None,
                        init_state_h_box=None,
+                       init_state_c_box=None,
                        is_end=False,
                        to_an=False):
         """
@@ -199,6 +203,7 @@ class Predictor:
         :param audio_bytes: 需要预测的音频wave读取的字节流
         :param audio_ndarray: 需要预测的音频未预处理的numpy值
         :param init_state_h_box: 模型上次输出的状态，如果不是流式识别，这个为None
+        :param init_state_c_box: 模型上次输出的状态，如果不是流式识别，这个为None
         :param is_end: 是否结束语音识别
         :param to_an: 是否转为阿拉伯数字
         :return: 识别的文本结果和解码的得分数
@@ -223,11 +228,14 @@ class Predictor:
         self.audio_data_handle.copy_from_cpu(audio_data)
         self.audio_len_handle.copy_from_cpu(audio_len)
 
-        if init_state_h_box is None:
+        if init_state_h_box is None or init_state_c_box is None:
             # 对RNN层的initial_states全零初始化
             init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
+            init_state_c_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
         self.init_state_h_box_handle.reshape(init_state_h_box.shape)
         self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
+        self.init_state_c_box_handle.reshape(init_state_c_box.shape)
+        self.init_state_c_box_handle.copy_from_cpu(init_state_c_box)
 
         # 运行predictor
         self.predictor.run()
@@ -235,8 +243,10 @@ class Predictor:
         # 获取输出
         output_handle = self.predictor.get_output_handle(self.output_names[0])
         output_data = output_handle.copy_to_cpu()[0]
-        output_state_handle = self.predictor.get_output_handle(self.output_names[1])
-        output_state = output_state_handle.copy_to_cpu()
+        output_state_h_handle = self.predictor.get_output_handle(self.output_names[1])
+        output_state_h = output_state_h_handle.copy_to_cpu()
+        output_state_c_handle = self.predictor.get_output_handle(self.output_names[2])
+        output_state_c = output_state_c_handle.copy_to_cpu()
         if is_end or is_interrupt:
             # 完整解码
             score, text = self.decode(output_data=output_data, to_an=to_an)
@@ -244,7 +254,7 @@ class Predictor:
             # 说话的中心使用贪心解码策略，快速解码
             result = greedy_decoder(probs_seq=output_data, vocabulary=self._text_featurizer.vocab_list)
             score, text = result[0], result[1]
-        return score, text, output_state
+        return score, text, output_state_h, output_state_c
 
     # 是否转为阿拉伯数字
     def cn2an(self, text):
