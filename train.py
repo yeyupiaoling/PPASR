@@ -21,7 +21,7 @@ add_arg('augment_conf_path',str,    'conf/augmentation.json',   '数据增强的
 add_arg('save_model_path',  str,    'models/',                  '模型保存的路径')
 add_arg('feature_method',   str,    'linear',                   '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
 add_arg('metrics_type',     str,    'cer',                      '计算错误率方法', choices=['cer', 'wer'])
-add_arg('resume_model',     str,    'models/deepspeech2/best_model',                       '恢复训练，当为None则不使用预训练模型')
+add_arg('resume_model',     str,    None,                       '恢复训练，当为None则不使用预训练模型')
 add_arg('pretrained_model', str,    None,                       '预训练模型的路径，当为None则不使用预训练模型')
 args = parser.parse_args()
 print_arguments(args)

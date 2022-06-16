@@ -310,7 +310,7 @@ class PPASRTrainer(object):
                         model_state_dict.pop(name, None)
                 else:
                     print('Lack weight: {}'.format(name))
-            model.set_dict(model_state_dict)
+            model.set_state_dict(model_state_dict)
             print('[{}] 成功加载预训练模型：{}'.format(datetime.now(), pretrained_model))
 
         # 加载恢复模型

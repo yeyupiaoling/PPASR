@@ -6,8 +6,7 @@ class TextFeaturizer(object):
     """
 
     def __init__(self, vocab_filepath):
-        self._vocab_dict, self._vocab_list = self._load_vocabulary_from_file(
-            vocab_filepath)
+        self._vocab_dict, self._vocab_list = self._load_vocabulary_from_file(vocab_filepath)
 
     def featurize(self, text):
         """将文本字符串转换为字符级的令牌索引列表
