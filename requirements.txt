@@ -12,3 +12,4 @@ paddlespeech_feat==0.1.0
 webrtcvad
 pydub
 cn2an
+ijson
