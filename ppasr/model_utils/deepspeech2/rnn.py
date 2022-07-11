@@ -51,7 +51,7 @@ class RNNStack(nn.Layer):
 
     def forward(self, x, x_lens, init_state_h_box=None, init_state_c_box=None):
         if init_state_h_box is not None:
-            if self.use_gru is True:
+            if self.use_gru:
                 init_state_h_list = paddle.split(init_state_h_box, self.num_rnn_layers, axis=0)
                 init_state_list = init_state_h_list
             else:
@@ -65,7 +65,7 @@ class RNNStack(nn.Layer):
             x, final_state = self.rnn[i](x, x_lens, init_state_list[i])
             final_chunk_state_list.append(final_state)
 
-        if self.use_gru is True:
+        if self.use_gru:
             final_chunk_state_h_box = paddle.concat(final_chunk_state_list, axis=0)
             final_chunk_state_c_box = init_state_c_box
         else:
