@@ -51,20 +51,20 @@ def predict_long_audio():
         score, text = predictor.predict(audio_bytes=audio_bytes, to_an=args.to_an)
         texts = texts + text if args.use_pun else texts + '，' + text
         scores.append(score)
-        print("第%d个分割音频, 得分: %d, 识别结果: %s" % (i, score, text))
-    print("最终结果，消耗时间：%d, 得分: %d, 识别结果: %s" % (round((time.time() - start) * 1000), sum(scores) / len(scores), texts))
+        print(f"第{i}个分割音频, 得分: {int(score)}, 识别结果: {text}")
+    print(f"最终结果，消耗时间：{int(round((time.time() - start) * 1000))}, 得分: {int(sum(scores) / len(scores))}, 识别结果: {texts}")
 
 
 # 短语音识别
 def predict_audio():
     start = time.time()
     score, text = predictor.predict(audio_path=args.wav_path, to_an=args.to_an)
-    print("消耗时间：%dms, 识别结果: %s, 得分: %d" % (round((time.time() - start) * 1000), text, score))
+    print(f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {int(score)}")
 
 
 # 实时识别模拟
 def real_time_predict_demo():
-    state_h, state_c = None, None
+    state_h, state_c, output = None, None, None
     result = []
     # 识别间隔时间
     interval_time = 1
@@ -77,14 +77,59 @@ def real_time_predict_demo():
     while data != b'':
         all_data.append(data)
         start = time.time()
-        score, text, state_h, state_c = predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state_h, init_state_c_box=state_c)
-        result.append(text)
-        print("分段结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, ''.join(result), score))
+        score, text, state_h, state_c, output, is_end = \
+            predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state_h,
+                                     init_state_c_box=state_c, last_output_data=output)
+        if is_end:
+            result.append(text)
+            text = ''
+        print(f"【实时结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {''.join(result) + text}, 得分: {int(score)}")
         data = wf.readframes(CHUNK)
     all_data = b''.join(all_data)
     start = time.time()
-    score, text, _, _ = predictor.predict_stream(audio_bytes=all_data, to_an=args.to_an, is_end=True)
-    print("整一句结果：消耗时间：%dms, 识别结果: %s, 得分: %d" % ((time.time() - start) * 1000, text, score))
+    score, text = predictor.predict(audio_bytes=all_data, to_an=args.to_an)
+    print(f"【整一句结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {text}, 得分: {int(score)}")
+
+
+# 麦克风实时识别模拟
+def microphone_predict_demo(save_wav=True):
+    import pyaudio
+    state_h, state_c, output = None, None, None
+    result = []
+    p = pyaudio.PyAudio()
+    # 识别间隔时间
+    interval_time = 1
+    CHUNK = 16000 * interval_time
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 1
+    RATE = 16000
+    # 打开录音
+    stream = p.open(format=FORMAT,
+                    channels=CHANNELS,
+                    rate=RATE,
+                    input=True,
+                    frames_per_buffer=CHUNK)
+
+    all_data = []
+    while True:
+        data = stream.read(CHUNK)
+        start = time.time()
+        score, text, state_h, state_c, output, is_end = \
+            predictor.predict_stream(audio_bytes=data, to_an=args.to_an, init_state_h_box=state_h,
+                                     init_state_c_box=state_c, last_output_data=output)
+        if is_end:
+            result.append(text)
+            text = ''
+        print(f"【实时结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {''.join(result) + text}, 得分: {int(score)}")
+        if save_wav:
+            all_data.append(data)
+            save_file = "record.wav"
+            wf = wave.open(save_file, 'wb')  # 保存
+            wf.setnchannels(CHANNELS)
+            wf.setsampwidth(p.get_sample_size(FORMAT))
+            wf.setframerate(CHUNK)
+            wf.writeframes(b''.join(all_data))
+            wf.close()
 
 
 if __name__ == "__main__":
