@@ -116,6 +116,8 @@ class SortagradDistributedBatchSampler(DistributedBatchSampler):
         if not self.drop_last and len(batch_indices) > 0:
             yield batch_indices
 
+        self.epoch += 1
+
     def __len__(self):
         num_samples = self.num_samples
         num_samples += int(not self.drop_last) * (self.batch_size - 1)
