@@ -92,7 +92,7 @@ def real_time_predict_demo():
 
 
 # 麦克风实时识别模拟
-def microphone_predict_demo(save_wav=True):
+def microphone_predict_demo():
     import pyaudio
     state_h, state_c, output = None, None, None
     result = []
@@ -110,7 +110,7 @@ def microphone_predict_demo(save_wav=True):
                     input=True,
                     frames_per_buffer=CHUNK)
 
-    all_data = []
+    print('请开始说话：')
     while True:
         data = stream.read(CHUNK)
         start = time.time()
@@ -121,15 +121,6 @@ def microphone_predict_demo(save_wav=True):
             result.append(text)
             text = ''
         print(f"【实时结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {''.join(result) + text}, 得分: {int(score)}")
-        if save_wav:
-            all_data.append(data)
-            save_file = "record.wav"
-            wf = wave.open(save_file, 'wb')  # 保存
-            wf.setnchannels(CHANNELS)
-            wf.setsampwidth(p.get_sample_size(FORMAT))
-            wf.setframerate(CHUNK)
-            wf.writeframes(b''.join(all_data))
-            wf.close()
 
 
 if __name__ == "__main__":
