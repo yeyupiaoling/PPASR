@@ -42,18 +42,21 @@
 [知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
 
 ## 模型下载
-|                                            数据集                                            |    使用模型     | 语言  |                                     解码参数                                      | 测试集字错率（词错率） |                              下载地址                               |
-|:-----------------------------------------------------------------------------------------:|:-----------:|:---:|:-----------------------------------------------------------------------------:|:-----------:|:---------------------------------------------------------------:|
-|             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.077042   | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
-| [free st chinese mandarin corpus](https://openslr.magicdatatech.com/resources/38) (109小时) | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.137442   | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
-|             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.062654   | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
-|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2 | 中文  | alpha=2.2<br>beta=4.3<br>beam_size=300<br>cutoff_prob=0.99<br>cutoff_top_n=40 |  0.056835   | [点击下载](https://download.csdn.net/download/qq_33200967/58036573) |
-|           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           | deepspeech2 | 英文  | alpha=1.9<br>beta=0.3<br>beam_size=500<br>cutoff_prob=1.0<br>cutoff_top_n=40  |   0.10855   | [点击下载](https://download.csdn.net/download/qq_33200967/77978970) |
+|                                            数据集                                            |      使用模型       | 预处理方式  | 语言  | 测试集错率（词错率） |                              下载地址                               |
+|:-----------------------------------------------------------------------------------------:|:---------------:|:------:|:---:|:----------:|:---------------------------------------------------------------:|
+|             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             |   deepspeech2   | linear | 中文  |  0.077042  | [点击下载](https://download.csdn.net/download/qq_33200967/29121153) |
+| [free st chinese mandarin corpus](https://openslr.magicdatatech.com/resources/38) (109小时) |   deepspeech2   | linear | 中文  |  0.137442  | [点击下载](https://download.csdn.net/download/qq_33200967/30296023) |
+|             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             |   deepspeech2   | linear | 中文  |  0.062654  | [点击下载](https://download.csdn.net/download/qq_33200967/26929682) |
+|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              |   deepspeech2   | linear | 中文  |  0.056835  | [点击下载](https://download.csdn.net/download/qq_33200967/58036573) |
+|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2_big | linear | 中文  |  0.05262   |                            [点击下载]()                             |
+|           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           |   deepspeech2   | linear | 英文  |  0.10855   | [点击下载](https://download.csdn.net/download/qq_33200967/77978970) |
 
 **说明：** 
 1. 这里字错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
-2. 除了aishell数据集按照数据集本身划分的训练数据和测试数据，其他的都是按照项目设置的固定比例划分训练数据和测试数据。
-3. 下载的压缩文件已经包含了`mean_std.npz`和`vocabulary.txt`，需要把解压得到的全部文件复制到项目根目录下。
+2. 中文解码参数为：`alpha=2.2，beta=4.3，beam_size=300，cutoff_prob=0.99，cutoff_top_n=40`。
+3. 英文解码参数为：`alpha=1.9，beta=0.3，beam_size=500，cutoff_prob=1.0，cutoff_top_n=40`。
+4. 除了aishell数据集按照数据集本身划分的训练数据和测试数据，其他的都是按照项目设置的固定比例划分训练数据和测试数据。
+5. 下载的压缩文件已经包含了`mean_std.npz`和`vocabulary.txt`，需要把解压得到的全部文件复制到项目根目录下。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 

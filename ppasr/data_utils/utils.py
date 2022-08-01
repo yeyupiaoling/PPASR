@@ -5,7 +5,7 @@ import numpy as np
 from pydub import AudioSegment
 
 
-def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.0):
+def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.5):
     """解析数据列表
     持续时间在[min_duration, max_duration]之外的实例将被过滤。
 
