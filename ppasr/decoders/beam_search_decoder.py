@@ -1,7 +1,7 @@
 import os
 
 from ppasr.decoders.swig_wrapper import Scorer
-from ppasr.decoders.swig_wrapper import ctc_beam_search_decoder_batch, ctc_beam_search_decoder
+from ppasr.decoders.swig_wrapper import ctc_beam_search_decoding_batch, ctc_beam_search_decoding
 
 
 class BeamSearchDecoder:
@@ -33,13 +33,13 @@ class BeamSearchDecoder:
         if self._ext_scorer is not None:
             self._ext_scorer.reset_params(beam_alpha, beam_beta)
         # beam search decode
-        beam_search_result = ctc_beam_search_decoder(probs_seq=probs_split,
-                                                     vocabulary=vocab_list,
-                                                     beam_size=beam_size,
-                                                     ext_scoring_func=self._ext_scorer,
-                                                     cutoff_prob=cutoff_prob,
-                                                     cutoff_top_n=cutoff_top_n,
-                                                     blank_id=blank_id)
+        beam_search_result = ctc_beam_search_decoding(probs_seq=probs_split,
+                                                      vocabulary=vocab_list,
+                                                      beam_size=beam_size,
+                                                      ext_scoring_func=self._ext_scorer,
+                                                      cutoff_prob=cutoff_prob,
+                                                      cutoff_top_n=cutoff_top_n,
+                                                      blank_id=blank_id)
         return beam_search_result[0]
 
     # 一批数据解码
@@ -50,13 +50,13 @@ class BeamSearchDecoder:
             self._ext_scorer.reset_params(beam_alpha, beam_beta)
         # beam search decode
         num_processes = min(num_processes, len(probs_split))
-        beam_search_results = ctc_beam_search_decoder_batch(probs_split=probs_split,
-                                                            vocabulary=vocab_list,
-                                                            beam_size=beam_size,
-                                                            num_processes=num_processes,
-                                                            ext_scoring_func=self._ext_scorer,
-                                                            cutoff_prob=cutoff_prob,
-                                                            cutoff_top_n=cutoff_top_n,
-                                                            blank_id=blank_id)
+        beam_search_results = ctc_beam_search_decoding_batch(probs_split=probs_split,
+                                                             vocabulary=vocab_list,
+                                                             beam_size=beam_size,
+                                                             num_processes=num_processes,
+                                                             ext_scoring_func=self._ext_scorer,
+                                                             cutoff_prob=cutoff_prob,
+                                                             cutoff_top_n=cutoff_top_n,
+                                                             blank_id=blank_id)
         results = [result[0][1] for result in beam_search_results]
         return results
