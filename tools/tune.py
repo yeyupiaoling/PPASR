@@ -103,14 +103,14 @@ def tune():
         print('正在解码[%d/%d]: (%.2f, %.2f)' % (i, len(params_grid), alpha, beta))
         for j in tqdm(range(len(labels))):
             outs, label = outputs[j], labels[j]
-            out_strings = beam_search_decoder.decode_batch_beam_search(probs_split=outs,
-                                                                       beam_alpha=alpha,
-                                                                       beam_beta=beta,
-                                                                       beam_size=args.beam_size,
-                                                                       cutoff_prob=args.cutoff_prob,
-                                                                       cutoff_top_n=args.cutoff_top_n,
-                                                                       vocab_list=test_dataset.vocab_list,
-                                                                       num_processes=args.num_proc_bsearch)
+            out_strings = beam_search_decoder.decode_batch_beam_search_offline(probs_split=outs,
+                                                                               beam_alpha=alpha,
+                                                                               beam_beta=beta,
+                                                                               beam_size=args.beam_size,
+                                                                               cutoff_prob=args.cutoff_prob,
+                                                                               cutoff_top_n=args.cutoff_top_n,
+                                                                               vocab_list=test_dataset.vocab_list,
+                                                                               num_processes=args.num_proc_bsearch)
             labels_str = labels_to_string(label, test_dataset.vocab_list)
             for out_string, label in zip(*(out_strings, labels_str)):
                 # 计算字错率或者词错率

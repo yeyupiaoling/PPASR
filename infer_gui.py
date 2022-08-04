@@ -23,7 +23,7 @@ add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM
 add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC系数")
 add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
-add_arg('use_model',        str,   'deepspeech2',                "所使用的模型", choices=['deepspeech2', 'deepspeech2_big'])
+add_arg('use_model',        str,    'deepspeech2',               "所使用的模型", choices=['deepspeech2', 'deepspeech2_big'])
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
 add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
@@ -165,10 +165,8 @@ class SpeechRecognitionApp:
     def record_audio(self):
         self.record_button.configure(text='停止录音')
         self.recording = True
-        # 推理状态
-        state_h, state_c, output = None, None, None
         # 录音参数
-        interval_time = 1
+        interval_time = 0.5
         CHUNK = int(16000 * interval_time)
         FORMAT = pyaudio.paInt16
         channels = 1
@@ -183,17 +181,12 @@ class SpeechRecognitionApp:
         self.result_text.insert(END, "正在录音...\n")
         frames, result = [], []
         while True:
-            if not self.recording:break
             data = self.stream.read(CHUNK)
             frames.append(data)
-            score, text, state_h, state_c, output, is_end = \
-                self.predictor.predict_stream(audio_bytes=data, to_an=self.to_an, init_state_h_box=state_h,
-                                              init_state_c_box=state_c, last_output_data=output)
-            if is_end:
-                result.append(text)
-                text = ''
+            score, text = self.predictor.predict_stream(audio_bytes=data, to_an=self.to_an, is_end=not self.recording)
             self.result_text.delete('1.0', 'end')
-            self.result_text.insert(END, f"{''.join(result) + text}\n")
+            self.result_text.insert(END, f"{text}\n")
+            if not self.recording:break
 
         # 录音的字节数据，用于后面的预测和保存
         audio_bytes = b''.join(frames)

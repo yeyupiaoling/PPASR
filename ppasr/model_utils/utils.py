@@ -56,9 +56,9 @@ class DeepSpeech2ModelExport(paddle.nn.Layer):
     def forward(self, audio, audio_len, init_state_h_box, init_state_c_box):
         x = self.normalizer(audio)
         # x = self.mask(x, audio_len)
-        logits, _, final_chunk_state_h_box, final_chunk_state_c_box = self.model(x, audio_len, init_state_h_box, init_state_c_box)
+        logits, output_lens, final_chunk_state_h_box, final_chunk_state_c_box = self.model(x, audio_len, init_state_h_box, init_state_c_box)
         output = self.softmax(logits)
-        return output, final_chunk_state_h_box, final_chunk_state_c_box
+        return output, output_lens, final_chunk_state_h_box, final_chunk_state_c_box
 
 
 class LinearSpecgram(nn.Layer):

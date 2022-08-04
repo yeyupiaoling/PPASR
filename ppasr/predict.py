@@ -8,7 +8,7 @@ import paddle.inference as paddle_infer
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
-from ppasr.decoders.ctc_greedy_decoder import greedy_decoder
+from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
 
 
 class Predictor:
@@ -24,7 +24,6 @@ class Predictor:
                  feature_method='linear',
                  pun_model_dir='models/pun_models/',
                  beam_size=300,
-                 chunk_beam_size=30,
                  cutoff_prob=0.99,
                  cutoff_top_n=40,
                  use_gpu=True,
@@ -43,7 +42,6 @@ class Predictor:
         :param feature_method: 所使用的预处理方法
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param beam_size: 集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]
-        :param chunk_beam_size: 流式音频片段的搜索的大小，大小建议为30，机器性能好，可以设置更高
         :param cutoff_prob: 集束搜索解码相关参数，剪枝的概率
         :param cutoff_top_n: 集束搜索解码相关参数，剪枝的最大值
         :param use_gpu: 是否使用GPU预测
@@ -56,7 +54,6 @@ class Predictor:
         self.beta = beta
         self.lang_model_path = lang_model_path
         self.beam_size = beam_size
-        self.chunk_beam_size = chunk_beam_size
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
@@ -64,12 +61,31 @@ class Predictor:
         self.lac = None
         self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
         self._audio_featurizer = AudioFeaturizer(feature_method=feature_method)
+        # 流式解码参数
+        self.output_state_h = None
+        self.output_state_c = None
+        self.remained_wav = None
+        self.cached_feat = None
+        self.greedy_last_max_prob_list = None
+        self.greedy_last_max_index_list = None
+        # 模型参数
+        if self.use_model == 'deepspeech2':
+            self.hidden_size = 1024
+        elif self.use_model == 'deepspeech2_big':
+            self.hidden_size = 2048
+        else:
+            raise Exception(f'没有该模型：{self.use_model}')
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
             try:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(alpha, beta, self.lang_model_path,
-                                                             self._text_featurizer.vocab_list)
+                self.beam_search_decoder = BeamSearchDecoder(beam_alpha=self.alpha,
+                                                             beam_beta=self.beta,
+                                                             beam_size=self.beam_size,
+                                                             cutoff_prob=self.cutoff_prob,
+                                                             cutoff_top_n=self.cutoff_top_n,
+                                                             vocab_list=self._text_featurizer.vocab_list,
+                                                             num_processes=1)
             except ModuleNotFoundError:
                 print('\n==================================================================', file=sys.stderr)
                 print('缺少 paddlespeech-ctcdecoders 库，请安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
@@ -118,24 +134,17 @@ class Predictor:
         self.predict(audio_ndarray=warmup_audio, to_an=False)
 
     # 解码模型输出结果
-    def decode(self, output_data, to_an, is_chunk=False):
+    def decode(self, output_data, to_an):
         """
         解码模型输出结果
         :param output_data: 模型输出结果
         :param to_an: 是否转为阿拉伯数字
-        :param is_chunk: 是否为流式音频片段解码，是则使用较小的搜索大小
         :return:
         """
         # 执行解码
         if self.decoder == 'ctc_beam_search':
             # 集束搜索解码策略
-            result = self.beam_search_decoder.decode_beam_search(probs_split=output_data,
-                                                                 beam_alpha=self.alpha,
-                                                                 beam_beta=self.beta,
-                                                                 beam_size=self.chunk_beam_size if is_chunk else self.beam_size,
-                                                                 cutoff_prob=self.cutoff_prob,
-                                                                 cutoff_top_n=self.cutoff_top_n,
-                                                                 vocab_list=self._text_featurizer.vocab_list)
+            result = self.beam_search_decoder.decode_beam_search_offline(probs_split=output_data)
         else:
             # 贪心解码策略
             result = greedy_decoder(probs_seq=output_data, vocabulary=self._text_featurizer.vocab_list)
@@ -183,7 +192,7 @@ class Predictor:
         self.audio_len_handle.copy_from_cpu(audio_len)
 
         # 对RNN层的initial_states全零初始化
-        init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
+        init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size)).astype('float32')
         self.init_state_h_box_handle.reshape(init_state_h_box.shape)
         self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
         self.init_state_c_box_handle.reshape(init_state_h_box.shape)
@@ -199,81 +208,132 @@ class Predictor:
         score, text = self.decode(output_data=output_data, to_an=to_an)
         return score, text
 
-    # 预测音频
-    def predict_stream(self,
-                       audio_bytes=None,
-                       audio_ndarray=None,
-                       init_state_h_box=None,
-                       init_state_c_box=None,
-                       last_output_data=None,
-                       is_end=False,
-                       to_an=False):
-        """
-        预测函数，流式预测，通过一直输入音频数据，实现实现实时识别。
-        :param audio_bytes: 需要预测的音频wave读取的字节流
-        :param audio_ndarray: 需要预测的音频未预处理的numpy值
-        :param init_state_h_box: 模型上次输出的状态，如果不是流式识别，这个为None
-        :param init_state_c_box: 模型上次输出的状态，如果不是流式识别，这个为None
-        :param last_output_data: 模型上次输出的结果
-        :param is_end: 是否结束语音识别
-        :param to_an: 是否转为阿拉伯数字
-        :return: 识别的文本结果和解码的得分数
-        """
-        assert audio_bytes is not None or audio_ndarray is not None, \
-            'audio_bytes和audio_ndarray至少有一个不为None！'
-        # 利用VAD检测语音是否停顿
-        is_interrupt = False
-        # 加载音频文件，并进行预处理
-        if audio_ndarray is not None:
-            audio_data = AudioSegment.from_ndarray(audio_ndarray)
-        else:
-            audio_data = AudioSegment.from_wave_bytes(audio_bytes)
-        audio_feature = self._audio_featurizer.featurize(audio_data)
-        audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
-        audio_len = np.array([audio_data.shape[2]]).astype('int64')
-        # 数据长度不足
-        if audio_data.shape[2] <= 2:return 0, '', None, None, None, True
-
+    def predict_chunk(self, x_chunk, x_chunk_lens):
         # 设置输入
-        self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
-        self.audio_len_handle.reshape([audio_data.shape[0]])
-        self.audio_data_handle.copy_from_cpu(audio_data)
-        self.audio_len_handle.copy_from_cpu(audio_len)
+        self.audio_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])
+        self.audio_len_handle.reshape([x_chunk.shape[0]])
+        self.audio_data_handle.copy_from_cpu(x_chunk.astype('float32'))
+        self.audio_len_handle.copy_from_cpu(x_chunk_lens.astype('int64'))
 
-        if init_state_h_box is None or init_state_c_box is None:
+        if self.output_state_h is None or self.output_state_c is None:
             # 对RNN层的initial_states全零初始化
-            init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
-            init_state_c_box = np.zeros(shape=(5, audio_data.shape[0], 1024)).astype('float32')
-        self.init_state_h_box_handle.reshape(init_state_h_box.shape)
-        self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
-        self.init_state_c_box_handle.reshape(init_state_c_box.shape)
-        self.init_state_c_box_handle.copy_from_cpu(init_state_c_box)
+            self.output_state_h = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size)).astype('float32')
+            self.output_state_c = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size)).astype('float32')
+        self.init_state_h_box_handle.reshape(self.output_state_h.shape)
+        self.init_state_h_box_handle.copy_from_cpu(self.output_state_h)
+        self.init_state_c_box_handle.reshape(self.output_state_c.shape)
+        self.init_state_c_box_handle.copy_from_cpu(self.output_state_c)
 
         # 运行predictor
         self.predictor.run()
 
         # 获取输出
         output_handle = self.predictor.get_output_handle(self.output_names[0])
-        output_data = output_handle.copy_to_cpu()[0]
-        output_state_h_handle = self.predictor.get_output_handle(self.output_names[1])
-        output_state_h = output_state_h_handle.copy_to_cpu()
-        output_state_c_handle = self.predictor.get_output_handle(self.output_names[2])
-        output_state_c = output_state_c_handle.copy_to_cpu()
-        # 拼接模型输出结果
-        if last_output_data is not None:
-            output_data = np.concatenate((last_output_data, output_data), axis=0)
-            if output_data.shape[0] >= 200:
-                is_interrupt = True
-        # 解码
-        if is_end or is_interrupt:
-            # 完整解码
-            score, text = self.decode(output_data=output_data, to_an=to_an)
-            # 重置模型输出
-            output_state_h, output_state_c, output_data = None, None, None
+        output_chunk_probs = output_handle.copy_to_cpu()
+        output_lens_handle = self.predictor.get_output_handle(self.output_names[1])
+        output_lens = output_lens_handle.copy_to_cpu()
+        output_state_h_handle = self.predictor.get_output_handle(self.output_names[2])
+        self.output_state_h = output_state_h_handle.copy_to_cpu()
+        output_state_c_handle = self.predictor.get_output_handle(self.output_names[3])
+        self.output_state_c = output_state_c_handle.copy_to_cpu()
+        return output_chunk_probs, output_lens
+
+    # 预测音频
+    def predict_stream(self,
+                       audio_bytes=None,
+                       audio_ndarray=None,
+                       is_end=False,
+                       to_an=False):
+        """
+        预测函数，流式预测，通过一直输入音频数据，实现实现实时识别。
+        :param audio_bytes: 需要预测的音频wave读取的字节流
+        :param audio_ndarray: 需要预测的音频未预处理的numpy值
+        :param is_end: 是否结束语音识别
+        :param to_an: 是否转为阿拉伯数字
+        :return: 识别得分, 识别结果
+        """
+        assert audio_bytes is not None or audio_ndarray is not None, \
+            'audio_bytes和audio_ndarray至少有一个不为None！'
+        # 加载音频文件
+        if audio_ndarray is not None:
+            audio_data = AudioSegment.from_ndarray(audio_ndarray)
         else:
-            # 音频片段解码，需要快速
-            score, text = self.decode(output_data=output_data, to_an=to_an, is_chunk=True)
-        return score, text, output_state_h, output_state_c, output_data, is_end or is_interrupt
+            audio_data = AudioSegment.from_wave_bytes(audio_bytes)
+
+        if self.remained_wav is None:
+            self.remained_wav = audio_data
+        else:
+            self.remained_wav = AudioSegment(np.concatenate([self.remained_wav.samples, audio_data.samples]), audio_data.sample_rate)
+
+        # 预处理语音块
+        x_chunk = self._audio_featurizer.featurize(self.remained_wav)
+        x_chunk = np.array(x_chunk).astype('float32')[np.newaxis, :]
+        if self.cached_feat is None:
+            self.cached_feat = x_chunk
+        else:
+            self.cached_feat = np.concatenate([self.cached_feat, x_chunk], axis=2)
+        self.remained_wav._samples = self.remained_wav.samples[160 * x_chunk.shape[2]:]
+
+        # 识别的数据块大小
+        decoding_chunk_size = 1
+        context = 7
+        subsampling = 4
+
+        cached_feature_num = context - subsampling
+        decoding_window = (decoding_chunk_size - 1) * subsampling + context
+        stride = subsampling * decoding_chunk_size
+
+        # 保证每帧数据长度都有效
+        num_frames = self.cached_feat.shape[2]
+        if num_frames < decoding_window and not is_end: return 0, ''
+        if num_frames < context: return 0, ''
+
+        # 如果识别结果，要使用最后一帧
+        if is_end:
+            left_frames = context
+        else:
+            left_frames = decoding_window
+
+        score, text, end = None, None, None
+        for cur in range(0, num_frames - left_frames + 1, stride):
+            end = min(cur + decoding_window, num_frames)
+            # 获取数据块
+            x_chunk = self.cached_feat[:, :, cur:end]
+            x_chunk_lens = np.array([x_chunk.shape[2]])
+            # 执行识别
+            output_chunk_probs, output_lens = self.predict_chunk(x_chunk=x_chunk, x_chunk_lens=x_chunk_lens)
+            # 执行解码
+            if self.decoder == 'ctc_beam_search':
+                # 集束搜索解码策略
+                score, text = self.beam_search_decoder.decode_chunk(probs=output_chunk_probs, logits_lens=output_lens)
+            else:
+                # 贪心解码策略
+                score, text, self.greedy_last_max_prob_list, self.greedy_last_max_index_list =\
+                    greedy_decoder_chunk(probs_seq=output_chunk_probs[0], vocabulary=self._text_featurizer.vocab_list,
+                                         last_max_index_list=self.greedy_last_max_index_list,
+                                         last_max_prob_list=self.greedy_last_max_prob_list)
+        # 更新特征缓存
+        self.cached_feat = self.cached_feat[:, :, end - cached_feature_num:]
+
+        # 加标点符号
+        if self.use_pun_model and len(text) > 0:
+            text = self.pun_executor(text)
+        # 是否转为阿拉伯数字
+        if to_an:
+            text = self.cn2an(text)
+
+        return score, text
+
+    # 重置流式识别，每次流式识别完成之后都要执行
+    def reset_stream(self):
+        self.output_state_h = None
+        self.output_state_c = None
+        self.remained_wav = None
+        self.cached_feat = None
+        self.greedy_last_max_prob_list = None
+        self.greedy_last_max_index_list = None
+        if self.decoder == 'ctc_beam_search':
+            self.beam_search_decoder.reset_decoder()
 
     # 是否转为阿拉伯数字
     def cn2an(self, text):

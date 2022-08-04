@@ -1,11 +1,20 @@
 import os
 
-from ppasr.decoders.swig_wrapper import Scorer
+from ppasr.decoders.swig_wrapper import Scorer, CTCBeamSearchDecoder
 from ppasr.decoders.swig_wrapper import ctc_beam_search_decoding_batch, ctc_beam_search_decoding
 
 
 class BeamSearchDecoder:
-    def __init__(self, beam_alpha, beam_beta, language_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm', vocab_list=None):
+    def __init__(self, beam_alpha, beam_beta, beam_size, cutoff_prob, cutoff_top_n, vocab_list, num_processes,
+                 blank_id=0, language_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm'):
+        self.beam_alpha = beam_alpha
+        self.beam_beta = beam_beta
+        self.beam_size = beam_size
+        self.cutoff_prob = cutoff_prob
+        self.cutoff_top_n = cutoff_top_n
+        self.vocab_list = vocab_list
+        self.num_processes = num_processes
+        self.blank_id = blank_id
         if not os.path.exists(language_model_path):
             print('=' * 70)
             language_model_url = 'https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm'
@@ -23,40 +32,64 @@ class BeamSearchDecoder:
               "is_character_based = %d," % lm_char_based +
               " max_order = %d," % lm_max_order +
               " dict_size = %d" % lm_dict_size)
+        batch_size = 1
+        self.beam_search_decoder = CTCBeamSearchDecoder(vocab_list, batch_size, beam_size, num_processes, cutoff_prob,
+                                                        cutoff_top_n, self._ext_scorer, self.blank_id)
         print("初始化解码器完成!")
         print('=' * 70)
 
     # 单个数据解码
-    def decode_beam_search(self, probs_split, beam_alpha, beam_beta,
-                           beam_size, cutoff_prob, cutoff_top_n,
-                           vocab_list, blank_id=0):
+    def decode_beam_search_offline(self, probs_split):
         if self._ext_scorer is not None:
-            self._ext_scorer.reset_params(beam_alpha, beam_beta)
+            self._ext_scorer.reset_params(self.beam_alpha, self.beam_beta)
         # beam search decode
         beam_search_result = ctc_beam_search_decoding(probs_seq=probs_split,
-                                                      vocabulary=vocab_list,
-                                                      beam_size=beam_size,
+                                                      vocabulary=self.vocab_list,
+                                                      beam_size=self.beam_size,
                                                       ext_scoring_func=self._ext_scorer,
-                                                      cutoff_prob=cutoff_prob,
-                                                      cutoff_top_n=cutoff_top_n,
-                                                      blank_id=blank_id)
+                                                      cutoff_prob=self.cutoff_prob,
+                                                      cutoff_top_n=self.cutoff_top_n,
+                                                      blank_id=self.blank_id)
         return beam_search_result[0]
 
     # 一批数据解码
-    def decode_batch_beam_search(self, probs_split, beam_alpha, beam_beta,
-                                 beam_size, cutoff_prob, cutoff_top_n,
-                                 vocab_list, num_processes, blank_id=0):
+    def decode_batch_beam_search_offline(self, probs_split):
         if self._ext_scorer is not None:
-            self._ext_scorer.reset_params(beam_alpha, beam_beta)
+            self._ext_scorer.reset_params(self.beam_alpha, self.beam_beta)
         # beam search decode
-        num_processes = min(num_processes, len(probs_split))
+        self.num_processes = min(self.num_processes, len(probs_split))
         beam_search_results = ctc_beam_search_decoding_batch(probs_split=probs_split,
-                                                             vocabulary=vocab_list,
-                                                             beam_size=beam_size,
-                                                             num_processes=num_processes,
+                                                             vocabulary=self.vocab_list,
+                                                             beam_size=self.beam_size,
+                                                             num_processes=self.num_processes,
                                                              ext_scoring_func=self._ext_scorer,
-                                                             cutoff_prob=cutoff_prob,
-                                                             cutoff_top_n=cutoff_top_n,
-                                                             blank_id=blank_id)
+                                                             cutoff_prob=self.cutoff_prob,
+                                                             cutoff_top_n=self.cutoff_top_n,
+                                                             blank_id=self.blank_id)
         results = [result[0][1] for result in beam_search_results]
         return results
+
+    def decode_chunk(self, probs, logits_lens):
+        """流式解码
+
+        Args:
+            probs (list(list(float))):一个batch模型输入的结构
+            logits_lens (list(int)): 一个batch模型输出的长度
+        """
+        has_value = (logits_lens > 0).tolist()
+        has_value = ["true" if has_value[i] is True else "false"
+                     for i in range(len(has_value))]
+        probs_split = [probs[i, :l, :].tolist() if has_value[i] else probs[i].tolist()
+                       for i, l in enumerate(logits_lens)]
+        self.beam_search_decoder.next(probs_split, has_value)
+
+        batch_beam_results = self.beam_search_decoder.decode()
+        batch_beam_results = [[(res[0], res[1]) for res in beam_results]
+                              for beam_results in batch_beam_results]
+        results_best = [result for result in batch_beam_results]
+        return results_best[0][0]
+
+    def reset_decoder(self):
+        batch_size = 1
+        self.beam_search_decoder.reset_state(batch_size, self.beam_size, self.num_processes,
+                                             self.cutoff_prob, self.cutoff_top_n)

@@ -123,6 +123,7 @@ class PPASRTrainer(object):
         count_sorted = sorted(counter.items(), key=lambda x: x[1], reverse=True)
         with open(self.dataset_vocab, 'w', encoding='utf-8') as fout:
             fout.write('<blank>\t-1\n')
+            fout.write('<unk>\t-1\n')
             for char, count in count_sorted:
                 if char == ' ': char = '<space>'
                 # 跳过指定的字符阈值，超过这大小的字符都忽略
@@ -465,7 +466,13 @@ class PPASRTrainer(object):
         if self.decoder == "ctc_beam_search" and self.beam_search_decoder is None:
             try:
                 from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(self.alpha, self.beta, self.lang_model_path, vocabulary)
+                self.beam_search_decoder = BeamSearchDecoder(beam_alpha=self.alpha,
+                                                             beam_beta=self.beta,
+                                                             beam_size=self.beam_size,
+                                                             cutoff_prob=self.cutoff_prob,
+                                                             cutoff_top_n=self.cutoff_top_n,
+                                                             vocab_list=vocabulary,
+                                                             num_processes=1)
             except ModuleNotFoundError:
                 print('\n==================================================================', file=sys.stderr)
                 print('缺少 paddlespeech-ctcdecoders 库，请安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
@@ -478,14 +485,7 @@ class PPASRTrainer(object):
         if self.decoder == 'ctc_greedy':
             result = greedy_decoder_batch(outs, vocabulary)
         else:
-            result = self.beam_search_decoder.decode_batch_beam_search(probs_split=outs,
-                                                                       beam_alpha=self.alpha,
-                                                                       beam_beta=self.beta,
-                                                                       beam_size=self.beam_size,
-                                                                       cutoff_prob=self.cutoff_prob,
-                                                                       cutoff_top_n=self.cutoff_top_n,
-                                                                       vocab_list=vocabulary,
-                                                                       num_processes=self.num_proc_bsearch)
+            result = self.beam_search_decoder.decode_batch_beam_search_offline(probs_split=outs)
         return result
 
     def export(self, save_model_path='models/', resume_model='models/deepspeech2/best_model/'):

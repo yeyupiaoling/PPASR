@@ -101,3 +101,21 @@ def ctc_beam_search_decoding_batch(probs_split,
     batch_beam_results = [[(res[0], res[1]) for res in beam_results]
                           for beam_results in batch_beam_results]
     return batch_beam_results
+
+
+class CTCBeamSearchDecoder(paddlespeech_ctcdecoders.CtcBeamSearchDecoderBatch):
+    """Wrapper for CtcBeamSearchDecoderBatch.
+    Args:
+        vocab_list (list): 词汇列表
+        beam_size (int): 集束搜索宽度
+        num_processes (int): 并行解码进程数
+        param cutoff_prob (float): 剪枝中的截断概率，默认1.0，没有剪枝
+        cutoff_top_n (int): 剪枝时的截断数，仅在词汇表中具有最大probs的cutoff_top_n字符用于光束搜索，默认为40
+        param ext_scorer (Scorer): 外部评分功能部分解码句子，如字计数或语言模型
+    """
+
+    def __init__(self, vocab_list, batch_size, beam_size, num_processes,
+                 cutoff_prob, cutoff_top_n, _ext_scorer, blank_id):
+        paddlespeech_ctcdecoders.CtcBeamSearchDecoderBatch.__init__(
+            self, vocab_list, batch_size, beam_size, num_processes, cutoff_prob,
+            cutoff_top_n, _ext_scorer, blank_id)
