@@ -48,7 +48,7 @@
 |             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             |   deepspeech2   | linear | 中文  |  0.077042  |      [点击下载](https://download.csdn.net/download/qq_33200967/29121153)       |
 | [free st chinese mandarin corpus](https://openslr.magicdatatech.com/resources/38) (109小时) |   deepspeech2   | linear | 中文  |  0.137442  |      [点击下载](https://download.csdn.net/download/qq_33200967/30296023)       |
 |             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             |   deepspeech2   | linear | 中文  |  0.062654  |      [点击下载](https://download.csdn.net/download/qq_33200967/26929682)       |
-|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              |   deepspeech2   | linear | 中文  |  0.056835  |      [点击下载](https://download.csdn.net/download/qq_33200967/58036573)       |
+|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              |   deepspeech2   | linear | 中文  |  0.056835  | [点击下载](https://download.csdn.net/download/qq_33200967/58036573)(需要重新导出模型)  |
 |                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2_big | linear | 中文  |  0.05262   | 先`star`项目再[点击下载](https://pan.baidu.com/s/10JLQTpi2veR2Y0-s3kdxOg?pwd=g358) |
 |           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           |   deepspeech2   | linear | 英文  |  0.10855   |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       |
 
