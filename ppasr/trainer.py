@@ -357,12 +357,13 @@ class PPASRTrainer(object):
                     optimizer.clear_grad()
                     train_times.append((time.time() - start) * 1000)
                     # 多卡训练只使用一个进程打印
-                    if batch_id % 100 == 0 and local_rank == 0:
+                    if batch_id % 100 == 0:
                         eta_sec = (sum(train_times) / len(train_times)) * (sum_batch - (epoch - 1) * len(train_loader) - batch_id)
                         eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                         print('[{}] Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, eta: {}'.format(
                                 datetime.now(), epoch, num_epoch, batch_id, len(train_loader), loss.numpy()[0], scheduler.get_lr(), eta_str))
-                        writer.add_scalar('Train/Loss', loss, train_step)
+                        if local_rank == 0:
+                            writer.add_scalar('Train/Loss', loss, train_step)
                         train_step += 1
                         train_times = []
                     # 固定步数也要保存一次模型
@@ -371,20 +372,19 @@ class PPASRTrainer(object):
                                         model=model, optimizer=optimizer)
                     start = time.time()
 
+                # 执行评估
+                model.eval()
+                print('\n', '=' * 70)
+                c, l = self.__test(model, test_loader, test_dataset.vocab_list, ctc_loss)
+                print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, {}: {:.5f}'.format(
+                    datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, self.metrics_type, c))
+                print('=' * 70, '\n')
+                test_step += 1
+                model.train()
                 # 多卡训练只使用一个进程执行评估和保存模型
                 if local_rank == 0:
-                    # 执行评估
-                    model.eval()
-                    print('\n', '=' * 70)
-                    c, l = self.__test(model, test_loader, test_dataset.vocab_list, ctc_loss)
-                    print('[{}] Test epoch: {}, time/epoch: {}, loss: {:.5f}, {}: {:.5f}'.format(
-                        datetime.now(), epoch, str(timedelta(seconds=(time.time() - start_epoch))), l, self.metrics_type, c))
-                    print('=' * 70, '\n')
                     writer.add_scalar('Test/{}'.format(self.metrics_type), c, test_step)
                     writer.add_scalar('Test/Loss', l, test_step)
-                    test_step += 1
-                    model.train()
-
                     # 记录学习率
                     writer.add_scalar('Train/lr', scheduler.last_lr, epoch)
                     # 保存最优模型
