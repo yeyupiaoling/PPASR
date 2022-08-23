@@ -3,8 +3,6 @@
 import json
 import os
 import random
-import sys
-from datetime import datetime
 
 from ppasr.data_utils.augmentor.volume_perturb import VolumePerturbAugmentor
 from ppasr.data_utils.augmentor.shift_perturb import ShiftPerturbAugmentor
@@ -12,6 +10,9 @@ from ppasr.data_utils.augmentor.speed_perturb import SpeedPerturbAugmentor
 from ppasr.data_utils.augmentor.noise_perturb import NoisePerturbAugmentor
 from ppasr.data_utils.augmentor.spec_augment import SpecAugmentor
 from ppasr.data_utils.augmentor.resample import ResampleAugmentor
+from ppasr.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class AugmentationPipeline(object):
@@ -126,9 +127,9 @@ class AugmentationPipeline(object):
             for config in configs_temp:
                 if config['aug_type'] != aug_type: continue
                 if config['type'] == 'noise' and not os.path.exists(config['params']['noise_manifest_path']):
-                    print('%s不存在，已经忽略噪声增强操作！' % config['params']['noise_manifest_path'], file=sys.stderr)
+                    logger.warning('%s不存在，已经忽略噪声增强操作！' % config['params']['noise_manifest_path'])
                     continue
-                print('[%s] 数据增强配置：%s' % (datetime.now(), config))
+                logger.info('数据增强配置：%s' % config)
                 configs.append(config)
             augmentors = [self._get_augmentor(config["type"], config["params"]) for config in configs]
             rates = [config["prob"] for config in configs]

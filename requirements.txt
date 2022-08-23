@@ -17,3 +17,4 @@ paddlenlp~=2.2.4
 audioread~=2.1.9
 pyyaml~=5.4.1
 flask~=2.1.2
+termcolor~=1.1.0

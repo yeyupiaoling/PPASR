@@ -3,31 +3,9 @@ import math
 import paddle
 from paddle import nn
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
+from ppasr.model_utils.deepspeech2_no_stream.model import DeepSpeech2NoStreamModel
 
-__all__ = ['Mask', 'Normalizer', 'DeepSpeech2ModelExport']
-
-
-# 掩码模型
-class Mask(nn.Layer):
-    def __init__(self):
-        super().__init__()
-
-    def forward(self, x, lengths):
-        """
-        :param x: 卷积输入，shape[B, D, T]
-        :param lengths: 卷积处理过的长度，shape[B]
-        :return: 经过填充0的结果
-        """
-        batch_size = int(lengths.shape[0])
-        max_len = int(lengths.max())
-        seq_range = paddle.arange(0, max_len, dtype=paddle.int64)
-        seq_range_expand = seq_range.unsqueeze(0).expand([batch_size, max_len])
-        seq_length_expand = lengths.unsqueeze(-1).astype(paddle.int64)
-        masks = paddle.less_than(seq_range_expand, seq_length_expand)
-        masks = masks.astype(x.dtype)
-        masks = masks.unsqueeze(1)  # [B, 1, T]
-        x = x.multiply(masks)
-        return x
+__all__ = ['Normalizer', 'DeepSpeech2ModelExport', 'DeepSpeech2NoStreamModelExport']
 
 
 # 对数据归一化模型
@@ -59,6 +37,22 @@ class DeepSpeech2ModelExport(paddle.nn.Layer):
         logits, output_lens, final_chunk_state_h_box, final_chunk_state_c_box = self.model(x, audio_len, init_state_h_box, init_state_c_box)
         output = self.softmax(logits)
         return output, output_lens, final_chunk_state_h_box, final_chunk_state_c_box
+
+
+# 导出使用的DeepSpeech2NoStreamModel模型
+class DeepSpeech2NoStreamModelExport(paddle.nn.Layer):
+    def __init__(self, model:DeepSpeech2NoStreamModel, feature_mean, feature_std):
+        super(DeepSpeech2NoStreamModelExport, self).__init__()
+        self.normalizer = Normalizer(feature_mean, feature_std)
+        self.model = model
+        # 在输出层加上Softmax
+        self.softmax = paddle.nn.Softmax()
+
+    def forward(self, audio, audio_len):
+        x = self.normalizer(audio)
+        logits, output_lens = self.model(x, audio_len)
+        output = self.softmax(logits)
+        return output, output_lens
 
 
 class LinearSpecgram(nn.Layer):

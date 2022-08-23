@@ -10,12 +10,14 @@ from tkinter.filedialog import askopenfilename
 
 import pyaudio
 
+from ppasr import SUPPORT_MODEL
 from ppasr.predict import Predictor
 from ppasr.utils.audio_vad import crop_audio_vad
 from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
+add_arg('use_model',        str,    'deepspeech2', '所使用的模型', choices=SUPPORT_MODEL)
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索的大小，范围:[5, 500]")
@@ -23,9 +25,8 @@ add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM
 add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC系数")
 add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
-add_arg('use_model',        str,    'deepspeech2',               "所使用的模型", choices=['deepspeech2', 'deepspeech2_big'])
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
-add_arg('model_dir',        str,    'models/deepspeech2/infer/', "导出的预测模型文件夹路径")
+add_arg('model_dir',        str,    'models/{}/infer/',          "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',   "集束搜索解码相关参数，语言模型文件路径")
 add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
@@ -78,8 +79,8 @@ class SpeechRecognitionApp:
         self.an_frame.place(x=700, y=10)
 
         # 获取识别器中文数字转阿拉伯数字
-        self.predictor = Predictor(model_dir=args.model_dir, vocab_path=args.vocab_path, use_model=args.use_model,
-                                   decoder=args.decoder, alpha=args.alpha, beta=args.beta,
+        self.predictor = Predictor(model_dir=args.model_dir.format(args.use_model), vocab_path=args.vocab_path,
+                                   use_model=args.use_model, decoder=args.decoder, alpha=args.alpha, beta=args.beta,
                                    lang_model_path=args.lang_model_path,
                                    beam_size=args.beam_size, cutoff_prob=args.cutoff_prob,
                                    cutoff_top_n=args.cutoff_top_n, feature_method=args.feature_method,

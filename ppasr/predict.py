@@ -1,14 +1,19 @@
 import os
+import platform
 import sys
 
 import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
 
+from ppasr import SUPPORT_MODEL
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
+from ppasr.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class Predictor:
@@ -68,29 +73,35 @@ class Predictor:
         self.cached_feat = None
         self.greedy_last_max_prob_list = None
         self.greedy_last_max_index_list = None
+        assert self.use_model in SUPPORT_MODEL, f'没有该模型：{self.use_model}'
         # 模型参数
         if self.use_model == 'deepspeech2':
             self.hidden_size = 1024
         elif self.use_model == 'deepspeech2_big':
             self.hidden_size = 2048
-        else:
-            raise Exception(f'没有该模型：{self.use_model}')
+
         # 集束搜索方法的处理
         if decoder == "ctc_beam_search":
-            try:
-                from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(beam_alpha=self.alpha,
-                                                             beam_beta=self.beta,
-                                                             beam_size=self.beam_size,
-                                                             cutoff_prob=self.cutoff_prob,
-                                                             cutoff_top_n=self.cutoff_top_n,
-                                                             vocab_list=self._text_featurizer.vocab_list,
-                                                             num_processes=1)
-            except ModuleNotFoundError:
-                print('\n==================================================================', file=sys.stderr)
-                print('缺少 paddlespeech-ctcdecoders 库，请安装，如果是Windows系统，只能使用ctc_greedy。', file=sys.stderr)
-                print('【注意】已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率比较低。', file=sys.stderr)
-                print('==================================================================\n', file=sys.stderr)
+            if platform.system() != 'Windows':
+                try:
+                    from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
+                    self.beam_search_decoder = BeamSearchDecoder(beam_alpha=self.alpha,
+                                                                 beam_beta=self.beta,
+                                                                 beam_size=self.beam_size,
+                                                                 cutoff_prob=self.cutoff_prob,
+                                                                 cutoff_top_n=self.cutoff_top_n,
+                                                                 vocab_list=self._text_featurizer.vocab_list,
+                                                                 num_processes=1)
+                except ModuleNotFoundError:
+                    logger.warning('==================================================================')
+                    logger.warning('缺少 paddlespeech-ctcdecoders 库，请根据文档安装。')
+                    logger.warning('【注意】已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
+                    logger.warning('==================================================================\n')
+                    self.decoder = 'ctc_greedy'
+            else:
+                logger.warning('==================================================================')
+                logger.warning('【注意】Windows不支持ctc_beam_search，已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
+                logger.warning('==================================================================\n')
                 self.decoder = 'ctc_greedy'
 
         # 创建 config
@@ -112,11 +123,15 @@ class Predictor:
         # 根据 config 创建 predictor
         self.predictor = paddle_infer.create_predictor(self.config)
 
+        logger.info(f'已加载模型：{model_dir}')
+
         # 获取输入层
         self.audio_data_handle = self.predictor.get_input_handle('audio')
         self.audio_len_handle = self.predictor.get_input_handle('audio_len')
-        self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
-        self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
+        # 流式模型需要输入RNN的状态
+        if 'no_stream' not in self.use_model:
+            self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
+            self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
 
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
@@ -191,12 +206,13 @@ class Predictor:
         self.audio_data_handle.copy_from_cpu(audio_data)
         self.audio_len_handle.copy_from_cpu(audio_len)
 
-        # 对RNN层的initial_states全零初始化
-        init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size)).astype('float32')
-        self.init_state_h_box_handle.reshape(init_state_h_box.shape)
-        self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
-        self.init_state_c_box_handle.reshape(init_state_h_box.shape)
-        self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
+        # 对流式模型RNN层的initial_states全零初始化
+        if 'no_stream' not in self.use_model:
+            init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size)).astype('float32')
+            self.init_state_h_box_handle.reshape(init_state_h_box.shape)
+            self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
+            self.init_state_c_box_handle.reshape(init_state_h_box.shape)
+            self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
 
         # 运行predictor
         self.predictor.run()
@@ -252,6 +268,7 @@ class Predictor:
         :param to_an: 是否转为阿拉伯数字
         :return: 识别得分, 识别结果
         """
+        assert 'no_stream' not in self.use_model, f'当前模型不是流式模型，当前模型为：{self.use_model}'
         assert audio_bytes is not None or audio_ndarray is not None, \
             'audio_bytes和audio_ndarray至少有一个不为None！'
         # 加载音频文件

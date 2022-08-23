@@ -30,6 +30,7 @@
 
 ## 更新记录
 
+ - 2022.08.22: 增加非流式模型`deepspeech2_no_stream`和`deepspeech2_big_no_stream`。
  - 2022.08.04: 发布1.0版本，优化实时识别流程。
  - 2022.07.12: 完成GUI界面的录音实时识别。
  - 2022.06.14: 支持`deepspeech2_big`模型，适合WenetSpeech大数据集训练模型。
@@ -47,14 +48,22 @@
 [知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
 
 ## 模型下载
-|                                            数据集                                            |      使用模型       | 预处理方式  | 语言  | 测试集错率（词错率） |                                    下载地址                                    |
-|:-----------------------------------------------------------------------------------------:|:---------------:|:------:|:---:|:----------:|:--------------------------------------------------------------------------:|
-|             [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)             |   deepspeech2   | linear | 中文  |  0.077042  |      [点击下载](https://download.csdn.net/download/qq_33200967/29121153)       |
-| [free st chinese mandarin corpus](https://openslr.magicdatatech.com/resources/38) (109小时) |   deepspeech2   | linear | 中文  |  0.137442  |      [点击下载](https://download.csdn.net/download/qq_33200967/30296023)       |
-|             [thchs_30](https://openslr.magicdatatech.com/resources/18) (34小时)             |   deepspeech2   | linear | 中文  |  0.062654  |      [点击下载](https://download.csdn.net/download/qq_33200967/26929682)       |
-|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              |   deepspeech2   | linear | 中文  |  0.056835  | [点击下载](https://download.csdn.net/download/qq_33200967/58036573)(需要重新导出模型)  |
-|                             超大数据集(1600多小时真实数据)+(1300多小时合成数据)                              | deepspeech2_big | linear | 中文  |  0.05262   | 先`star`项目再[点击下载](https://pan.baidu.com/s/10JLQTpi2veR2Y0-s3kdxOg?pwd=g358) |
-|           [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)           |   deepspeech2   | linear | 英文  |  0.10855   |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       |
+
+本项目支持流式识别模型`deepspeech2`、`deepspeech2_big`，非流式模型`deepspeech2_no_stream`、`deepspeech2_big_no_stream`。
+
+   |           使用模型            |                                  数据集                                  | 预处理方式  | 语言  | 测试集字错率（词错率） |                                    下载地址                                    |
+|:-------------------------:|:---------------------------------------------------------------------:|:------:|:---:|:-----------:|:--------------------------------------------------------------------------:|
+ |        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |   0.07825   |      [点击下载](https://download.csdn.net/download/qq_33200967/29121153)       |
+|      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |             |                                                                            |
+ |   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |             |                                                                            |
+ | deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |             |                                                                            |
+|        deepspeech2        | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | linear | 英文  |   0.12842   |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       | 
+|      deepspeech2_big      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | linear | 英文  |             |                                                                            | 
+|   deepspeech2_no_stream   | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | linear | 英文  |             |                                                                            | 
+ | deepspeech2_big_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | linear | 英文  |             |                                                                            | 
+   |        deepspeech2        |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear | 中文  |   0.06215   | [点击下载](https://download.csdn.net/download/qq_33200967/58036573)(需要重新导出模型)  |
+     |      deepspeech2_big      |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear | 中文  |   0.05517   | 先`star`项目再[点击下载](https://pan.baidu.com/s/10JLQTpi2veR2Y0-s3kdxOg?pwd=g358) |
+
 
 **说明：** 
 1. 这里字错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
@@ -62,6 +71,7 @@
 3. 英文解码参数为：`alpha=1.9，beta=0.3，beam_size=500，cutoff_prob=1.0，cutoff_top_n=40`。
 4. 除了aishell数据集按照数据集本身划分的训练数据和测试数据，其他的都是按照项目设置的固定比例划分训练数据和测试数据。
 5. 下载的压缩文件已经包含了`mean_std.npz`和`vocabulary.txt`，需要把解压得到的全部文件复制到项目根目录下。
+6. 模型名称包含`no_stream`为非流式模型，不能用于流式识别。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 
@@ -89,7 +99,7 @@
 
 ## 快速预测
 
- - 下载作者提供的模型或者训练模型，然后执行[导出模型](./docs/export_model.md)，使用`infer_path.py`预测音频，通过参数`--wav_path`指定需要预测的音频路径，完成语音识别，详情请查看[模型部署](./docs/infer.md)。
+ - 下载作者提供的模型，或者训练模型并[导出模型](./docs/export_model.md)，使用`infer_path.py`预测音频，通过参数`--wav_path`指定需要预测的音频路径，完成语音识别，详情请查看[模型部署](./docs/infer.md)。
 ```shell script
 python infer_path.py --wav_path=./dataset/test.wav
 ```

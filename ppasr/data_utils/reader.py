@@ -9,6 +9,9 @@ from ppasr.data_utils.augmentor.augmentation import AugmentationPipeline
 from ppasr.data_utils.featurizer.speech_featurizer import SpeechFeaturizer
 from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.data_utils.speech import SpeechSegment
+from ppasr.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 # 音频数据加载器
@@ -44,7 +47,7 @@ class PPASRDataset(Dataset):
             transcript = np.array(transcript, dtype='int32')
             return feature, transcript
         except Exception as ex:
-            print("[{}] 数据: {} 出错，错误信息: {}".format(datetime.now(), self.data_list[idx], ex), file=sys.stderr)
+            logger.error("数据: {} 出错，错误信息: {}".format(self.data_list[idx], ex))
             rnd_idx = np.random.randint(self.__len__())
             return self.__getitem__(rnd_idx)
 
