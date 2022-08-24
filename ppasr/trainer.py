@@ -329,6 +329,7 @@ class PPASRTrainer(object):
 
         # 加载恢复模型
         last_epoch = 0
+        best_error_rate = 1.0
         last_model_dir = os.path.join(save_model_path, self.use_model, 'last_model')
         if resume_model is not None or (os.path.exists(os.path.join(last_model_dir, 'model.pdparams'))
                                         and os.path.exists(os.path.join(last_model_dir, 'optimizer.pdopt'))):
@@ -339,14 +340,18 @@ class PPASRTrainer(object):
             model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
             optimizer.set_state_dict(paddle.load(os.path.join(resume_model, 'optimizer.pdopt')))
             with open(os.path.join(resume_model, 'model.state'), 'r', encoding='utf-8') as f:
-                last_epoch = json.load(f)['last_epoch'] - 1
+                json_data = json.load(f)
+                last_epoch = json_data['last_epoch'] - 1
+                if 'test_cer' in json_data.keys():
+                    best_error_rate = abs(json_data['test_cer'])
+                if 'test_wer' in json_data.keys():
+                    best_error_rate = abs(json_data['test_wer'])
             logger.info('成功恢复模型参数和优化方法参数：{}'.format(resume_model))
 
         # 获取损失函数
         ctc_loss = paddle.nn.CTCLoss(reduction='none')
 
         test_step, train_step = 0, 0
-        best_test_cer = 1
         train_times = []
         sum_batch = len(train_loader) * num_epoch
         train_batch_sampler.epoch = last_epoch
@@ -401,8 +406,8 @@ class PPASRTrainer(object):
                     # 记录学习率
                     writer.add_scalar('Train/lr', scheduler.last_lr, epoch)
                     # 保存最优模型
-                    if c <= best_test_cer:
-                        best_test_cer = c
+                    if c <= best_error_rate:
+                        best_error_rate = c
                         self.save_model(save_model_path=save_model_path, use_model=self.use_model, model=model,
                                         optimizer=optimizer, epoch=epoch, error_type=self.metrics_type, error_rate=c, test_loss=l, best_model=True)
                     # 保存模型
@@ -412,9 +417,12 @@ class PPASRTrainer(object):
         except KeyboardInterrupt:
             # Ctrl+C退出时保存模型
             if local_rank == 0:
-                logger.info('请等一下，正在保存模型...')
+                try:
+                    logger.info(f'请等一下，正在保存模型，当前损失值为：{l}')
+                except NameError as e:
+                    c, l = 1.0, 1e3
                 self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
-                                optimizer=optimizer)
+                                optimizer=optimizer, error_rate=c, test_loss=l)
 
     # 评估模型
     @paddle.no_grad()
@@ -451,7 +459,7 @@ class PPASRTrainer(object):
 
     # 保存模型
     @staticmethod
-    def save_model(save_model_path, use_model, epoch, model, optimizer, error_type='cer', error_rate=-1., test_loss=-1., best_model=False):
+    def save_model(save_model_path, use_model, epoch, model, optimizer, error_type='cer', error_rate=1., test_loss=1e3, best_model=False):
         if not best_model:
             model_path = os.path.join(save_model_path, use_model, 'epoch_{}'.format(epoch))
             os.makedirs(model_path, exist_ok=True)
