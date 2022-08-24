@@ -132,7 +132,7 @@ def is_uchar(uchar):
 
 
 # 生成噪声的数据列表
-def create_noise(path, noise_manifest_path, min_duration=30, is_change_frame_rate=True):
+def create_noise(path, noise_manifest_path, is_change_frame_rate=True):
     if not os.path.exists(path):
         print('噪声音频文件为空，已跳过！')
         return
@@ -148,15 +148,6 @@ def create_noise(path, noise_manifest_path, min_duration=30, is_change_frame_rat
                 change_rate(audio_path)
             f_wave = wave.open(audio_path, "rb")
             duration = f_wave.getnframes() / f_wave.getframerate()
-            # 拼接音频
-            if duration < min_duration:
-                wav = soundfile.read(audio_path)[0]
-                data = wav
-                for i in range(int(min_duration / duration) + 1):
-                    data = np.hstack([data, wav])
-                soundfile.write(audio_path, data, samplerate=16000)
-                f_wave = wave.open(audio_path, "rb")
-                duration = f_wave.getnframes() / f_wave.getframerate()
             json_lines.append(
                 json.dumps(
                     {

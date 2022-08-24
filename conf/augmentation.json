@@ -5,9 +5,18 @@
     "params": {
       "min_snr_dB": 10,
       "max_snr_dB": 50,
+      "repetition": 2,
       "noise_manifest_path": "dataset/manifest.noise"
     },
     "prob": 0.5
+  },
+  {
+    "type": "resample",
+    "aug_type": "audio",
+    "params": {
+      "new_sample_rate": 8000
+    },
+    "prob": 0.0
   },
   {
     "type": "speed",
