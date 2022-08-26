@@ -7,7 +7,7 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('use_model',        str,    'deepspeech2',        '所使用的模型', choices=SUPPORT_MODEL)
+add_arg('use_model',        str,    'deepspeech2',            '所使用的模型', choices=SUPPORT_MODEL)
 add_arg('batch_size',       int,    32,                       '训练的批量大小')
 add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
 add_arg('num_epoch',        int,    65,                       '训练的轮数')
@@ -20,7 +20,7 @@ add_arg('dataset_vocab',    str,    'dataset/vocabulary.txt',   '数据字典的
 add_arg('mean_std_path',    str,    'dataset/mean_std.npz',     '数据集的均值和标准值的npy文件路径')
 add_arg('augment_conf_path',str,    'conf/augmentation.json',   '数据增强的配置文件，为json格式')
 add_arg('save_model_path',  str,    'models/',                  '模型保存的路径')
-add_arg('feature_method',   str,    'linear',                   '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
+add_arg('feature_method',   str,    'fbank',                    '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
 add_arg('metrics_type',     str,    'cer',                      '计算错误率方法', choices=['cer', 'wer'])
 add_arg('resume_model',     str,    None,                       '恢复训练，当为None则不使用预训练模型')
 add_arg('pretrained_model', str,    None,                       '预训练模型的路径，当为None则不使用预训练模型')

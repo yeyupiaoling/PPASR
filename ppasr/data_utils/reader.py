@@ -1,6 +1,4 @@
 import json
-import sys
-from datetime import datetime
 
 import numpy as np
 from paddle.io import Dataset
@@ -17,11 +15,11 @@ logger = setup_logger(__name__)
 # 音频数据加载器
 class PPASRDataset(Dataset):
     def __init__(self, data_list, vocab_filepath, mean_std_filepath, feature_method='linear',
-                 min_duration=0, max_duration=20, augmentation_config='{}'):
+                 min_duration=0, max_duration=20, augmentation_config='{}', train=False):
         super(PPASRDataset, self).__init__()
         self._normalizer = FeatureNormalizer(mean_std_filepath, feature_method=feature_method)
         self._augmentation_pipeline = AugmentationPipeline(augmentation_config=augmentation_config)
-        self._speech_featurizer = SpeechFeaturizer(vocab_filepath=vocab_filepath, feature_method=feature_method)
+        self._speech_featurizer = SpeechFeaturizer(vocab_filepath=vocab_filepath, feature_method=feature_method, train=train)
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
             lines = f.readlines()

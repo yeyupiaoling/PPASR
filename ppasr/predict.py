@@ -1,6 +1,5 @@
 import os
 import platform
-import sys
 
 import cn2an
 import numpy as np
@@ -91,6 +90,7 @@ class Predictor:
                                                                  cutoff_prob=self.cutoff_prob,
                                                                  cutoff_top_n=self.cutoff_top_n,
                                                                  vocab_list=self._text_featurizer.vocab_list,
+                                                                 language_model_path=self.lang_model_path,
                                                                  num_processes=1)
                 except ModuleNotFoundError:
                     logger.warning('==================================================================')

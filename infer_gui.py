@@ -26,10 +26,10 @@ add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC
 add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
 add_arg('cutoff_top_n',     int,    40,     "集束搜索解码相关参数，剪枝的最大值")
 add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的词汇表文件路径")
-add_arg('model_dir',        str,    'models/{}/infer/',          "导出的预测模型文件夹路径")
+add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',   "集束搜索解码相关参数，语言模型文件路径")
-add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
+add_arg('feature_method',   str,    'fbank',              "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
 add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法",   choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
 print_arguments(args)
@@ -79,7 +79,7 @@ class SpeechRecognitionApp:
         self.an_frame.place(x=700, y=10)
 
         # 获取识别器中文数字转阿拉伯数字
-        self.predictor = Predictor(model_dir=args.model_dir.format(args.use_model), vocab_path=args.vocab_path,
+        self.predictor = Predictor(model_dir=args.model_dir.format(args.use_model, args.feature_method), vocab_path=args.vocab_path,
                                    use_model=args.use_model, decoder=args.decoder, alpha=args.alpha, beta=args.beta,
                                    lang_model_path=args.lang_model_path,
                                    beam_size=args.beam_size, cutoff_prob=args.cutoff_prob,

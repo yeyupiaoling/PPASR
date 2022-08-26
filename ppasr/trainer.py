@@ -3,6 +3,7 @@ import json
 import os
 import platform
 import shutil
+import sys
 import time
 from collections import Counter
 from datetime import timedelta
@@ -37,7 +38,7 @@ logger = setup_logger(__name__)
 class PPASRTrainer(object):
     def __init__(self,
                  use_model='deepspeech2',
-                 feature_method='linear',
+                 feature_method='fbank',
                  mean_std_path='dataset/mean_std.npz',
                  train_manifest='dataset/manifest.train',
                  test_manifest='dataset/manifest.test',
@@ -148,7 +149,7 @@ class PPASRTrainer(object):
                  batch_size=32,
                  min_duration=0,
                  max_duration=-1,
-                 resume_model='models/deepspeech2/best_model/'):
+                 resume_model='models/deepspeech2_fbank/best_model/'):
         """
         评估模型
         :param batch_size: 评估的批量大小
@@ -185,8 +186,9 @@ class PPASRTrainer(object):
         input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
-        assert os.path.exists(os.path.join(resume_model, 'model.pdparams')), "模型不存在！"
+        assert os.path.exists(os.path.join(resume_model, 'model.pdparams')), f"{os.path.join(resume_model, 'model.pdparams')} 模型不存在！"
         model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
+        logger.info(f'成功加载模型：{os.path.join(resume_model, "model.pdparams")}')
         model.eval()
 
         c = []
@@ -251,7 +253,8 @@ class PPASRTrainer(object):
                                      mean_std_filepath=self.mean_std_path,
                                      min_duration=min_duration,
                                      max_duration=max_duration,
-                                     augmentation_config=augmentation_config)
+                                     augmentation_config=augmentation_config,
+                                     train=True)
         # 设置支持多卡训练
         if nranks > 1:
             train_batch_sampler = SortagradDistributedBatchSampler(train_dataset,
@@ -293,7 +296,7 @@ class PPASRTrainer(object):
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
         # 打印模型
-        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+        input_data = [paddle.rand([1, train_dataset.feature_dim, 900], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
         # 设置优化方法
@@ -330,7 +333,7 @@ class PPASRTrainer(object):
         # 加载恢复模型
         last_epoch = 0
         best_error_rate = 1.0
-        last_model_dir = os.path.join(save_model_path, self.use_model, 'last_model')
+        last_model_dir = os.path.join(save_model_path, f'{self.use_model}_{self.feature_method}', 'last_model')
         if resume_model is not None or (os.path.exists(os.path.join(last_model_dir, 'model.pdparams'))
                                         and os.path.exists(os.path.join(last_model_dir, 'optimizer.pdopt'))):
             # 自动获取最新保存的模型
@@ -386,7 +389,7 @@ class PPASRTrainer(object):
                         train_times = []
                     # 固定步数也要保存一次模型
                     if batch_id % 10000 == 0 and batch_id != 0 and local_rank == 0:
-                        self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch,
+                        self.save_model(save_model_path=save_model_path, epoch=epoch,
                                         model=model, optimizer=optimizer)
                     start = time.time()
 
@@ -408,20 +411,22 @@ class PPASRTrainer(object):
                     # 保存最优模型
                     if c <= best_error_rate:
                         best_error_rate = c
-                        self.save_model(save_model_path=save_model_path, use_model=self.use_model, model=model,
-                                        optimizer=optimizer, epoch=epoch, error_type=self.metrics_type, error_rate=c, test_loss=l, best_model=True)
+                        self.save_model(save_model_path=save_model_path, model=model,
+                                        optimizer=optimizer, epoch=epoch, error_rate=c, test_loss=l, best_model=True)
                     # 保存模型
-                    self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
-                                    error_type=self.metrics_type, error_rate=c, test_loss=l, optimizer=optimizer)
+                    self.save_model(save_model_path=save_model_path, epoch=epoch, model=model,
+                                    error_rate=c, test_loss=l, optimizer=optimizer)
                 scheduler.step()
         except KeyboardInterrupt:
+            # 解决停止训练之后还在读取数据导致报错的问题
+            del train_dataset, test_dataset
             # Ctrl+C退出时保存模型
             if local_rank == 0:
                 try:
                     logger.info(f'请等一下，正在保存模型，当前损失值为：{l}')
                 except NameError as e:
                     c, l = 1.0, 1e3
-                self.save_model(save_model_path=save_model_path, use_model=self.use_model, epoch=epoch, model=model,
+                self.save_model(save_model_path=save_model_path, epoch=epoch, model=model,
                                 optimizer=optimizer, error_rate=c, test_loss=l)
 
     # 评估模型
@@ -458,28 +463,27 @@ class PPASRTrainer(object):
         return cer_result, test_loss
 
     # 保存模型
-    @staticmethod
-    def save_model(save_model_path, use_model, epoch, model, optimizer, error_type='cer', error_rate=1., test_loss=1e3, best_model=False):
+    def save_model(self, save_model_path, epoch, model, optimizer, error_rate=1., test_loss=1e3, best_model=False):
         if not best_model:
-            model_path = os.path.join(save_model_path, use_model, 'epoch_{}'.format(epoch))
+            model_path = os.path.join(save_model_path, f'{self.use_model}_{self.feature_method}', 'epoch_{}'.format(epoch))
             os.makedirs(model_path, exist_ok=True)
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
             with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
-                f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (epoch, error_type, error_rate, test_loss))
-            last_model_path = os.path.join(save_model_path, use_model, 'last_model')
+                f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (epoch, self.metrics_type, error_rate, test_loss))
+            last_model_path = os.path.join(save_model_path, f'{self.use_model}_{self.feature_method}', 'last_model')
             shutil.rmtree(last_model_path, ignore_errors=True)
             shutil.copytree(model_path, last_model_path)
             # 删除旧的模型
-            old_model_path = os.path.join(save_model_path, use_model, 'epoch_{}'.format(epoch - 3))
+            old_model_path = os.path.join(save_model_path, f'{self.use_model}_{self.feature_method}', 'epoch_{}'.format(epoch - 3))
             if os.path.exists(old_model_path):
                 shutil.rmtree(old_model_path)
         else:
-            model_path = os.path.join(save_model_path, use_model, 'best_model')
+            model_path = os.path.join(save_model_path, f'{self.use_model}_{self.feature_method}', 'best_model')
             paddle.save(model.state_dict(), os.path.join(model_path, 'model.pdparams'))
             paddle.save(optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
             with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
-                f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (epoch, error_type, error_rate, test_loss))
+                f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (epoch, self.metrics_type, error_rate, test_loss))
         logger.info('已保存模型：{}'.format(model_path))
 
     def decoder_result(self, outs, outs_lens, vocabulary):
@@ -494,6 +498,7 @@ class PPASRTrainer(object):
                                                                  cutoff_prob=self.cutoff_prob,
                                                                  cutoff_top_n=self.cutoff_top_n,
                                                                  vocab_list=vocabulary,
+                                                                 language_model_path=self.lang_model_path,
                                                                  num_processes=1)
                 except ModuleNotFoundError:
                     logger.warning('==================================================================')
@@ -515,7 +520,7 @@ class PPASRTrainer(object):
             result = self.beam_search_decoder.decode_batch_beam_search_offline(probs_split=outs)
         return result
 
-    def export(self, save_model_path='models/', resume_model='models/deepspeech2/best_model/'):
+    def export(self, save_model_path='models/', resume_model='models/deepspeech2_fbank/best_model/'):
         """
         导出预测模型
         :param save_model_path: 模型保存的路径
@@ -563,7 +568,7 @@ class PPASRTrainer(object):
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
 
-        infer_model_dir = os.path.join(save_model_path, self.use_model, 'infer')
+        infer_model_dir = os.path.join(save_model_path, f'{self.use_model}_{self.feature_method}', 'infer')
         os.makedirs(infer_model_dir, exist_ok=True)
         infer_model_path = os.path.join(infer_model_dir, 'model')
         paddle.jit.save(layer=model, path=infer_model_path, input_spec=input_spec)

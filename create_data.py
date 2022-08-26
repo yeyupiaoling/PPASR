@@ -18,7 +18,7 @@ add_arg('num_samples',          int,  1000000,                    '用于计算�
 add_arg('mean_std_path',        str,  'dataset/mean_std.npz',     '保存均值和标准值得numpy文件路径，后缀 (.npz).')
 add_arg('noise_path',           str,  'dataset/audio/noise',      '噪声音频存放的文件夹路径')
 add_arg('noise_manifest_path',  str,  'dataset/manifest.noise',   '噪声数据列表的路径')
-add_arg('feature_method',       str,  'linear',                   '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
+add_arg('feature_method',       str,  'fbank',                    '音频预处理方法', choices=['linear', 'mfcc', 'fbank'])
 args = parser.parse_args()
 print_arguments(args)
 

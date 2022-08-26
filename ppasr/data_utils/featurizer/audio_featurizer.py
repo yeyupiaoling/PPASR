@@ -1,9 +1,9 @@
 import numpy as np
-from python_speech_features import delta
-from python_speech_features import logfbank
-from python_speech_features import mfcc
+import paddle
+from paddleaudio.compliance.kaldi import mfcc, fbank
 
 from ppasr.data_utils.audio import AudioSegment
+from ppasr.data_utils.utils import delta
 
 
 class AudioFeaturizer(object):
@@ -32,13 +32,15 @@ class AudioFeaturizer(object):
                  window_ms=20.0,
                  target_sample_rate=16000,
                  use_dB_normalization=True,
-                 target_dB=-20):
+                 target_dB=-20,
+                 train=False):
         self._feature_method = feature_method
         self._stride_ms = stride_ms
         self._window_ms = window_ms
         self._target_sample_rate = target_sample_rate
         self._use_dB_normalization = use_dB_normalization
         self._target_dB = target_dB
+        self.train = train
 
     def featurize(self, audio_segment, allow_downsampling=True, allow_upsampling=True):
         """从AudioSegment或SpeechSegment中提取音频特征
@@ -71,12 +73,10 @@ class AudioFeaturizer(object):
                                         stride_ms=self._stride_ms, window_ms=self._window_ms)
         elif self._feature_method == 'mfcc':
             samples = audio_segment.to('int16')
-            return self._compute_mfcc(samples=samples, sample_rate=audio_segment.sample_rate,
-                                        stride_ms=self._stride_ms, window_ms=self._window_ms)
+            return self._compute_mfcc(samples=samples, sample_rate=audio_segment.sample_rate)
         elif self._feature_method == 'fbank':
             samples = audio_segment.to('int16')
-            return self._compute_fbank(samples=samples, sample_rate=audio_segment.sample_rate,
-                                        stride_ms=self._stride_ms, window_ms=self._window_ms)
+            return self._compute_fbank(samples=samples, sample_rate=audio_segment.sample_rate)
         else:
             raise Exception('没有{}预处理方法'.format(self._feature_method))
 
@@ -104,14 +104,29 @@ class AudioFeaturizer(object):
         linear_feat = np.log(fft[:ind, :] + eps)  # dim=161
         return linear_feat
 
-    @staticmethod
-    def _compute_mfcc(samples, sample_rate, stride_ms=10.0, window_ms=25.0):
+    def _compute_mfcc(self,
+                      samples,
+                      sample_rate,
+                      n_mels=161,
+                      n_shift=160,
+                      win_length=400,
+                      energy_floor=0.0,
+                      dither=0.1):
+        num_point_ms = sample_rate / 1000
+        n_frame_length = win_length / num_point_ms
+        n_frame_shift = n_shift / num_point_ms
+
+        dither = dither if self.train else 0.0
+        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
         # 计算MFCC
-        mfcc_feat = mfcc(signal=samples,
-                         samplerate=sample_rate,
-                         winlen=0.001 * window_ms,
-                         winstep=0.001 * stride_ms,
-                         highfreq=(sample_rate / 2))
+        mfcc_feat = mfcc(waveform,
+                         n_mels=n_mels,
+                         frame_length=n_frame_length,
+                         frame_shift=n_frame_shift,
+                         dither=dither,
+                         energy_floor=energy_floor,
+                         sr=sample_rate)
+        mfcc_feat = mfcc_feat.numpy()
         # Deltas
         d_feat = delta(mfcc_feat, 2)
         # Deltas-Deltas
@@ -124,24 +139,27 @@ class AudioFeaturizer(object):
     def _compute_fbank(self,
                        samples,
                        sample_rate,
-                       stride_ms=10.0,
-                       window_ms=25.0):
+                       n_mels=161,
+                       n_shift=160,
+                       win_length=400,
+                       energy_floor=0.0,
+                       dither=0.1):
+        num_point_ms = sample_rate / 1000
+        n_frame_length = win_length / num_point_ms
+        n_frame_shift = n_shift / num_point_ms
 
-        # 计算fbank
-        fbank_feat = logfbank(signal=samples,
-                              samplerate=sample_rate,
-                              winlen=0.001 * window_ms,
-                              winstep=0.001 * stride_ms,
-                              lowfreq=20,
-                              highfreq=(sample_rate / 2),
-                              wintype='povey')
-        # Deltas
-        d_feat = delta(fbank_feat, 2)
-        # Deltas-Deltas
-        dd_feat = delta(fbank_feat, 2)
-        # concat above three features
-        fbank_feat = np.concatenate((fbank_feat, d_feat, dd_feat), axis=1)  # dim=120
-        fbank_feat = fbank_feat.transpose([1, 0])
+        dither = dither if self.train else 0.0
+        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
+        # 计算Fbank
+        mat = fbank(waveform,
+                    n_mels=n_mels,
+                    frame_length=n_frame_length,
+                    frame_shift=n_frame_shift,
+                    dither=dither,
+                    energy_floor=energy_floor,
+                    sr=sample_rate)
+        mat = mat.transpose((1, 0))  # dim=161
+        fbank_feat = mat.numpy()
         return fbank_feat
 
     @property
@@ -156,6 +174,6 @@ class AudioFeaturizer(object):
         elif self._feature_method == 'mfcc':
             return 39
         elif self._feature_method == 'fbank':
-            return 120
+            return 161
         else:
             raise Exception('没有{}预处理方法'.format(self._feature_method))
