@@ -117,7 +117,7 @@ class AudioFeaturizer(object):
         n_frame_shift = n_shift / num_point_ms
 
         dither = dither if self.train else 0.0
-        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
+        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float64)
         # 计算MFCC
         mfcc_feat = mfcc(waveform,
                          n_mels=n_mels,
@@ -149,7 +149,7 @@ class AudioFeaturizer(object):
         n_frame_shift = n_shift / num_point_ms
 
         dither = dither if self.train else 0.0
-        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
+        waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float64)
         # 计算Fbank
         mat = fbank(waveform,
                     n_mels=n_mels,

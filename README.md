@@ -53,15 +53,15 @@ c
 
    |           使用模型            |                                  数据集                                  | 预处理方式  | 语言  |     测试集字错率（词错率）      |                                    下载地址                                    |
 |:-------------------------:|:---------------------------------------------------------------------:|:------:|:---:|:--------------------:|:--------------------------------------------------------------------------:|
- |      deepspeech2_big      |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank  | 中文  | 0.07392(AIShell的测试集) |      [点击下载](https://pan.baidu.com/s/1DDU92HGH3RRMySBfroXz5w?pwd=ai6p)      |
+   |      deepspeech2_big      |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank  | 中文  | 0.07392(AIShell的测试集) |      [点击下载](https://pan.baidu.com/s/1DDU92HGH3RRMySBfroXz5w?pwd=ai6p)      |
+   |        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |       0.07224        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+   |      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |       0.04966*       |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+   |   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |       0.07014        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+   | deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
  |        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |       0.07825        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
 |      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |       0.08022        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
  |   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |       0.07346        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
  | deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
- |        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |       0.07224        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
- |   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
- | deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
 |        deepspeech2        | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  | 英文  |                      |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       | 
 |      deepspeech2_big      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
 |   deepspeech2_no_stream   | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
@@ -77,6 +77,8 @@ c
 4. 除了aishell数据集按照数据集本身划分的训练数据和测试数据，其他的都是按照项目设置的固定比例划分训练数据和测试数据。
 5. 下载的压缩文件已经包含了`mean_std.npz`和`vocabulary.txt`，需要把解压得到的全部文件复制到项目根目录下。
 6. 模型名称包含`no_stream`为非流式模型，不能用于流式识别。
+7. 带有`*`的使用了`WenetSpeech`作为预训练模型。
+8. 由于算力不足，大部分的模型都没有训练足够轮数，有算力的同学，欢迎提供模型。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 
