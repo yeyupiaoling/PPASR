@@ -1,4 +1,3 @@
-c
 ![python version](https://img.shields.io/badge/python-3.7+-orange.svg)
 ![GitHub forks](https://img.shields.io/github/forks/yeyupiaoling/PPASR)
 ![GitHub Repo stars](https://img.shields.io/github/stars/yeyupiaoling/PPASR)
