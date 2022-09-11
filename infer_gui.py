@@ -189,6 +189,7 @@ class SpeechRecognitionApp:
             self.result_text.insert(END, f"{text}\n")
             if not self.recording:break
 
+        self.predictor.reset_stream()
         # 录音的字节数据，用于后面的预测和保存
         audio_bytes = b''.join(frames)
         # 保存音频数据
