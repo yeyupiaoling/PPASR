@@ -1,4 +1,5 @@
 """Contains the volume perturb augmentation model."""
+from ppasr.data_utils.audio import AudioSegment
 
 from ppasr.data_utils.augmentor.base import AugmentorBase
 
@@ -19,7 +20,7 @@ class ShiftPerturbAugmentor(AugmentorBase):
         self._max_shift_ms = max_shift_ms
         self._rng = rng
 
-    def transform_audio(self, audio_segment):
+    def transform_audio(self, audio_segment: AudioSegment):
         """Shift audio.
 
         Note that this is an in-place transformation.

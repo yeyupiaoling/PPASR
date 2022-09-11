@@ -1,10 +1,11 @@
 """Contains the volume perturb augmentation model."""
+from ppasr.data_utils.audio import AudioSegment
 
 from ppasr.data_utils.augmentor.base import AugmentorBase
 
 
 class VolumePerturbAugmentor(AugmentorBase):
-    """添加随机体积扰动的增强模型
+    """添加随机音量扰动的增强模型
     
     This is used for multi-loudness training of PCEN. See
 
@@ -25,7 +26,7 @@ class VolumePerturbAugmentor(AugmentorBase):
         self._max_gain_dBFS = max_gain_dBFS
         self._rng = rng
 
-    def transform_audio(self, audio_segment):
+    def transform_audio(self, audio_segment: AudioSegment):
         """Change audio loadness.
 
         Note that this is an in-place transformation.

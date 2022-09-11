@@ -1,4 +1,7 @@
 """Contain the resample augmentation model."""
+import numpy as np
+
+from ppasr.data_utils.audio import AudioSegment
 
 from ppasr.data_utils.augmentor.base import AugmentorBase
 
@@ -15,16 +18,17 @@ class ResampleAugmentor(AugmentorBase):
     :type new_sample_rate: int
     """
 
-    def __init__(self, rng, new_sample_rate):
+    def __init__(self, rng, new_sample_rate: list):
         self._new_sample_rate = new_sample_rate
         self._rng = rng
 
-    def transform_audio(self, audio_segment):
+    def transform_audio(self, audio_segment: AudioSegment):
         """Resamples the input audio to a target sample rate.
 
         Note that this is an in-place transformation.
 
-        :param audio: Audio segment to add effects to.
-        :type audio: AudioSegment|SpeechSegment
+        :param audio_segment: Audio segment to add effects to.
+        :type audio_segment: AudioSegment|SpeechSegment
         """
-        audio_segment.resample(self._new_sample_rate)
+        _new_sample_rate = np.random.choice(self._new_sample_rate)
+        audio_segment.resample(_new_sample_rate)

@@ -2,11 +2,15 @@ import math
 
 import numpy as np
 import random
+
+import paddle
 from tqdm import tqdm
 from paddle.io import Dataset, DataLoader
 from ppasr.data_utils.utils import read_manifest
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
+
+__all__ = ['FeatureNormalizer']
 
 
 class FeatureNormalizer(object):
@@ -22,7 +26,7 @@ class FeatureNormalizer(object):
     :type num_samples: int
     :param random_seed: 随机种子
     :type random_seed: int
-    :raises ValueError: 如果mean_std_filepath和manifest_path(或mean_std_filepath和featurize_func)都为None
+    :raises ValueError: 如果mean_std_filepath和manifest_path都为None
     """
 
     def __init__(self,
@@ -70,6 +74,7 @@ class FeatureNormalizer(object):
 
     def _compute_mean_std(self, manifest_path, num_samples, num_workers):
         """从随机抽样的实例中计算均值和标准值"""
+        paddle.set_device('cpu')
         manifest = read_manifest(manifest_path)
         if num_samples < 0 or num_samples > len(manifest):
             sampled_manifest = manifest
@@ -77,28 +82,29 @@ class FeatureNormalizer(object):
             sampled_manifest = self._rng.sample(manifest, num_samples)
         dataset = NormalizerDataset(sampled_manifest, feature_method=self.feature_method)
         test_loader = DataLoader(dataset=dataset, batch_size=64, collate_fn=collate_fn, num_workers=num_workers)
-        # 求总和
-        std, means = None, None
-        number = 0
-        for std1, means1, number1 in tqdm(test_loader()):
-            number += number1
-            if means is None:
-                means = means1
-            else:
-                means += means1
-            if std is None:
-                std = std1
-            else:
-                std += std1
-        # 求总和的均值和标准值
-        for i in range(len(means)):
-            means[i] /= number
-            std[i] = std[i] / number - means[i] * means[i]
-            if std[i] < 1.0e-20:
-                std[i] = 1.0e-20
-            std[i] = math.sqrt(std[i])
-        self.mean = means.reshape([-1, 1])
-        self.std = std.reshape([-1, 1])
+        with paddle.no_grad():
+            # 求总和
+            std, means = None, None
+            number = 0
+            for std1, means1, number1 in tqdm(test_loader()):
+                number += number1
+                if means is None:
+                    means = means1
+                else:
+                    means += means1
+                if std is None:
+                    std = std1
+                else:
+                    std += std1
+            # 求总和的均值和标准值
+            for i in range(len(means)):
+                means[i] /= number
+                std[i] = std[i] / number - means[i] * means[i]
+                if std[i] < 1.0e-20:
+                    std[i] = 1.0e-20
+                std[i] = math.sqrt(std[i])
+            self.mean = means.reshape([-1, 1])
+            self.std = std.reshape([-1, 1])
 
 
 class NormalizerDataset(Dataset):

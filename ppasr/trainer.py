@@ -38,7 +38,7 @@ logger = setup_logger(__name__)
 class PPASRTrainer(object):
     def __init__(self,
                  use_model='deepspeech2',
-                 feature_method='fbank',
+                 feature_method='linear',
                  mean_std_path='dataset/mean_std.npz',
                  train_manifest='dataset/manifest.train',
                  test_manifest='dataset/manifest.test',
@@ -300,7 +300,7 @@ class PPASRTrainer(object):
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
         # 设置优化方法
-        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=5.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.93)
         optimizer = paddle.optimizer.AdamW(parameters=model.parameters(),
                                            learning_rate=scheduler,
@@ -550,7 +550,7 @@ class PPASRTrainer(object):
         summary(net=base_model, input=input_data)
         # 加载预训练模型
         resume_model_path = os.path.join(resume_model, 'model.pdparams')
-        assert os.path.exists(resume_model_path), "恢复模型不存在！"
+        assert os.path.exists(resume_model_path), f"{resume_model_path} 模型不存在！"
         base_model.set_state_dict(paddle.load(resume_model_path))
         logger.info('成功恢复模型参数和优化方法参数：{}'.format(resume_model_path))
 

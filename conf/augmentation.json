@@ -14,7 +14,7 @@
     "type": "resample",
     "aug_type": "audio",
     "params": {
-      "new_sample_rate": 8000
+      "new_sample_rate": [8000, 32000, 44100, 48000]
     },
     "prob": 0.0
   },

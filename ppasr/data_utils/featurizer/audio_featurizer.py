@@ -69,7 +69,7 @@ class AudioFeaturizer(object):
             audio_segment.normalize(target_db=self._target_dB)
         # extract spectrogram
         if self._feature_method == 'linear':
-            return self._compute_linear(audio_segment.samples, audio_segment.sample_rate,
+            return self._compute_linear(samples=audio_segment.samples, sample_rate=audio_segment.sample_rate,
                                         stride_ms=self._stride_ms, window_ms=self._window_ms)
         elif self._feature_method == 'mfcc':
             samples = audio_segment.to('int16')

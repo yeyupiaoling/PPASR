@@ -2,7 +2,7 @@
 
 本项目目前支持两种解码方法，分别是集束搜索(ctc_beam_search)和贪婪策略(ctc_greedy)，项目全部默认都是使用贪婪策略解码的，集束搜索解码只支持Linux和Mac，如果要使用集束搜索方法，首先要安装`paddlespeech-ctcdecoders`库，执行以下命令即可安装完成。
 ```shell
-python -m pip install paddlespeech-ctcdecoders -U -i https://mirrors.aliyun.com/pypi/simple/
+python -m pip install paddlespeech-ctcdecoders -U -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
 # 语言模型

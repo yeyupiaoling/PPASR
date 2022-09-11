@@ -1,5 +1,6 @@
 """Contain the speech perturbation augmentation model."""
 import numpy as np
+from ppasr.data_utils.audio import AudioSegment
 
 from ppasr.data_utils.augmentor.base import AugmentorBase
 
@@ -32,7 +33,7 @@ class SpeedPerturbAugmentor(AugmentorBase):
         if num_rates > 0:
             self._rates = np.linspace(self._min_speed_rate, self._max_speed_rate, self._num_rates, endpoint=True)
 
-    def transform_audio(self, audio_segment):
+    def transform_audio(self, audio_segment: AudioSegment):
         """Sample a new speed rate from the given range and
         changes the speed of the given audio clip.
 

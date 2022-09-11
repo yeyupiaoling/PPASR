@@ -64,7 +64,7 @@ class AudioSegment(object):
         try:
             samples, sample_rate = soundfile.read(file, dtype='float32')
         except:
-            samples, sample_rate = librosa.load(path=file)
+            samples, sample_rate = librosa.load(path=file, dtype=np.float32)
         return cls(samples, sample_rate)
 
     @classmethod
@@ -244,7 +244,6 @@ class AudioSegment(object):
         samples = self._convert_samples_from_float32(self._samples, dtype)
         return samples
 
-
     def gain_db(self, gain):
         """对音频施加分贝增益。
 
@@ -274,7 +273,7 @@ class AudioSegment(object):
         new_length = int(old_length / speed_rate)
         old_indices = np.arange(old_length)
         new_indices = np.linspace(start=0, stop=old_length, num=new_length)
-        self._samples = np.interp(new_indices, old_indices, self._samples)
+        self._samples = np.interp(new_indices, old_indices, self._samples).astype(np.float32)
 
     def normalize(self, target_db=-20, max_gain_db=300.0):
         """将音频归一化，使其具有所需的有效值(以分贝为单位)

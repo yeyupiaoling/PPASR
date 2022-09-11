@@ -30,7 +30,7 @@ class NoisePerturbAugmentor(AugmentorBase):
         self._rng = rng
         self._noise_manifest = read_manifest(manifest_path=noise_manifest_path)
 
-    def transform_audio(self, audio_segment):
+    def transform_audio(self, audio_segment: AudioSegment):
         """Add background noise audio.
 
         Note that this is an in-place transformation.
@@ -40,7 +40,7 @@ class NoisePerturbAugmentor(AugmentorBase):
         """
         for _ in range(random.randint(1, self.repetition)):
             noise_json = self._rng.sample(self._noise_manifest, 1)[0]
-            noise_segment = AudioSegment.slice_from_file(noise_json['audio_filepath'])
+            noise_segment = AudioSegment.from_file(noise_json['audio_filepath'])
             snr_dB = self._rng.uniform(self._min_snr_dB, self._max_snr_dB)
             if noise_segment.samples.shape[0] < audio_segment.samples.shape[0]:
                 diff_duration = audio_segment.samples.shape[0] - noise_segment.samples.shape[0]

@@ -31,7 +31,7 @@ add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的�
 add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',    "集束搜索解码相关参数，语言模型文件路径")
-add_arg('feature_method',   str,    'fbank',              "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
+add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
 add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法", choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
 
