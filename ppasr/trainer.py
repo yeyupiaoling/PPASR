@@ -186,9 +186,12 @@ class PPASRTrainer(object):
         input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
-        assert os.path.exists(os.path.join(resume_model, 'model.pdparams')), f"{os.path.join(resume_model, 'model.pdparams')} 模型不存在！"
-        model.set_state_dict(paddle.load(os.path.join(resume_model, 'model.pdparams')))
-        logger.info(f'成功加载模型：{os.path.join(resume_model, "model.pdparams")}')
+
+        if os.path.isdir(resume_model):
+            resume_model = os.path.join(resume_model, 'model.pdparams')
+        assert os.path.exists(resume_model), f"{resume_model} 模型不存在！"
+        model.set_state_dict(paddle.load(resume_model))
+        logger.info(f'成功加载模型：{resume_model}')
         model.eval()
 
         c = []
@@ -300,7 +303,7 @@ class PPASRTrainer(object):
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
         # 设置优化方法
-        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=5.0)
+        grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=3.0)
         scheduler = paddle.optimizer.lr.ExponentialDecay(learning_rate=learning_rate, gamma=0.93)
         optimizer = paddle.optimizer.AdamW(parameters=model.parameters(),
                                            learning_rate=scheduler,
@@ -316,8 +319,11 @@ class PPASRTrainer(object):
 
         # 加载预训练模型
         if pretrained_model is not None:
+            if os.path.isdir(pretrained_model):
+                pretrained_model = os.path.join(pretrained_model, 'model.pdparams')
+            assert os.path.exists(pretrained_model), f"{pretrained_model} 模型不存在！"
             model_dict = model.state_dict()
-            model_state_dict = paddle.load(os.path.join(pretrained_model, 'model.pdparams'))
+            model_state_dict = paddle.load(pretrained_model)
             # 特征层
             for name, weight in model_dict.items():
                 if name in model_state_dict.keys():
@@ -549,12 +555,13 @@ class PPASRTrainer(object):
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=base_model, input=input_data)
         # 加载预训练模型
-        resume_model_path = os.path.join(resume_model, 'model.pdparams')
-        assert os.path.exists(resume_model_path), f"{resume_model_path} 模型不存在！"
-        base_model.set_state_dict(paddle.load(resume_model_path))
-        logger.info('成功恢复模型参数和优化方法参数：{}'.format(resume_model_path))
+        if os.path.isdir(resume_model):
+            resume_model = os.path.join(resume_model, 'model.pdparams')
+        assert os.path.exists(resume_model), f"{resume_model} 模型不存在！"
+        base_model.set_state_dict(paddle.load(resume_model))
+        logger.info('成功恢复模型参数和优化方法参数：{}'.format(resume_model))
 
-        # 获取模型
+        # 获取导出模型
         if self.use_model == 'deepspeech2' or self.use_model == 'deepspeech2_big':
             model = DeepSpeech2ModelExport(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
             input_spec = [InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
