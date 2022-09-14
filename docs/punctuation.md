@@ -6,13 +6,13 @@
 
 使用主要分为三4步：
 
-1. 首先是[下载模型](https://download.csdn.net/download/qq_33200967/75664996) ，并解压到`models/`目录下，注意这个模型只支持中文。
+1. 首先是[下载模型](https://download.csdn.net/download/qq_33200967/75664996) ，并解压到`models/`目录下，注意这个模型只支持中文，如果想自己训练模型的话，可以在[PunctuationModel](https://github.com/yeyupiaoling/PunctuationModel)训练模型，然后导出模型复制到`models/`目录。
 
 
 2. 需要使用PaddleNLP工具，所以需要提前安装PaddleNLP，安装命令如下：
 
 ```shell
-python -m pip install paddlenlp -i https://mirrors.aliyun.com/pypi/simple/
+python -m pip install paddlenlp -i https://mirrors.aliyun.com/pypi/simple/ -U
 ```
 
 3. 在使用时，将`use_pun`参数设置为True，输出的结果就自动加上了标点符号，如下。

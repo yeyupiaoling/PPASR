@@ -1,3 +1,4 @@
+import json
 import os
 import re
 
@@ -19,6 +20,12 @@ class PunctuationExecutor:
         if not os.path.exists(model_path) or not os.path.exists(params_path):
             raise Exception("标点符号模型文件不存在，请检查{}和{}是否存在！".format(model_path, params_path))
         self.config = paddle_infer.Config(model_path, params_path)
+        # 获取预训练模型类型
+        pretrained_token = 'ernie-1.0'
+        if os.path.exists(os.path.join(model_dir, 'info.json')):
+            with open(os.path.join(model_dir, 'info.json'), 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                pretrained_token = data['pretrained_token']
 
         if use_gpu:
             self.config.enable_use_gpu(gpu_mem, 0)
@@ -46,7 +53,7 @@ class PunctuationExecutor:
             for line in f:
                 self._punc_list.append(line.strip())
 
-        self.tokenizer = ErnieTokenizer.from_pretrained('ernie-1.0')
+        self.tokenizer = ErnieTokenizer.from_pretrained(pretrained_token)
 
         # 预热
         self('近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书')
@@ -100,7 +107,9 @@ class PunctuationExecutor:
         # 数据batch处理
         try:
             input_ids, seg_ids, seq_len = self.preprocess(text)
-            preds = self.infer(input_ids=input_ids, seg_ids=seg_ids)[0]
+            preds = self.infer(input_ids=input_ids, seg_ids=seg_ids)
+            if len(preds.shape) == 2:
+                preds = preds[0]
             text = self.postprocess(input_ids, seq_len, preds)
         except Exception as e:
             logger.error(e)

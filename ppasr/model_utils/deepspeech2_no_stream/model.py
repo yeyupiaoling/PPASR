@@ -71,7 +71,7 @@ def deepspeech2_big_no_stream(feat_size, vocab_size):
     model = DeepSpeech2NoStreamModel(feat_size=feat_size,
                                      vocab_size=vocab_size,
                                      num_conv_layers=2,
-                                     num_rnn_layers=5,
-                                     rnn_size=1024,
+                                     num_rnn_layers=3,
+                                     rnn_size=2048,
                                      use_gru=False)
     return model
