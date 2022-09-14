@@ -7,7 +7,7 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('use_model',        str,    'deepspeech2_big_no_stream',            '所使用的模型', choices=SUPPORT_MODEL)
+add_arg('use_model',        str,    'deepspeech2',            '所使用的模型', choices=SUPPORT_MODEL)
 add_arg('batch_size',       int,    32,                       '训练的批量大小')
 add_arg('num_workers',      int,    8,                        '读取数据的线程数量')
 add_arg('num_epoch',        int,    65,                       '训练的轮数')

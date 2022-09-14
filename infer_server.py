@@ -57,7 +57,7 @@ def recognition():
         try:
             start = time.time()
             # 执行识别
-            score, text = predictor.predict(audio_path=file_path, to_an=args.to_an)
+            score, text = predictor.predict(audio_path=file_path, use_pun=args.use_pun, to_an=args.to_an)
             end = time.time()
             print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
             result = str({"code": 0, "msg": "success", "result": text, "score": round(score, 3)}).replace("'", '"')
@@ -84,7 +84,7 @@ def recognition_long_audio():
             scores = []
             # 执行识别
             for i, audio_bytes in enumerate(audios_bytes):
-                score, text = predictor.predict(audio_bytes=audio_bytes, to_an=args.to_an)
+                score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, to_an=args.to_an)
                 texts = texts + text if args.use_pun else texts + '，' + text
                 scores.append(score)
             end = time.time()

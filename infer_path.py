@@ -49,7 +49,7 @@ def predict_long_audio():
     scores = []
     # 执行识别
     for i, audio_bytes in enumerate(audios_bytes):
-        score, text = predictor.predict(audio_bytes=audio_bytes, to_an=args.to_an)
+        score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, to_an=args.to_an)
         texts = texts + text if args.use_pun else texts + '，' + text
         scores.append(score)
         print(f"第{i}个分割音频, 得分: {int(score)}, 识别结果: {text}")
@@ -59,7 +59,7 @@ def predict_long_audio():
 # 短语音识别
 def predict_audio():
     start = time.time()
-    score, text = predictor.predict(audio_path=args.wav_path, to_an=args.to_an)
+    score, text = predictor.predict(audio_path=args.wav_path, use_pun=args.use_pun, to_an=args.to_an)
     print(f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {int(score)}")
 
 
@@ -75,7 +75,7 @@ def real_time_predict_demo():
     while data != b'':
         start = time.time()
         d = wf.readframes(CHUNK)
-        score, text = predictor.predict_stream(audio_bytes=data, to_an=args.to_an, is_end=data == b'')
+        score, text = predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=args.to_an, is_end=d == b'')
         print(f"【实时结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {text}, 得分: {int(score)}")
         data = d
     # 重置流式识别
