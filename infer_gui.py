@@ -19,6 +19,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('use_model',        str,    'deepspeech2', '所使用的模型', choices=SUPPORT_MODEL)
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
+add_arg('use_server',       bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索的大小，范围:[5, 500]")
 add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM系数")
@@ -44,6 +45,7 @@ class SpeechRecognitionApp:
         self.recording = False
         self.stream = None
         self.to_an = False
+        self.use_server = args.use_server
         # 录音保存的路径
         self.output_path = 'dataset/record'
         # 创建一个播放器
@@ -78,13 +80,14 @@ class SpeechRecognitionApp:
         self.an_frame.grid(row=1)
         self.an_frame.place(x=700, y=10)
 
-        # 获取识别器中文数字转阿拉伯数字
-        self.predictor = Predictor(model_dir=args.model_dir.format(args.use_model, args.feature_method), vocab_path=args.vocab_path,
-                                   use_model=args.use_model, decoder=args.decoder, alpha=args.alpha, beta=args.beta,
-                                   lang_model_path=args.lang_model_path,
-                                   beam_size=args.beam_size, cutoff_prob=args.cutoff_prob,
-                                   cutoff_top_n=args.cutoff_top_n, feature_method=args.feature_method,
-                                   use_gpu=args.use_gpu, use_pun=args.use_pun, pun_model_dir=args.pun_model_dir)
+        if not self.use_server:
+            # 获取识别器
+            self.predictor = Predictor(model_dir=args.model_dir.format(args.use_model, args.feature_method), vocab_path=args.vocab_path,
+                                       use_model=args.use_model, decoder=args.decoder, alpha=args.alpha, beta=args.beta,
+                                       lang_model_path=args.lang_model_path,
+                                       beam_size=args.beam_size, cutoff_prob=args.cutoff_prob,
+                                       cutoff_top_n=args.cutoff_top_n, feature_method=args.feature_method,
+                                       use_gpu=args.use_gpu, use_pun=args.use_pun, pun_model_dir=args.pun_model_dir)
 
     # 是否中文数字转阿拉伯数字
     def to_an_state(self):

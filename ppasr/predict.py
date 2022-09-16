@@ -52,6 +52,7 @@ class Predictor:
         :param gpu_mem: 预先分配的GPU显存大小
         :param num_threads: 只用CPU预测的线程数量
         """
+        self.running = False
         self.decoder = decoder
         self.use_model = use_model
         self.alpha = alpha
