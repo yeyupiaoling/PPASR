@@ -28,6 +28,7 @@
 
 ## 更新记录
 
+ - 2022.09.18: 支持使用WebSocket调用流式识别。
  - 2022.08.26: 修改使用kaldi实现`fbank`和`mfcc`预处理方法。
  - 2022.08.22: 增加非流式模型`deepspeech2_no_stream`和`deepspeech2_big_no_stream`。
  - 2022.08.04: 发布1.0版本，优化实时识别流程。

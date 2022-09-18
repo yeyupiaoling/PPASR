@@ -1,8 +1,12 @@
+import _thread
 import argparse
+import asyncio
 import functools
 import os
 import time
+import wave
 
+import websockets
 from flask import request, Flask, render_template
 from flask_cors import CORS
 
@@ -18,13 +22,14 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('use_model',        str,    'deepspeech2',        "所使用的模型", choices=SUPPORT_MODEL)
 add_arg("host",             str,    "0.0.0.0",            "监听主机的IP地址")
-add_arg("port",             int,    5000,                 "服务所使用的端口号")
+add_arg("port",             int,    5000,                 "普通识别服务所使用的端口号")
+add_arg("port_stream",      int,    5001,                 "流式识别服务所使用的端口号")
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('to_an',            bool,   False,  "是否转为阿拉伯数字")
 add_arg('num_predictor',    int,    1,      "多少个预测器，也是就可以同时有多少个用户同时识别")
-add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索大小，范围:[5, 500]")
+add_arg('beam_size',        int,    100,    "集束搜索解码相关参数，搜索大小，范围:[5, 500]")
 add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM系数")
 add_arg('beta',             float,  4.3,    "集束搜索解码相关参数，WC系数")
 add_arg('cutoff_prob',      float,  0.99,   "集束搜索解码相关参数，剪枝的概率")
@@ -36,6 +41,7 @@ add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',    "
 add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
 add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法", choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
+print_arguments(args)
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/")
 # 允许跨越访问
@@ -144,8 +150,70 @@ def home():
     return render_template("index.html")
 
 
+# 流式识别WebSocket服务
+async def stream_server_run(websocket, path):
+    logger.info(f'有WebSocket连接建立：{websocket.remote_address}')
+    use_predictor = None
+    for predictor in predictors:
+        if predictor.running: continue
+        use_predictor = predictor
+        use_predictor.running = True
+        break
+    if use_predictor is not None:
+        frames = []
+        while not websocket.closed:
+            try:
+                data = await websocket.recv()
+                frames.append(data)
+                if len(data) == 0: continue
+                is_end = False
+                # 判断是不是结束预测
+                if b'end' == data[-3:]:
+                    is_end = True
+                    data = data[:-3]
+                # 开始预测
+                score, text = use_predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=args.to_an,
+                                                           is_end=is_end)
+                send_data = str({"code": 0, "result": text}).replace("'", '"')
+                logger.info(f'向客户端发生消息：{send_data}')
+                await websocket.send(send_data)
+                # 结束了要关闭当前的连接
+                if is_end: await websocket.close()
+            except Exception as e:
+                logger.error(f'识别发生错误：错误信息：{e}')
+                try:
+                    await websocket.send(str({"code": 2, "msg": "recognition fail!"}))
+                except:pass
+        # 重置流式识别
+        use_predictor.reset_stream()
+        use_predictor.running = False
+        # 保存录音
+        save_path = os.path.join(args.save_path, f"{int(time.time() * 1000)}.wav")
+        audio_bytes = b''.join(frames)
+        wf = wave.open(save_path, 'wb')
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(16000)
+        wf.writeframes(audio_bytes)
+        wf.close()
+    else:
+        logger.error(f'语音识别失败，预测器不足')
+        await websocket.send(str({"code": 1, "msg": "recognition fail, no resource!"}))
+        websocket.close()
+
+
+# 因为有多个服务需要使用线程启动
+def start_server_thread():
+    app.run(host=args.host, port=args.port)
+
+
 if __name__ == '__main__':
-    print_arguments(args)
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
-    app.run(host=args.host, port=args.port)
+    _thread.start_new_thread(start_server_thread, ())
+    # 启动Flask服务
+    server = websockets.serve(stream_server_run, args.host, args.port_stream)
+    # 启动WebSocket服务
+    asyncio.get_event_loop().run_until_complete(server)
+    asyncio.get_event_loop().run_forever()
+

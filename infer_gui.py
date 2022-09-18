@@ -1,6 +1,7 @@
 import _thread
 import argparse
 import functools
+import json
 import os
 import time
 import tkinter.messagebox
@@ -8,18 +9,28 @@ import wave
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 
+import asyncio
+
+import requests
+import websockets
 import pyaudio
 
 from ppasr import SUPPORT_MODEL
 from ppasr.predict import Predictor
 from ppasr.utils.audio_vad import crop_audio_vad
+from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import add_arguments, print_arguments
+
+logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('use_model',        str,    'deepspeech2', '所使用的模型', choices=SUPPORT_MODEL)
+add_arg('use_model',        str,    'deepspeech2', "所使用的模型", choices=SUPPORT_MODEL)
+add_arg('use_server',       bool,   False,         "是否使用服务器服务进行识别，否则使用本地识别")
+add_arg("host",             str,    "127.0.0.1",   "服务器IP地址")
+add_arg("port_server",      int,    5000,          "普通识别服务端口号")
+add_arg("port_stream",      int,    5001,          "流式识别服务端口号")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
-add_arg('use_server',       bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('beam_size',        int,    300,    "集束搜索解码相关参数，搜索的大小，范围:[5, 500]")
 add_arg('alpha',            float,  2.2,    "集束搜索解码相关参数，LM系数")
@@ -46,6 +57,10 @@ class SpeechRecognitionApp:
         self.stream = None
         self.to_an = False
         self.use_server = args.use_server
+        # 录音参数
+        self.frames = []
+        interval_time = 0.5
+        self.CHUNK = int(16000 * interval_time)
         # 录音保存的路径
         self.output_path = 'dataset/record'
         # 创建一个播放器
@@ -110,14 +125,23 @@ class SpeechRecognitionApp:
         self.predicting = True
         try:
             start = time.time()
-            if isinstance(wav_file, str):
+            # 判断使用本地识别还是调用服务接口
+            if not self.use_server:
                 score, text = self.predictor.predict(audio_path=wav_file, use_pun=args.use_pun, to_an=self.to_an)
             else:
-                score, text = self.predictor.predict(audio_bytes=wav_file, use_pun=args.use_pun, to_an=self.to_an)
-            self.result_text.insert(END, "消耗时间：%dms, 识别结果: %s, 得分: %d\n" % (
-            round((time.time() - start) * 1000), text, score))
+                # 调用用服务接口识别
+                url = f"http://{args.host}:{args.port_server}/recognition"
+                files = [('audio', ('test.wav', open(wav_file, 'rb'), 'audio/wav'))]
+                headers = {'accept': 'application/json'}
+                response = requests.post(url, headers=headers, files=files)
+                data = json.loads(response.text)
+                if data['code'] != 0:
+                    raise Exception(f'服务请求失败，错误信息：{data["msg"]}')
+                text, score = data['result'], data['score']
+            self.result_text.insert(END, f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {score}\n")
         except Exception as e:
-            print(e)
+            self.result_text.insert(END, str(e))
+            logger.error(e)
         self.predicting = False
 
     # 预测长语音线程
@@ -137,21 +161,34 @@ class SpeechRecognitionApp:
         self.predicting = True
         try:
             start = time.time()
-            # 分割长音频
-            audios_bytes = crop_audio_vad(wav_path)
-            texts = ''
-            scores = []
-            # 执行识别
-            for i, audio_bytes in enumerate(audios_bytes):
-                score, text = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, to_an=self.to_an)
-                texts = texts + text if args.use_pun else texts + '，' + text
-                scores.append(score)
-                self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
+            # 判断使用本地识别还是调用服务接口
+            if not self.use_server:
+                # 分割长音频
+                audios_bytes = crop_audio_vad(wav_path)
+                texts = ''
+                scores = []
+                # 执行识别
+                for i, audio_bytes in enumerate(audios_bytes):
+                    score, text = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, to_an=self.to_an)
+                    texts = texts + text if args.use_pun else texts + '，' + text
+                    scores.append(score)
+                    self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
+                text, score = texts, sum(scores) / len(scores)
+            else:
+                # 调用用服务接口识别
+                url = f"http://{args.host}:{args.port_server}/recognition_long_audio"
+                files = [('audio', ('test.wav', open(wav_path, 'rb'), 'audio/wav'))]
+                headers = {'accept': 'application/json'}
+                response = requests.post(url, headers=headers, files=files)
+                data = json.loads(response.text)
+                if data['code'] != 0:
+                    raise Exception(f'服务请求失败，错误信息：{data["msg"]}')
+                text, score = data['result'], data['score']
             self.result_text.insert(END, "=====================================================\n")
-            self.result_text.insert(END, "最终结果，消耗时间：%d, 得分: %d, 识别结果: %s\n" %
-                                    (round((time.time() - start) * 1000), sum(scores) / len(scores), texts))
+            self.result_text.insert(END, f"最终结果，消耗时间：{int(round((time.time() - start) * 1000))}, 得分: {score}, 识别结果: {text}\n")
         except Exception as e:
-            print(e)
+            self.result_text.insert(END, str(e))
+            logger.error(e)
         self.predicting = False
 
     # 录音识别线程
@@ -166,12 +203,29 @@ class SpeechRecognitionApp:
                 # 停止播放
                 self.recording = False
 
+    # 使用WebSocket调用实时语音识别服务
+    async def run_websocket(self):
+        async with websockets.connect(f"ws://{args.host}:{args.port_stream}") as websocket:
+            while not websocket.closed:
+                data = self.stream.read(self.CHUNK)
+                self.frames.append(data)
+                send_data = data
+                # 用户点击停止录音按钮
+                if not self.recording:
+                    send_data += b'end'
+                await websocket.send(send_data)
+                result = await websocket.recv()
+                self.result_text.delete('1.0', 'end')
+                self.result_text.insert(END, f"{json.loads(result)['result']}\n")
+                # 停止录音后，需要把end发给服务器才能最终停止
+                if not self.recording and b'end' == send_data[-3:]:break
+            # await websocket.close()
+        logger.info('close websocket')
+
     def record_audio(self):
         self.record_button.configure(text='停止录音')
         self.recording = True
-        # 录音参数
-        interval_time = 0.5
-        CHUNK = int(16000 * interval_time)
+        self.frames = []
         FORMAT = pyaudio.paInt16
         channels = 1
         rate = 16000
@@ -181,20 +235,25 @@ class SpeechRecognitionApp:
                                   channels=channels,
                                   rate=rate,
                                   input=True,
-                                  frames_per_buffer=CHUNK)
+                                  frames_per_buffer=self.CHUNK)
         self.result_text.insert(END, "正在录音...\n")
-        frames, result = [], []
-        while True:
-            data = self.stream.read(CHUNK)
-            frames.append(data)
-            score, text = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=self.to_an, is_end=not self.recording)
-            self.result_text.delete('1.0', 'end')
-            self.result_text.insert(END, f"{text}\n")
-            if not self.recording:break
+        if not self.use_server:
+            # 本地识别
+            while True:
+                data = self.stream.read(self.CHUNK)
+                self.frames.append(data)
+                score, text = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=self.to_an, is_end=not self.recording)
+                self.result_text.delete('1.0', 'end')
+                self.result_text.insert(END, f"{text}\n")
+                if not self.recording:break
+            self.predictor.reset_stream()
+        else:
+            # 调用服务接口
+            new_loop = asyncio.new_event_loop()
+            new_loop.run_until_complete(self.run_websocket())
 
-        self.predictor.reset_stream()
         # 录音的字节数据，用于后面的预测和保存
-        audio_bytes = b''.join(frames)
+        audio_bytes = b''.join(self.frames)
         # 保存音频数据
         os.makedirs(self.output_path, exist_ok=True)
         self.wav_path = os.path.join(self.output_path, '%s.wav' % str(int(time.time())))

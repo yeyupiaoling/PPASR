@@ -1,33 +1,32 @@
-
 //兼容
 window.URL = window.URL || window.webkitURL;
 //获取计算机的设备：摄像头或者录音设备
 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
-var HZRecorder = function (stream, config) {
-    config = config || {};
-    config.sampleBits = config.sampleBits || 16;      //采样数位 8, 16
-    config.sampleRate = config.sampleRate || 16000;   //采样率 16000
-
-    //创建一个音频环境对象
-    var audioContext = window.AudioContext || window.webkitAudioContext;
-    var context = new audioContext();
+var PPASRRecorder = function (stream, url, textResult) {
+    var socket = new WebSocket(url);
+    var sampleBits = 16; //输出采样数位 8, 16
+    var sampleRate = 16000; //输出采样率
+    var context = new AudioContext(); //创建一个音频环境对象
     var audioInput = context.createMediaStreamSource(stream);
-    // 第二个和第三个参数指的是输入和输出都是单声道,2是双声道。
-    var recorder = context.createScriptProcessor(4096, 2, 2);
-
+    // 第二个和第三个参数指的是输入和输出都是单声道，1是单声道，2是双声道。
+    var recorder = context.createScriptProcessor(4096 * 4, 1, 1);
     var audioData = {
-        size: 0          //录音文件长度
-        , buffer: []     //录音缓存
-        , inputSampleRate: context.sampleRate    //输入采样率
-        , inputSampleBits: 16       //输入采样数位 8, 16
-        , outputSampleRate: config.sampleRate    //输出采样率
-        , outputSampleBits: config.sampleBits       //输出采样数位 8, 16
-        , input: function (data) {
+        size: 0, //录音文件长度
+        buffer: [], //录音缓存
+        inputSampleRate: context.sampleRate, //输入采样率
+        inputSampleBits: 16, //输入采样数位 8, 16
+        outputSampleRate: sampleRate, //输出采样数位
+        oututSampleBits: sampleBits, //输出采样率
+        clear: function () {
+            this.buffer = [];
+            this.size = 0;
+        },
+        input: function (data) {
             this.buffer.push(new Float32Array(data));
             this.size += data.length;
-        }
-        , compress: function () { //合并压缩
+        },
+        compress: function () { //合并压缩
             //合并
             var data = new Float32Array(this.size);
             var offset = 0;
@@ -46,167 +45,157 @@ var HZRecorder = function (stream, config) {
                 index++;
             }
             return result;
-        }
-        , encodeWAV: function () {
+        },
+        encodePCM: function () {
             var sampleRate = Math.min(this.inputSampleRate, this.outputSampleRate);
-            var sampleBits = Math.min(this.inputSampleBits, this.outputSampleBits);
+            var sampleBits = Math.min(this.inputSampleBits, this.oututSampleBits);
             var bytes = this.compress();
             var dataLength = bytes.length * (sampleBits / 8);
-            var buffer = new ArrayBuffer(44 + dataLength);
+            var buffer = new ArrayBuffer(dataLength);
             var data = new DataView(buffer);
-
-            var channelCount = 1;//单声道
             var offset = 0;
-
-            var writeString = function (str) {
-                for (var i = 0; i < str.length; i++) {
-                    data.setUint8(offset + i, str.charCodeAt(i));
-                }
+            for (var i = 0; i < bytes.length; i++, offset += 2) {
+                var s = Math.max(-1, Math.min(1, bytes[i]));
+                data.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
             }
-
-            // 资源交换文件标识符
-            writeString('RIFF'); offset += 4;
-            // 下个地址开始到文件尾总字节数,即文件大小-8
-            data.setUint32(offset, 36 + dataLength, true); offset += 4;
-            // WAV文件标志
-            writeString('WAVE'); offset += 4;
-            // 波形格式标志
-            writeString('fmt '); offset += 4;
-            // 过滤字节,一般为 0x10 = 16
-            data.setUint32(offset, 16, true); offset += 4;
-            // 格式类别 (PCM形式采样数据)
-            data.setUint16(offset, 1, true); offset += 2;
-            // 通道数
-            data.setUint16(offset, channelCount, true); offset += 2;
-            // 采样率,每秒样本数,表示每个通道的播放速度
-            data.setUint32(offset, sampleRate, true); offset += 4;
-            // 波形数据传输率 (每秒平均字节数) 单声道×每秒数据位数×每样本数据位/8
-            data.setUint32(offset, channelCount * sampleRate * (sampleBits / 8), true); offset += 4;
-            // 快数据调整数 采样一次占用字节数 单声道×每样本的数据位数/8
-            data.setUint16(offset, channelCount * (sampleBits / 8), true); offset += 2;
-            // 每样本数据位数
-            data.setUint16(offset, sampleBits, true); offset += 2;
-            // 数据标识符
-            writeString('data'); offset += 4;
-            // 采样数据总数,即数据总大小-44
-            data.setUint32(offset, dataLength, true); offset += 4;
-            // 写入采样数据
-            if (sampleBits === 8) {
-                for (var i = 0; i < bytes.length; i++, offset++) {
-                    var s = Math.max(-1, Math.min(1, bytes[i]));
-                    var val = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                    val = parseInt(255 / (65535 / (val + 32768)));
-                    data.setInt8(offset, val, true);
-                }
-            } else {
-                for (var i = 0; i < bytes.length; i++, offset += 2) {
-                    var s = Math.max(-1, Math.min(1, bytes[i]));
-                    data.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-                }
-            }
-
-            return new Blob([data], { type: 'audio/wav' });
+            return new Blob([data]);
         }
     };
 
-    //开始录音
     this.start = function () {
         audioInput.connect(recorder);
         recorder.connect(context.destination);
     }
 
-    //停止
     this.stop = function () {
+        console.log('关闭对讲以及WebSocket');
         recorder.disconnect();
-    }
-
-    //获取音频文件
-    this.getBlob = function () {
-        this.stop();
-        return audioData.encodeWAV();
-    }
-
-    //回放
-    this.play = function (audio) {
-        audio.src = window.URL.createObjectURL(this.getBlob());
-    }
-    //清除
-    this.clear = function(){
-        audioData.buffer=[];
-        audioData.size=0;
-    }
-
-    //上传
-    this.upload = function (url, callback) {
-        var fd = new FormData();
-        // 上传的文件名和数据
-        fd.append("audio", this.getBlob());
-        var xhr = new XMLHttpRequest();
-        xhr.timeout = 60000
-        if (callback) {
-            xhr.upload.addEventListener("progress", function (e) {
-                callback('uploading', e);
-            }, false);
-            xhr.addEventListener("load", function (e) {
-                callback('ok', e);
-            }, false);
-            xhr.addEventListener("error", function (e) {
-                callback('error', e);
-            }, false);
-            xhr.addEventListener("abort", function (e) {
-                callback('cancel', e);
-            }, false);
+        if (socket) {
+            socket.close();
         }
-        xhr.open("POST", url);
-        xhr.send(fd);
     }
 
-    //音频采集
+    this.getBlob = function () {
+        return audioData.encodePCM();
+    }
+    this.clear = function () {
+        audioData.clear();
+    }
+
+    // 发送语音数据
+    var sendData = function () {
+        var reader = new FileReader();
+        reader.onload = e => {
+            socket.send(e.target.result);
+        };
+        reader.readAsArrayBuffer(audioData.encodePCM());
+        //每次发送完成则清理掉旧数据
+        audioData.clear();
+    };
+
+    // 一直获取录音数据和发送数据
     recorder.onaudioprocess = function (e) {
-        audioData.input(e.inputBuffer.getChannelData(0));
-        //record(e.inputBuffer.getChannelData(0));
+        var inputBuffer = e.inputBuffer.getChannelData(0);
+        audioData.input(inputBuffer);
+        sendData();
     }
 
+    // WebSocket客户端操作
+    //连接成功建立的回调方法
+    socket.onopen = () => {
+        socket.binaryType = 'arraybuffer';
+        this.start();
+        textResult.innerText = ''
+    };
+    //接收到消息的回调方法
+    socket.onmessage = function (MesssageEvent) {
+        //返回结果
+        var jsonStr = MesssageEvent.data;
+        console.log(jsonStr)
+        textResult.innerText = JSON.parse(jsonStr)['result']
+    }
+    //连接关闭的回调方法
+    socket.onerror = function (err) {
+        console.info(err)
+        textResult.innerText = err
+    }
+    //关闭websocket连接
+    socket.onclose = function (msg) {
+        console.info(msg);
+    };
 };
+
+// WebSocket客户端
+PPASRWebSocket = function useWebSocket(url, record, textResult) {
+    ws = new WebSocket(url);
+    //连接成功建立的回调方法
+    ws.onopen = function () {
+        ws.binaryType = 'arraybuffer';
+        record.start();
+        textResult.innerText = ''
+    };
+    //接收到消息的回调方法
+    ws.onmessage = function (MesssageEvent) {
+        //返回结果
+        var jsonStr = MesssageEvent.data;
+        console.log(jsonStr)
+        textResult.innerText = JSON.parse(jsonStr)['result']
+    }
+    //连接关闭的回调方法
+    ws.onerror = function (err) {
+        console.info(err)
+        textResult.innerText = err
+    }
+    //关闭websocket连接
+    ws.onclose = function (msg) {
+        console.info(msg);
+    };
+}
+
 //抛出异常
-HZRecorder.throwError = function (message) {
+PPASRRecorder.throwError = function (message) {
     alert(message);
-    throw new function () { this.toString = function () { return message; } }
+    throw new function () {
+        this.toString = function () {
+            return message;
+        }
+    }
 }
 //是否支持录音
-HZRecorder.canRecording = (navigator.getUserMedia != null);
+PPASRRecorder.canRecording = (navigator.getUserMedia != null);
 //获取录音机
-HZRecorder.get = function (callback, config) {
+PPASRRecorder.get = function (callback, url, textarea) {
     if (callback) {
         if (navigator.getUserMedia) {
             navigator.getUserMedia(
-                { audio: true } //只启用音频
+                {audio: true} //只启用音频
                 , function (stream) {
-                    var rec = new HZRecorder(stream, config);
-                    callback(rec);
+                    var record = new PPASRRecorder(stream, url, textarea);
+                    callback(record);
                 }
                 , function (error) {
                     switch (error.code || error.name) {
                         case 'PERMISSION_DENIED':
                         case 'PermissionDeniedError':
-                            HZRecorder.throwError('用户拒绝提供信息。');
+                            PPASRRecorder.throwError('用户拒绝提供信息。');
                             break;
                         case 'NOT_SUPPORTED_ERROR':
                         case 'NotSupportedError':
-                            HZRecorder.throwError('浏览器不支持硬件设备。');
+                            PPASRRecorder.throwError('浏览器不支持硬件设备。');
                             break;
                         case 'MANDATORY_UNSATISFIED_ERROR':
                         case 'MandatoryUnsatisfiedError':
-                            HZRecorder.throwError('无法发现指定的硬件设备。');
+                            PPASRRecorder.throwError('无法发现指定的硬件设备。');
                             break;
                         default:
-                            HZRecorder.throwError('无法打开麦克风。异常信息:' + (error.code || error.name));
+                            PPASRRecorder.throwError('无法打开麦克风。异常信息:' + (error.code || error.name));
                             break;
                     }
                 });
         } else {
             window.alert('不是HTTPS协议或者localhost地址，不能使用录音功能！')
-            HZRecorder.throwErr('当前浏览器不支持录音功能。'); return;
+            PPASRRecorder.throwErr('当前浏览器不支持录音功能。');
+            return;
         }
     }
 };

@@ -70,15 +70,6 @@ body {
     line-height: 20px;
 }
 
-#upload_recod_btn {
-    top: 290px;
-    width: 200px;
-    height: 30px;
-    left: 155px;
-    margin-top: 10px;
-    position: absolute;
-}
-
 .file input {
     position: absolute;
     font-size: 100px;
@@ -96,16 +87,8 @@ body {
 
 #record_btn {
     position: relative;
-    width: 80px;
-    height: 80px;
-    left: 150px;
+    width: 150px;
+    height: 150px;
+    left: 200px;
     top: 185px;
-}
-
-#play_btn {
-    position: relative;
-    width: 60px;
-    height: 60px;
-    left: 250px;
-    top: 178px;
 }
