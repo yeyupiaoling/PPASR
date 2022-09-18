@@ -4,6 +4,8 @@
 ![GitHub](https://img.shields.io/github/license/yeyupiaoling/PPASR)
 ![支持系统](https://img.shields.io/badge/支持系统-Win/Linux/MAC-9cf)
 
+# PPASR流式与非流式语音识别项目
+
 本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级，持续维护版本。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。**别忘了star**
 
 **欢迎大家扫码入QQ群讨论**，或者直接搜索QQ群号`1169600237`，问题答案为博主Github的ID`yeyupiaoling`。
@@ -26,6 +28,12 @@
  - PaddlePaddle 2.3.2
  - Windows 10 or Ubuntu 18.04
 
+
+## 项目快速了解
+
+ 1. 本项目支持流式识别模型`deepspeech2`、`deepspeech2_big`，非流式模型`deepspeech2_no_stream`、`deepspeech2_big_no_stream`。
+ 2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高，但不支持Windows。
+
 ## 更新记录
 
  - 2022.09.18: 支持使用WebSocket调用流式识别。
@@ -45,29 +53,31 @@
  - 2021.09.18: 初步完成基本程序。
 
 ## 视频讲解
-[知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
+
+ - [知识点讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Rr4y1D7iZ)
+ - [流式识别的使用讲解（哔哩哔哩）](https://www.bilibili.com/video/BV1Te4y1h7KK)
 
 ## 模型下载
 
 本项目支持流式识别模型`deepspeech2`、`deepspeech2_big`，非流式模型`deepspeech2_no_stream`、`deepspeech2_big_no_stream`。
 
 |           使用模型            |                                  数据集                                  | 预处理方式  | 参数大小（M）`*` | 语言  |     测试集字错率（词错率）      |                                    下载地址                                    |
-|:-------------------------:|:---------------------------------------------------------------------:|:------:|:-------:|:---:|:--------------------:|:--------------------------------------------------------------------------:|
-|      deepspeech2_big      |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank  |   167   | 中文  | 0.07392(AIShell的测试集) |      [点击下载](https://pan.baidu.com/s/1DDU92HGH3RRMySBfroXz5w?pwd=ai6p)      |
-|        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |   35    | 中文  |       0.07224        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |   167   | 中文  |      0.04966`*`      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |   98    | 中文  |       0.07014        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-| deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |   473   | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |   35    | 中文  |       0.07825        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |   167   | 中文  |       0.08022        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |   98    | 中文  |       0.07346        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-| deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |   473   | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
-|        deepspeech2        | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |   35    | 英文  |       0.16048        |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       | 
-|      deepspeech2_big      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |   167   | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
-|   deepspeech2_no_stream   | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |   98    | 英文  |       0.09937        |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
-| deepspeech2_big_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |   473   | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
-|        deepspeech2        |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear |   35    | 中文  |       0.06215        | [点击下载](https://download.csdn.net/download/qq_33200967/58036573)(需要重新导出模型)  |
-|      deepspeech2_big      |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear |   167   | 中文  |       0.05517        | 先`star`项目再[点击下载](https://pan.baidu.com/s/10JLQTpi2veR2Y0-s3kdxOg?pwd=g358) |
+|:-------------------------:|:---------------------------------------------------------------------:|:------:|:----------:|:---:|:--------------------:|:--------------------------------------------------------------------------:|
+|      deepspeech2_big      |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank  |    167     | 中文  | 0.07392(AIShell的测试集) |      [点击下载](https://pan.baidu.com/s/1DDU92HGH3RRMySBfroXz5w?pwd=ai6p)      |
+|        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |     35     | 中文  |       0.07224        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+|      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |    167     | 中文  |      0.04966`*`      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+|   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |     98     | 中文  |       0.07014        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+| deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank  |    473     | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+|        deepspeech2        |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |     35     | 中文  |       0.07825        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+|      deepspeech2_big      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |    167     | 中文  |       0.08022        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+|   deepspeech2_no_stream   |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |     98     | 中文  |       0.07346        |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+| deepspeech2_big_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | linear |    473     | 中文  |                      |      [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0)      |
+|        deepspeech2        | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |     35     | 英文  |       0.16048        |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       | 
+|      deepspeech2_big      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |    167     | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
+|   deepspeech2_no_stream   | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |     98     | 英文  |       0.09937        |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
+| deepspeech2_big_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |    473     | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
+|        deepspeech2        |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear |     35     | 中文  |       0.06215        | [点击下载](https://download.csdn.net/download/qq_33200967/58036573)(需要重新导出模型)  |
+|      deepspeech2_big      |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear |    167     | 中文  |       0.05517        | 先`star`项目再[点击下载](https://pan.baidu.com/s/10JLQTpi2veR2Y0-s3kdxOg?pwd=g358) |
 
 
 **说明：** 

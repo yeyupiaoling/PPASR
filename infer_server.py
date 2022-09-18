@@ -21,8 +21,9 @@ logger = setup_logger(__name__)
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('use_model',        str,    'deepspeech2',        "所使用的模型", choices=SUPPORT_MODEL)
+add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
 add_arg("host",             str,    "0.0.0.0",            "监听主机的IP地址")
-add_arg("port",             int,    5000,                 "普通识别服务所使用的端口号")
+add_arg("port_server",      int,    5000,                 "普通识别服务所使用的端口号")
 add_arg("port_stream",      int,    5001,                 "流式识别服务所使用的端口号")
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
@@ -38,7 +39,6 @@ add_arg('vocab_path',       str,    'dataset/vocabulary.txt',    "数据集的�
 add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 add_arg('lang_model_path',  str,    'lm/zh_giga.no_cna_cmn.prune01244.klm',    "集束搜索解码相关参数，语言模型文件路径")
-add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
 add_arg('decoder',          str,    'ctc_beam_search',    "结果解码方法", choices=['ctc_beam_search', 'ctc_greedy'])
 args = parser.parse_args()
 print_arguments(args)
@@ -204,7 +204,7 @@ async def stream_server_run(websocket, path):
 
 # 因为有多个服务需要使用线程启动
 def start_server_thread():
-    app.run(host=args.host, port=args.port)
+    app.run(host=args.host, port=args.port_server)
 
 
 if __name__ == '__main__':
