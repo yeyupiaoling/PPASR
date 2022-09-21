@@ -56,8 +56,8 @@ class AudioSegment(object):
     def from_file(cls, file):
         """从音频文件创建音频段
         
-        :param filepath: 文件路径
-        :type filepath: str
+        :param file: 文件路径
+        :type file: str
         :return: 音频片段实例
         :rtype: AudioSegment
         """
@@ -123,6 +123,8 @@ class AudioSegment(object):
 
         :param bytes: 包含音频样本的字节
         :type bytes: bytes
+        :param sample_rate: 音频样本采样率
+        :type sample_rate: int
         :return: 音频部分实例
         :rtype: AudioSegment
         """
@@ -135,7 +137,7 @@ class AudioSegment(object):
 
         :param data: numpy.ndarray类型的音频数据
         :type data: ndarray
-        :param sample_rate: 包含音频样本的字节字符串
+        :param sample_rate: 音频样本采样率
         :type sample_rate: int
         :return: 音频部分实例
         :rtype: AudioSegment
@@ -302,8 +304,7 @@ class AudioSegment(object):
 
         :param target_sample_rate: Target sample rate.
         :type target_sample_rate: int
-        :param filter: The resampling filter to use one of {'kaiser_best',
-                       'kaiser_fast'}.
+        :param filter: The resampling filter to use one of {'kaiser_best', 'kaiser_fast'}.
         :type filter: str
         """
         self._samples = resampy.resample(self.samples, self.sample_rate, target_sample_rate, filter=filter)
@@ -427,8 +428,7 @@ class AudioSegment(object):
         if self.sample_rate != impulse_segment.sample_rate:
             raise ValueError("脉冲段采样率(%d Hz)不等于基信号采样率(%d Hz)" %
                              (impulse_segment.sample_rate, self.sample_rate))
-        samples = signal.fftconvolve(self.samples, impulse_segment.samples,
-                                     "full")
+        samples = signal.fftconvolve(self.samples, impulse_segment.samples, "full")
         self._samples = samples
 
     def convolve_and_normalize(self, impulse_segment, allow_resample=False):

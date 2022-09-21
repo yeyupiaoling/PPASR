@@ -3,10 +3,11 @@ import json
 import numpy as np
 from paddle.io import Dataset
 
+from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.augmentor.augmentation import AugmentationPipeline
-from ppasr.data_utils.featurizer.speech_featurizer import SpeechFeaturizer
+from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
+from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.data_utils.normalizer import FeatureNormalizer
-from ppasr.data_utils.speech import SpeechSegment
 from ppasr.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -19,7 +20,8 @@ class PPASRDataset(Dataset):
         super(PPASRDataset, self).__init__()
         self._normalizer = FeatureNormalizer(mean_std_filepath, feature_method=feature_method)
         self._augmentation_pipeline = AugmentationPipeline(augmentation_config=augmentation_config)
-        self._speech_featurizer = SpeechFeaturizer(vocab_filepath=vocab_filepath, feature_method=feature_method, train=train)
+        self._audio_featurizer = AudioFeaturizer(feature_method=feature_method, train=train)
+        self._text_featurizer = TextFeaturizer(vocab_filepath)
         # 获取数据列表
         with open(data_list, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -38,11 +40,12 @@ class PPASRDataset(Dataset):
             # 分割音频路径和标签
             audio_file, transcript = self.data_list[idx]
             # 读取音频
-            speech_segment = SpeechSegment.from_file(audio_file, transcript)
+            audio_segment = AudioSegment.from_file(audio_file)
             # 音频增强
-            self._augmentation_pipeline.transform_audio(speech_segment)
+            self._augmentation_pipeline.transform_audio(audio_segment)
             # 预处理，提取特征
-            feature, transcript = self._speech_featurizer.featurize(speech_segment)
+            feature = self._audio_featurizer.featurize(audio_segment)
+            transcript = self._text_featurizer.featurize(transcript)
             # 归一化
             feature = self._normalizer.apply(feature)
             # 特征增强
@@ -64,7 +67,7 @@ class PPASRDataset(Dataset):
         :return: 词汇表大小
         :rtype: int
         """
-        return self._speech_featurizer.feature_dim
+        return self._audio_featurizer.feature_dim
 
     @property
     def vocab_size(self):
@@ -73,7 +76,7 @@ class PPASRDataset(Dataset):
         :return: 词汇表大小
         :rtype: int
         """
-        return self._speech_featurizer.vocab_size
+        return self._text_featurizer.vocab_size
 
     @property
     def vocab_list(self):
@@ -82,4 +85,4 @@ class PPASRDataset(Dataset):
         :return: 词汇表列表
         :rtype: list
         """
-        return self._speech_featurizer.vocab_list
+        return self._text_featurizer.vocab_list

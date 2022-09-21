@@ -7,7 +7,7 @@ from ppasr.data_utils.utils import delta
 
 
 class AudioFeaturizer(object):
-    """音频特征器,用于从AudioSegment或SpeechSegment内容中提取特性。
+    """音频特征器,用于从AudioSegment内容中提取特性。
 
     Currently, it supports feature types of linear spectrogram and mfcc.
 
@@ -43,10 +43,10 @@ class AudioFeaturizer(object):
         self.train = train
 
     def featurize(self, audio_segment, allow_downsampling=True, allow_upsampling=True):
-        """从AudioSegment或SpeechSegment中提取音频特征
+        """从AudioSegment中提取音频特征
 
-        :param audio_segment: Audio/speech segment to extract features from.
-        :type audio_segment: AudioSegment|SpeechSegment
+        :param audio_segment: Audio segment to extract features from.
+        :type audio_segment: AudioSegment
         :param allow_downsampling: Whether to allow audio downsampling before featurizing.
         :type allow_downsampling: bool
         :param allow_upsampling: Whether to allow audio upsampling before featurizing.
