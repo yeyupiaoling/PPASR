@@ -35,6 +35,7 @@ class FeatureNormalizer(object):
                  manifest_path=None,
                  num_workers=4,
                  num_samples=5000,
+                 eps=1e-20,
                  random_seed=0):
         self.feature_method = feature_method
         if not mean_std_filepath:
@@ -44,8 +45,9 @@ class FeatureNormalizer(object):
             self._compute_mean_std(manifest_path, num_samples, num_workers)
         else:
             self.mean, self.std = self._read_mean_std_from_file(mean_std_filepath)
+            self.std = np.maximum(self.std, eps)
 
-    def apply(self, features, eps=1e-20):
+    def apply(self, features):
         """使用均值和标准值计算音频特征的归一化值
 
         :param features: 需要归一化的音频
@@ -55,7 +57,7 @@ class FeatureNormalizer(object):
         :return: 已经归一化的数据
         :rtype: ndarray
         """
-        return (features - self.mean) / (self.std + eps)
+        return (features - self.mean) / self.std
 
     def write_to_file(self, filepath):
         """将计算得到的均值和标准值写入到文件中
@@ -118,7 +120,7 @@ class NormalizerDataset(Dataset):
         # 获取音频特征
         audio = AudioSegment.from_file(instance["audio_filepath"])
         feature = self.audio_featurizer.featurize(audio)
-        return feature, 0
+        return feature.astype(np.float32), 0
 
     def __len__(self):
         return len(self.sampled_manifest)

@@ -50,16 +50,13 @@
     "type": "specaug",
     "aug_type": "feature",
     "params": {
-      "W": 0,
-      "F": 10,
+      "inplace": true,
+      "max_time_warp": 5,
+      "F": 30,
       "n_freq_masks": 2,
-      "T": 50,
+      "T": 40,
       "n_time_masks": 2,
-      "p": 1.0,
-      "adaptive_number_ratio": 0,
-      "adaptive_size_ratio": 0,
-      "max_n_time_masks": 20,
-      "replace_with_zero": true
+      "replace_with_zero": false
     },
     "prob": 1.0
   }

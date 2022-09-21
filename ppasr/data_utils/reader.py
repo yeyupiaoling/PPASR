@@ -37,13 +37,18 @@ class PPASRDataset(Dataset):
         try:
             # 分割音频路径和标签
             audio_file, transcript = self.data_list[idx]
+            # 读取音频
             speech_segment = SpeechSegment.from_file(audio_file, transcript)
+            # 音频增强
             self._augmentation_pipeline.transform_audio(speech_segment)
+            # 预处理，提取特征
             feature, transcript = self._speech_featurizer.featurize(speech_segment)
+            # 归一化
             feature = self._normalizer.apply(feature)
+            # 特征增强
             feature = self._augmentation_pipeline.transform_feature(feature)
-            transcript = np.array(transcript, dtype='int32')
-            return feature, transcript
+            transcript = np.array(transcript, dtype=np.int32)
+            return feature.astype(np.float32), transcript
         except Exception as ex:
             logger.error("数据: {} 出错，错误信息: {}".format(self.data_list[idx], ex))
             rnd_idx = np.random.randint(self.__len__())

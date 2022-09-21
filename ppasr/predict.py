@@ -204,8 +204,8 @@ class Predictor:
         else:
             audio_data = AudioSegment.from_wave_bytes(audio_bytes)
         audio_feature = self._audio_featurizer.featurize(audio_data)
-        audio_data = np.array(audio_feature).astype('float32')[np.newaxis, :]
-        audio_len = np.array([audio_data.shape[2]]).astype('int64')
+        audio_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
+        audio_len = np.array([audio_data.shape[2]]).astype(np.int64)
 
         # 设置输入
         self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
@@ -215,7 +215,7 @@ class Predictor:
 
         # 对流式模型RNN层的initial_states全零初始化
         if 'no_stream' not in self.use_model:
-            init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size)).astype('float32')
+            init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size), dtype=np.float32)
             self.init_state_h_box_handle.reshape(init_state_h_box.shape)
             self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
             self.init_state_c_box_handle.reshape(init_state_h_box.shape)
@@ -235,13 +235,13 @@ class Predictor:
         # 设置输入
         self.audio_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])
         self.audio_len_handle.reshape([x_chunk.shape[0]])
-        self.audio_data_handle.copy_from_cpu(x_chunk.astype('float32'))
-        self.audio_len_handle.copy_from_cpu(x_chunk_lens.astype('int64'))
+        self.audio_data_handle.copy_from_cpu(x_chunk.astype(np.float32))
+        self.audio_len_handle.copy_from_cpu(x_chunk_lens.astype(np.int64))
 
         if self.output_state_h is None or self.output_state_c is None:
             # 对RNN层的initial_states全零初始化
-            self.output_state_h = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size)).astype('float32')
-            self.output_state_c = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size)).astype('float32')
+            self.output_state_h = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size), dtype=np.float32)
+            self.output_state_c = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size), dtype=np.float32)
         self.init_state_h_box_handle.reshape(self.output_state_h.shape)
         self.init_state_h_box_handle.copy_from_cpu(self.output_state_h)
         self.init_state_c_box_handle.reshape(self.output_state_c.shape)
@@ -293,7 +293,7 @@ class Predictor:
 
         # 预处理语音块
         x_chunk = self._audio_featurizer.featurize(self.remained_wav)
-        x_chunk = np.array(x_chunk).astype('float32')[np.newaxis, :]
+        x_chunk = np.array(x_chunk).astype(np.float32)[np.newaxis, :]
         if self.cached_feat is None:
             self.cached_feat = x_chunk
         else:

@@ -12,8 +12,8 @@ def collate_fn(batch):
     batch_temp = sorted(batch, key=lambda sample: len(sample[1]), reverse=True)
     max_label_length = len(batch_temp[0][1])
     # 以最大的长度创建0张量
-    inputs = np.zeros((batch_size, freq_size, max_audio_length), dtype='float32')
-    labels = np.ones((batch_size, max_label_length), dtype='int32') * -1
+    inputs = np.zeros((batch_size, freq_size, max_audio_length), dtype=np.float32)
+    labels = np.ones((batch_size, max_label_length), dtype=np.int32) * -1
     input_lens = []
     label_lens = []
     for x in range(batch_size):
@@ -27,7 +27,12 @@ def collate_fn(batch):
         labels[x, :label_length] = target[:]
         input_lens.append(seq_length)
         label_lens.append(label_length)
-    input_lens = np.array(input_lens, dtype='int64')
-    label_lens = np.array(label_lens, dtype='int64')
+    input_lens = np.array(input_lens, dtype=np.int64)
+    label_lens = np.array(label_lens, dtype=np.int64)
     # 打乱数据
+    indices = np.arange(batch_size).tolist()
+    inputs = inputs[indices]
+    labels = labels[indices]
+    input_lens = input_lens[indices]
+    label_lens = label_lens[indices]
     return inputs, labels, input_lens, label_lens

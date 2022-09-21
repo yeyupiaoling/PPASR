@@ -4,10 +4,8 @@ import numpy as np
 from PIL import Image
 from PIL.Image import BICUBIC
 
-from ppasr.data_utils.augmentor.base import AugmentorBase
 
-
-class SpecAugmentor(AugmentorBase):
+class SpecAugmentor(object):
     """Augmentation model for Time warping, Frequency masking, Time masking.
 
     SpecAugment: A Simple Data Augmentation Method for Automatic Speech Recognition
@@ -18,16 +16,13 @@ class SpecAugmentor(AugmentorBase):
 
     def __init__(self,
                  rng,
-                 F,
-                 T,
-                 n_freq_masks,
-                 n_time_masks,
-                 p=1.0,
-                 W=40,
-                 adaptive_number_ratio=0,
-                 adaptive_size_ratio=0,
-                 max_n_time_masks=20,
-                 replace_with_zero=True):
+                 F=30,
+                 T=40,
+                 n_freq_masks=2,
+                 n_time_masks=2,
+                 inplace=True,
+                 max_time_warp=5,
+                 replace_with_zero=False):
         """SpecAugment class.
         Args:
             :param F: 频率屏蔽参数
@@ -38,51 +33,23 @@ class SpecAugmentor(AugmentorBase):
             :type n_freq_masks: int
             :param n_time_masks: 时间屏蔽数量
             :type n_time_masks: int
-            :param p: 时间屏蔽上限参数
-            :type p: float
-            :param W: 时间变形参数
-            :type W: int
-            :param adaptive_number_ratio: 时间屏蔽的自适应多重比
-            :type adaptive_number_ratio: float
-            :param adaptive_size_ratio: 时间屏蔽的自适应大小比
-            :type adaptive_size_ratio: float
-            :param max_n_time_masks: 时间屏蔽的最大数目
-            :type max_n_time_masks: int
+            :param inplace: 用结果覆盖
+            :type inplace: bool
+            :param max_time_warp: 时间变形参数
+            :type max_time_warp: int
             :param replace_with_zero: 如果真的话，在pad补0，否则使用平均值
             :type replace_with_zero: bool
         """
         super().__init__()
         self._rng = rng
-        self.inplace = True
+        self.inplace = inplace
         self.replace_with_zero = replace_with_zero
 
-        self.W = W
+        self.max_time_warp = max_time_warp
         self.F = F
         self.T = T
         self.n_freq_masks = n_freq_masks
         self.n_time_masks = n_time_masks
-        self.p = p
-
-        # adaptive SpecAugment
-        self.adaptive_number_ratio = adaptive_number_ratio
-        self.adaptive_size_ratio = adaptive_size_ratio
-        self.max_n_time_masks = max_n_time_masks
-
-        if adaptive_number_ratio > 0:
-            self.n_time_masks = 0
-        if adaptive_size_ratio > 0:
-            self.T = 0
-
-        self._freq_mask = None
-        self._time_mask = None
-
-    @property
-    def freq_mask(self):
-        return self._freq_mask
-
-    @property
-    def time_mask(self):
-        return self._time_mask
 
     def __repr__(self):
         return f"specaug: F-{self.F}, T-{self.T}, F-n-{self.n_freq_masks}, T-n-{self.n_time_masks}"
@@ -102,7 +69,7 @@ class SpecAugmentor(AugmentorBase):
         Returns:
             np.ndarray: time warped spectrogram (time, freq)
         """
-        window = self.W
+        window = self.max_time_warp
         if window == 0:
             return x
 
@@ -120,7 +87,7 @@ class SpecAugmentor(AugmentorBase):
             return x
         return np.concatenate((left, right), 0)
 
-    def mask_freq(self, x, replace_with_zero=False):
+    def freq_mask(self, x, replace_with_zero=False):
         """freq mask
 
         Args:
@@ -130,17 +97,27 @@ class SpecAugmentor(AugmentorBase):
         Returns:
             np.ndarray: freq mask spectrogram (time, freq)
         """
-        n_bins = x.shape[1]
-        for i in range(0, self.n_freq_masks):
-            f = int(self._rng.uniform(a=0, b=self.F))
-            f_0 = int(self._rng.uniform(a=0, b=n_bins - f))
-            assert f_0 <= f_0 + f
+        if self.inplace:
+            cloned = x
+        else:
+            cloned = x.copy()
+
+        num_mel_channels = cloned.shape[1]
+        fs = np.random.randint(0, self.F, size=(self.n_freq_masks, 2))
+
+        for f, mask_end in fs:
+            f_zero = random.randrange(0, num_mel_channels - f)
+            mask_end += f_zero
+
+            # avoids randrange error if values are equal and range is empty
+            if f_zero == f_zero + f:
+                continue
+
             if replace_with_zero:
-                x[:, f_0:f_0 + f] = 0
+                cloned[:, f_zero:mask_end] = 0
             else:
-                x[:, f_0:f_0 + f] = x.mean()
-            self._freq_mask = (f_0, f_0 + f)
-        return x
+                cloned[:, f_zero:mask_end] = cloned.mean()
+        return cloned
 
     def mask_time(self, x, replace_with_zero=False):
         """time mask
@@ -152,30 +129,28 @@ class SpecAugmentor(AugmentorBase):
         Returns:
             np.ndarray: time mask spectrogram (time, freq)
         """
-        n_frames = x.shape[0]
-
-        if self.adaptive_number_ratio > 0:
-            n_masks = int(n_frames * self.adaptive_number_ratio)
-            n_masks = min(n_masks, self.max_n_time_masks)
+        if self.inplace:
+            cloned = x
         else:
-            n_masks = self.n_time_masks
+            cloned = x.copy()
+        len_spectro = cloned.shape[0]
+        ts = np.random.randint(0, self.T, size=(self.n_time_masks, 2))
+        for t, mask_end in ts:
+            # avoid randint range error
+            if len_spectro - t <= 0:
+                continue
+            t_zero = random.randrange(0, len_spectro - t)
 
-        if self.adaptive_size_ratio > 0:
-            T = self.adaptive_size_ratio * n_frames
-        else:
-            T = self.T
+            # avoids randrange error if values are equal and range is empty
+            if t_zero == t_zero + t:
+                continue
 
-        for i in range(n_masks):
-            t = int(self._rng.uniform(a=0, b=T))
-            t = min(t, int(n_frames * self.p))
-            t_0 = int(self._rng.uniform(a=0, b=n_frames - t))
-            assert t_0 <= t_0 + t
+            mask_end += t_zero
             if replace_with_zero:
-                x[t_0:t_0 + t, :] = 0
+                cloned[t_zero:mask_end] = 0
             else:
-                x[t_0:t_0 + t, :] = x.mean()
-            self._time_mask = (t_0, t_0 + t)
-        return x
+                cloned[t_zero:mask_end] = cloned.mean()
+        return cloned
 
     def __call__(self, x, train=True):
         if not train:
@@ -192,6 +167,6 @@ class SpecAugmentor(AugmentorBase):
         assert isinstance(x, np.ndarray)
         assert x.ndim == 2
         x = self.time_warp(x)
-        x = self.mask_freq(x, self.replace_with_zero)
+        x = self.freq_mask(x, self.replace_with_zero)
         x = self.mask_time(x, self.replace_with_zero)
         return x
