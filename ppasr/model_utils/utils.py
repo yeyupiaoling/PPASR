@@ -14,10 +14,9 @@ class Normalizer(nn.Layer):
         super().__init__()
         self.mean = paddle.to_tensor(mean, dtype=paddle.float32)
         self.std = paddle.to_tensor(std, dtype=paddle.float32)
-        self.eps = 1e-20
 
     def forward(self, x):
-        x = (x - self.mean) / (self.std + self.eps)
+        x = (x - self.mean) / self.std
         return x
 
 
@@ -26,14 +25,12 @@ class DeepSpeech2ModelExport(paddle.nn.Layer):
     def __init__(self, model:DeepSpeech2Model, feature_mean, feature_std):
         super(DeepSpeech2ModelExport, self).__init__()
         self.normalizer = Normalizer(feature_mean, feature_std)
-        # self.mask = Mask()
         self.model = model
         # 在输出层加上Softmax
         self.softmax = paddle.nn.Softmax()
 
     def forward(self, audio, audio_len, init_state_h_box, init_state_c_box):
         x = self.normalizer(audio)
-        # x = self.mask(x, audio_len)
         logits, output_lens, final_chunk_state_h_box, final_chunk_state_c_box = self.model(x, audio_len, init_state_h_box, init_state_c_box)
         output = self.softmax(logits)
         return output, output_lens, final_chunk_state_h_box, final_chunk_state_c_box

@@ -14,7 +14,7 @@ add_arg('use_model',        str,    'deepspeech2',        "所使用的模型", 
 add_arg('feature_method',   str,    'linear',             "音频预处理方法", choices=['linear', 'mfcc', 'fbank'])
 add_arg('wav_path',         str,    './dataset/test.wav', "预测音频的路径")
 add_arg('is_long_audio',    bool,   False,  "是否为长语音")
-add_arg('real_time_demo',   bool,   True,  "是否使用实时语音识别演示")
+add_arg('real_time_demo',   bool,   False,  "是否使用实时语音识别演示")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('to_an',            bool,   False,  "是否转为阿拉伯数字")

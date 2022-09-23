@@ -1,5 +1,6 @@
 import os
 import platform
+import time
 
 import cn2an
 import numpy as np
@@ -205,7 +206,7 @@ class Predictor:
             audio_data = AudioSegment.from_wave_bytes(audio_bytes)
         audio_feature = self._audio_featurizer.featurize(audio_data)
         audio_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
-        audio_len = np.array([audio_data.shape[2]]).astype(np.int64)
+        audio_len = np.array([audio_data.shape[1]]).astype(np.int64)
 
         # 设置输入
         self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
@@ -297,8 +298,8 @@ class Predictor:
         if self.cached_feat is None:
             self.cached_feat = x_chunk
         else:
-            self.cached_feat = np.concatenate([self.cached_feat, x_chunk], axis=2)
-        self.remained_wav._samples = self.remained_wav.samples[160 * x_chunk.shape[2]:]
+            self.cached_feat = np.concatenate([self.cached_feat, x_chunk], axis=1)
+        self.remained_wav._samples = self.remained_wav.samples[160 * x_chunk.shape[1]:]
 
         # 识别的数据块大小
         decoding_chunk_size = 1
@@ -310,7 +311,7 @@ class Predictor:
         stride = subsampling * decoding_chunk_size
 
         # 保证每帧数据长度都有效
-        num_frames = self.cached_feat.shape[2]
+        num_frames = self.cached_feat.shape[1]
         if num_frames < decoding_window and not is_end: return 0, ''
         if num_frames < context: return 0, ''
 
@@ -324,8 +325,8 @@ class Predictor:
         for cur in range(0, num_frames - left_frames + 1, stride):
             end = min(cur + decoding_window, num_frames)
             # 获取数据块
-            x_chunk = self.cached_feat[:, :, cur:end]
-            x_chunk_lens = np.array([x_chunk.shape[2]])
+            x_chunk = self.cached_feat[:, cur:end, :]
+            x_chunk_lens = np.array([x_chunk.shape[1]])
             # 执行识别
             output_chunk_probs, output_lens = self.predict_chunk(x_chunk=x_chunk, x_chunk_lens=x_chunk_lens)
             # 执行解码
@@ -339,7 +340,7 @@ class Predictor:
                                          last_max_index_list=self.greedy_last_max_index_list,
                                          last_max_prob_list=self.greedy_last_max_prob_list)
         # 更新特征缓存
-        self.cached_feat = self.cached_feat[:, :, end - cached_feature_num:]
+        self.cached_feat = self.cached_feat[:, end - cached_feature_num:, :]
 
         # 加标点符号
         if use_pun and is_end and len(text) > 0:

@@ -1,3 +1,4 @@
+import json
 import math
 
 import numpy as np
@@ -65,13 +66,22 @@ class FeatureNormalizer(object):
         :param filepath: 均值和标准值写入的文件路径
         :type filepath: str
         """
-        np.savez(filepath, mean=self.mean, std=self.std)
+        data = {'mean': self.mean.tolist(),
+                'std': self.std.tolist(),
+                'feature_method': self.feature_method}
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
 
     def _read_mean_std_from_file(self, filepath):
         """从文件中加载均值和标准值"""
-        npzfile = np.load(filepath)
-        mean = npzfile["mean"]
-        std = npzfile["std"]
+        with open(filepath, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            feature_method = data["feature_method"]
+            if feature_method != self.feature_method:
+                raise Exception(f"加载的归一化文件预处理方法和指定的预处理方法不一致，"
+                                f"加载的为：{feature_method}, 指定的为：{self.feature_method}")
+            mean = np.array(data["mean"], dtype=np.float32)
+            std = np.array(data["std"], dtype=np.float32)
         return mean, std
 
     def _compute_mean_std(self, manifest_path, num_samples, num_workers):
@@ -105,8 +115,8 @@ class FeatureNormalizer(object):
                 if std[i] < 1.0e-20:
                     std[i] = 1.0e-20
                 std[i] = math.sqrt(std[i])
-            self.mean = means.reshape([-1, 1])
-            self.std = std.reshape([-1, 1])
+            self.mean = means
+            self.std = std
 
 
 class NormalizerDataset(Dataset):
@@ -130,13 +140,13 @@ def collate_fn(features):
     std, means = None, None
     number = 0
     for feature, _ in features:
-        number += feature.shape[1]
-        sums = np.sum(feature, axis=1)
+        number += feature.shape[0]
+        sums = np.sum(feature, axis=0)
         if means is None:
             means = sums
         else:
             means += sums
-        square_sums = np.sum(np.square(feature), axis=1)
+        square_sums = np.sum(np.square(feature), axis=0)
         if std is None:
             std = square_sums
         else:

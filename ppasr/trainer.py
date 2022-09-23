@@ -183,7 +183,7 @@ class PPASRTrainer(object):
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
         # 打印模型
-        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+        input_data = [paddle.rand([1, 900, 161], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
 
@@ -299,7 +299,7 @@ class PPASRTrainer(object):
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
         # 打印模型
-        input_data = [paddle.rand([1, train_dataset.feature_dim, 900], dtype=paddle.float32),
+        input_data = [paddle.rand([1, 900, train_dataset.feature_dim], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
         # 设置优化方法
@@ -551,7 +551,7 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：{}'.format(self.use_model))
         base_model.eval()
         # 打印模型
-        input_data = [paddle.rand([1, 161, 900], dtype=paddle.float32),
+        input_data = [paddle.rand([1, 900, 161], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=base_model, input=input_data)
         # 加载预训练模型
@@ -564,13 +564,13 @@ class PPASRTrainer(object):
         # 获取导出模型
         if self.use_model == 'deepspeech2' or self.use_model == 'deepspeech2_big':
             model = DeepSpeech2ModelExport(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
-            input_spec = [InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
+            input_spec = [InputSpec(shape=(-1, -1, audio_featurizer.feature_dim), dtype=paddle.float32),
                           InputSpec(shape=(-1,), dtype=paddle.int64),
                           InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32),
                           InputSpec(shape=(base_model.num_rnn_layers, -1, base_model.rnn_size), dtype=paddle.float32)]
         elif self.use_model == 'deepspeech2_no_stream' or self.use_model == 'deepspeech2_big_no_stream':
             model = DeepSpeech2NoStreamModelExport(model=base_model, feature_mean=featureNormalizer.mean, feature_std=featureNormalizer.std)
-            input_spec = [InputSpec(shape=(-1, audio_featurizer.feature_dim, -1), dtype=paddle.float32),
+            input_spec = [InputSpec(shape=(-1, -1, audio_featurizer.feature_dim), dtype=paddle.float32),
                           InputSpec(shape=(-1,), dtype=paddle.int64)]
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))

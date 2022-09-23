@@ -42,8 +42,10 @@ class DeepSpeech2NoStreamModel(nn.Layer):
             logits (Tensor): [B, T, D]
             x_lens (Tensor): [B]
         """
+        # [B, T, D] -> [B, D, T]
+        x = audio.transpose([0, 2, 1])
         # [B, D, T] -> [B, C=1, D, T]
-        x = audio.unsqueeze(1)
+        x = x.unsqueeze(1)
 
         x, x_lens = self.conv(x, audio_len)
 
