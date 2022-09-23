@@ -18,7 +18,7 @@ add_arg('max_duration',     int,    20,                       '过滤最长的�
 add_arg('train_manifest',   str,    'dataset/manifest.train',   '训练数据的数据列表路径')
 add_arg('test_manifest',    str,    'dataset/manifest.test',    '测试数据的数据列表路径')
 add_arg('dataset_vocab',    str,    'dataset/vocabulary.txt',   '数据字典的路径')
-add_arg('mean_std_path',    str,    'dataset/mean_std.json',    '数据集的均值和标准值的npy文件路径')
+add_arg('mean_std_path',    str,    'dataset/mean_std.json',    '均值和标准值得json文件路径，后缀 (.json).')
 add_arg('augment_conf_path',str,    'conf/augmentation.json',   '数据增强的配置文件，为json格式')
 add_arg('save_model_path',  str,    'models/',                  '模型保存的路径')
 add_arg('metrics_type',     str,    'cer',                      '计算错误率方法', choices=['cer', 'wer'])

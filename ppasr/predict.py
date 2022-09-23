@@ -1,6 +1,5 @@
 import os
 import platform
-import time
 
 import cn2an
 import numpy as np

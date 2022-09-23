@@ -40,7 +40,7 @@ class DeepSpeech2Model(nn.Layer):
     def forward(self, audio, audio_len, init_state_h_box=None, init_state_c_box=None):
         """
         Args:
-            audio (Tensor): [B, D, Tmax]
+            audio (Tensor): [B, Tmax, D]
             audio_len (Tensor): [B, Umax]
             init_state_h_box (Tensor): [num_rnn_layers, B, rnn_size]
         Returns:

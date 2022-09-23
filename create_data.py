@@ -16,7 +16,7 @@ add_arg('count_threshold',      int,  2,                          '字符计数�
 add_arg('dataset_vocab',        str,  'dataset/vocabulary.txt',   '生成的数据字典文件')
 add_arg('num_workers',          int,  8,                          '读取数据的线程数量')
 add_arg('num_samples',          int,  1000000,                    '用于计算均值和标准值得音频数量，当为-1使用全部数据')
-add_arg('mean_std_path',        str,  'dataset/mean_std.json',    '保存均值和标准值得numpy文件路径，后缀 (.npz).')
+add_arg('mean_std_path',        str,  'dataset/mean_std.json',    '保存均值和标准值得json文件路径，后缀 (.json).')
 add_arg('noise_path',           str,  'dataset/audio/noise',      '噪声音频存放的文件夹路径')
 add_arg('noise_manifest_path',  str,  'dataset/manifest.noise',   '噪声数据列表的路径')
 args = parser.parse_args()

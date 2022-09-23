@@ -36,6 +36,7 @@
 
 ## 更新记录
 
+ - 2022.09.23: 调整数据预处理，此前下载的模型，需要重新下载。
  - 2022.09.18: 支持使用WebSocket调用流式识别。
  - 2022.08.26: 修改使用kaldi实现`fbank`和`mfcc`预处理方法。
  - 2022.08.22: 增加非流式模型`deepspeech2_no_stream`和`deepspeech2_big_no_stream`。
@@ -75,9 +76,7 @@
 |        deepspeech2        | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |     35     | 英文  |       0.16048        |      [点击下载](https://download.csdn.net/download/qq_33200967/77978970)       | 
 |      deepspeech2_big      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |    167     | 英文  |       0.12366        |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
 |   deepspeech2_no_stream   | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |     98     | 英文  |       0.09937        |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
-| deepspeech2_big_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |    473     | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      | 
-|        deepspeech2        |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear |     35     | 中文  |       0.06215        | [点击下载](https://download.csdn.net/download/qq_33200967/58036573)(需要重新导出模型)  |
-|      deepspeech2_big      |                   超大数据集(1600多小时真实数据)+(1300多小时合成数据)                    | linear |    167     | 中文  |       0.05517        | 先`star`项目再[点击下载](https://pan.baidu.com/s/10JLQTpi2veR2Y0-s3kdxOg?pwd=g358) |
+| deepspeech2_big_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank  |    473     | 英文  |                      |      [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u)      |
 
 
 **说明：** 

@@ -138,7 +138,7 @@ class PPASRTrainer(object):
         logger.info('数据字典生成完成！')
 
         logger.info('=' * 70)
-        logger.info('开始抽取{}条数据计算均值和标准值...'.format(num_samples))
+        logger.info('开始抽取不超过{}条数据计算均值和标准值...'.format(num_samples))
         compute_mean_std(feature_method=self.feature_method,
                          manifest_path=self.train_manifest,
                          output_path=self.mean_std_path,
