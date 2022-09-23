@@ -214,7 +214,7 @@ class AudioSegment(object):
         :raise TypeError: 如果两个片段的类型不匹配
         :raise ValueError: 不能添加不同类型的段
         """
-        if isinstance(other, type(self)):
+        if not isinstance(other, type(self)):
             raise TypeError("不能添加不同类型的段: %s 和 %s" % (type(self), type(other)))
         if self._sample_rate != other._sample_rate:
             raise ValueError("采样率必须匹配才能添加片段")
