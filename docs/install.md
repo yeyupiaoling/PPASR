@@ -7,6 +7,11 @@
 conda install paddlepaddle-gpu==2.3.2 cudatoolkit=11.6 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge 
 ```
 
+**注意：**Windows要安装这个版本，以上版本在Windows是有问题的。
+```shell
+conda install paddlepaddle-gpu==2.3.2 cudatoolkit=10.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/
+```
+
  - 安装PPASR库。
  
 使用pip安装，命令如下：
