@@ -86,13 +86,9 @@ class AugmentationPipeline(object):
 
     :param augmentation_config: Augmentation configuration in json string.
     :type augmentation_config: str
-    :param random_seed: Random seed.
-    :type random_seed: int
-    :raises ValueError: If the augmentation json config is in incorrect format".
     """
 
-    def __init__(self, augmentation_config, random_seed=0):
-        self._rng = random.Random(random_seed)
+    def __init__(self, augmentation_config):
         self._augmentors, self._rates = self._parse_pipeline_from(augmentation_config, aug_type='audio')
         self._spec_augmentors, self._spec_rates = self._parse_pipeline_from(augmentation_config, aug_type='feature')
 
@@ -105,7 +101,7 @@ class AugmentationPipeline(object):
         :type audio_segment: AudioSegmenet|SpeechSegment
         """
         for augmentor, rate in zip(self._augmentors, self._rates):
-            if self._rng.uniform(0., 1.) < rate:
+            if random.random() < rate:
                 augmentor.transform_audio(audio_segment)
 
     def transform_feature(self, spec_segment):
@@ -115,7 +111,7 @@ class AugmentationPipeline(object):
             spec_segment (np.ndarray): audio feature, (D, T).
         """
         for augmentor, rate in zip(self._spec_augmentors, self._spec_rates):
-            if self._rng.uniform(0., 1.) < rate:
+            if random.random() < rate:
                 spec_segment = augmentor.transform_feature(spec_segment)
         return spec_segment
 
@@ -140,16 +136,16 @@ class AugmentationPipeline(object):
     def _get_augmentor(self, augmentor_type, params):
         """Return an augmentation model by the type name, and pass in params."""
         if augmentor_type == "volume":
-            return VolumePerturbAugmentor(self._rng, **params)
+            return VolumePerturbAugmentor(**params)
         elif augmentor_type == "shift":
-            return ShiftPerturbAugmentor(self._rng, **params)
+            return ShiftPerturbAugmentor(**params)
         elif augmentor_type == "speed":
-            return SpeedPerturbAugmentor(self._rng, **params)
+            return SpeedPerturbAugmentor(**params)
         elif augmentor_type == "resample":
-            return ResampleAugmentor(self._rng, **params)
+            return ResampleAugmentor(**params)
         elif augmentor_type == "noise":
-            return NoisePerturbAugmentor(self._rng, **params)
+            return NoisePerturbAugmentor(**params)
         elif augmentor_type == "specaug":
-            return SpecAugmentor(self._rng, **params)
+            return SpecAugmentor(**params)
         else:
             raise ValueError("Unknown augmentor type [%s]." % augmentor_type)

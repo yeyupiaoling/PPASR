@@ -52,9 +52,9 @@
     "params": {
       "inplace": true,
       "max_time_warp": 5,
-      "F": 30,
+      "max_t_ratio": 0.05,
       "n_freq_masks": 2,
-      "T": 40,
+      "max_f_ratio": 0.15,
       "n_time_masks": 2,
       "replace_with_zero": false
     },

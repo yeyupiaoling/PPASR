@@ -183,7 +183,7 @@ class PPASRTrainer(object):
         else:
             raise Exception('没有该模型：{}'.format(self.use_model))
         # 打印模型
-        input_data = [paddle.rand([1, 900, 161], dtype=paddle.float32),
+        input_data = [paddle.rand([1, 900, test_dataset.feature_dim], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=model, input=input_data)
 
@@ -551,7 +551,7 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：{}'.format(self.use_model))
         base_model.eval()
         # 打印模型
-        input_data = [paddle.rand([1, 900, 161], dtype=paddle.float32),
+        input_data = [paddle.rand([1, 900, audio_featurizer.feature_dim], dtype=paddle.float32),
                       paddle.to_tensor(200 if 'no_stream' not in self.use_model else 0, dtype=paddle.int64)]
         summary(net=base_model, input=input_data)
         # 加载预训练模型

@@ -15,46 +15,38 @@ class SpecAugmentor(object):
     """
 
     def __init__(self,
-                 rng,
-                 F=30,
-                 T=40,
+                 max_f_ratio=0.15,
                  n_freq_masks=2,
+                 max_t_ratio=0.05,
                  n_time_masks=2,
                  inplace=True,
                  max_time_warp=5,
                  replace_with_zero=False):
         """SpecAugment class.
         Args:
-            :param F: 频率屏蔽参数
-            :type F: int
-            :param T: 时间屏蔽参数
-            :type T: int
+            :param max_t_ratio: 时间屏蔽的比例
+            :type max_t_ratio: float
             :param n_freq_masks: 频率屏蔽数量
             :type n_freq_masks: int
+            :param max_f_ratio: 频率屏蔽的比例
+            :type max_f_ratio: float
             :param n_time_masks: 时间屏蔽数量
             :type n_time_masks: int
             :param inplace: 用结果覆盖
             :type inplace: bool
-            :param max_time_warp: 时间变形参数
-            :type max_time_warp: int
             :param replace_with_zero: 如果真的话，在pad补0，否则使用平均值
             :type replace_with_zero: bool
         """
         super().__init__()
-        self._rng = rng
         self.inplace = inplace
         self.replace_with_zero = replace_with_zero
-
         self.max_time_warp = max_time_warp
-        self.F = F
-        self.T = T
+        self.max_t_ratio = max_t_ratio
+        self.max_f_ratio = max_f_ratio
         self.n_freq_masks = n_freq_masks
         self.n_time_masks = n_time_masks
 
-    def __repr__(self):
-        return f"specaug: F-{self.F}, T-{self.T}, F-n-{self.n_freq_masks}, T-n-{self.n_time_masks}"
-
-    def time_warp(self, x, mode='PIL'):
+    def time_warp(self, x):
         """time warp for spec augment
         move random center frame by the random width ~ uniform(-window, window)
 
@@ -97,26 +89,17 @@ class SpecAugmentor(object):
         Returns:
             np.ndarray: freq mask spectrogram (time, freq)
         """
-        if self.inplace:
-            cloned = x
-        else:
-            cloned = x.copy()
-
-        num_mel_channels = cloned.shape[1]
-        fs = np.random.randint(0, self.F, size=(self.n_freq_masks, 2))
-
-        for f, mask_end in fs:
-            f_zero = random.randrange(0, num_mel_channels - f)
-            mask_end += f_zero
-
-            # avoids randrange error if values are equal and range is empty
-            if f_zero == f_zero + f:
-                continue
-
+        cloned = x if self.inplace else x.copy()
+        max_freq = cloned.shape[1]
+        max_f = int(max_freq * self.max_f_ratio)
+        for i in range(self.n_freq_masks):
+            start = random.randint(0, max_freq - 1)
+            length = random.randint(1, max_f)
+            end = min(max_freq, start + length)
             if replace_with_zero:
-                cloned[:, f_zero:mask_end] = 0
+                cloned[:, start:end] = 0
             else:
-                cloned[:, f_zero:mask_end] = cloned.mean()
+                cloned[:, start:end] = cloned.mean()
         return cloned
 
     def mask_time(self, x, replace_with_zero=False):
@@ -129,27 +112,17 @@ class SpecAugmentor(object):
         Returns:
             np.ndarray: time mask spectrogram (time, freq)
         """
-        if self.inplace:
-            cloned = x
-        else:
-            cloned = x.copy()
-        len_spectro = cloned.shape[0]
-        ts = np.random.randint(0, self.T, size=(self.n_time_masks, 2))
-        for t, mask_end in ts:
-            # avoid randint range error
-            if len_spectro - t <= 0:
-                continue
-            t_zero = random.randrange(0, len_spectro - t)
-
-            # avoids randrange error if values are equal and range is empty
-            if t_zero == t_zero + t:
-                continue
-
-            mask_end += t_zero
+        cloned = x if self.inplace else x.copy()
+        max_frames = cloned.shape[0]
+        max_t = int(max_frames * self.max_t_ratio)
+        for i in range(self.n_time_masks):
+            start = random.randint(0, max_frames - 1)
+            length = random.randint(1, max_t)
+            end = min(max_frames, start + length)
             if replace_with_zero:
-                cloned[t_zero:mask_end] = 0
+                cloned[start:end, :] = 0
             else:
-                cloned[t_zero:mask_end] = cloned.mean()
+                cloned[start:end, :] = cloned.mean()
         return cloned
 
     def __call__(self, x, train=True):
