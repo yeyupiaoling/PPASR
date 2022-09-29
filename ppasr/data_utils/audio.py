@@ -390,23 +390,20 @@ class AudioSegment(object):
         end_sample = int(round(end_sec * self._sample_rate))
         self._samples = self._samples[start_sample:end_sample]
 
-    def random_subsegment(self, subsegment_length, rng=None):
+    def random_subsegment(self, subsegment_length):
         """随机剪切指定长度的音频片段
 
         Note that this is an in-place transformation.
 
         :param subsegment_length: Subsegment length in seconds.
         :type subsegment_length: float
-        :param rng: Random number generator state.
-        :type rng: random.Random
         :raises ValueError: If the length of subsegment is greater than
                             the origineal segemnt.
         """
-        rng = random.Random() if rng is None else rng
         if subsegment_length > self.duration:
             raise ValueError("Length of subsegment must not be greater "
                              "than original segment.")
-        start_time = rng.uniform(0.0, self.duration - subsegment_length)
+        start_time = random.uniform(0.0, self.duration - subsegment_length)
         self.subsegment(start_time, start_time + subsegment_length)
 
     def convolve(self, impulse_segment, allow_resample=False):
@@ -451,8 +448,7 @@ class AudioSegment(object):
                   noise,
                   snr_dB,
                   allow_downsampling=False,
-                  max_gain_db=300.0,
-                  rng=None):
+                  max_gain_db=300.0):
         """以特定的信噪比添加给定的噪声段。如果噪声段比该噪声段长，则从该噪声段中采样匹配长度的随机子段。
 
         Note that this is an in-place transformation.
@@ -469,14 +465,11 @@ class AudioSegment(object):
                             before adding it in. This is to prevent attempting
                             to apply infinite gain to a zero signal.
         :type max_gain_db: float
-        :param rng: Random number generator state.
-        :type rng: None|random.Random
         :raises ValueError: If the sample rate does not match between the two
                             audio segments when downsampling is not allowed, or
                             if the duration of noise segments is shorter than
                             original audio segments.
         """
-        rng = random.Random() if rng is None else rng
         if allow_downsampling and noise.sample_rate > self.sample_rate:
             noise.resample(self.sample_rate)
         if noise.sample_rate != self.sample_rate:
@@ -485,7 +478,7 @@ class AudioSegment(object):
             raise ValueError("噪声信号(%f秒)必须至少与基信号(%f秒)一样长" % (noise.duration, self.duration))
         noise_gain_db = min(self.rms_db - noise.rms_db - snr_dB, max_gain_db)
         noise_new = copy.deepcopy(noise)
-        noise_new.random_subsegment(self.duration, rng=rng)
+        noise_new.random_subsegment(self.duration)
         noise_new.gain_db(noise_gain_db)
         self.superimpose(noise_new)
 

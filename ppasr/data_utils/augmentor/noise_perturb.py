@@ -42,4 +42,4 @@ class NoisePerturbAugmentor(AugmentorBase):
             if noise_segment.samples.shape[0] < audio_segment.samples.shape[0]:
                 diff_duration = audio_segment.samples.shape[0] - noise_segment.samples.shape[0]
                 noise_segment._samples = np.pad(noise_segment.samples, (0, diff_duration), 'wrap')
-            audio_segment.add_noise(noise_segment, snr_dB, allow_downsampling=True, rng=self._rng)
+            audio_segment.add_noise(noise_segment, snr_dB, allow_downsampling=True)
