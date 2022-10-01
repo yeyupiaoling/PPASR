@@ -4,17 +4,18 @@ import os
 import wave
 
 import librosa
-import numpy as np
 import soundfile
 from tqdm import tqdm
 from zhconv import convert
 
-from ppasr.data_utils.normalizer import FeatureNormalizer
 
-
-def print_arguments(args):
-    print("-----------  Configuration Arguments -----------")
+def print_arguments(args, configs):
+    print("----------- 额外配置参数 -----------")
     for arg, value in sorted(vars(args).items()):
+        print("%s: %s" % (arg, value))
+    print("------------------------------------------------")
+    print("----------- 配置文件参数 -----------")
+    for arg, value in sorted(configs.items()):
         print("%s: %s" % (arg, value))
     print("------------------------------------------------")
 
@@ -26,6 +27,20 @@ def add_arguments(argname, type, default, help, argparser, **kwargs):
                            type=type,
                            help=help + ' 默认: %(default)s.',
                            **kwargs)
+
+
+class Dict(dict):
+    __setattr__ = dict.__setitem__
+    __getattr__ = dict.__getitem__
+
+
+def dict_to_object(dict_obj):
+    if not isinstance(dict_obj, dict):
+        return dict_obj
+    inst = Dict()
+    for k, v in dict_obj.items():
+        inst[k] = dict_to_object(v)
+    return inst
 
 
 def labels_to_string(label, vocabulary, blank_index=0):
@@ -176,16 +191,3 @@ def count_manifest(counter, manifest_path):
                 line = json.loads(line)
                 for char in line["text"].replace('\n', ''):
                     counter.update(char)
-
-
-# 计算数据集的均值和标准值
-def compute_mean_std(feature_method, manifest_path, output_path, num_samples=-1, num_workers=8):
-    normalizer = FeatureNormalizer(feature_method=feature_method,
-                                   mean_std_filepath=None,
-                                   manifest_path=manifest_path,
-                                   num_samples=num_samples,
-                                   num_workers=num_workers)
-    # 将计算的结果保存的文件中
-    normalizer.write_to_file(output_path)
-    print('计算的均值和标准值已保存在 %s！' % output_path)
-

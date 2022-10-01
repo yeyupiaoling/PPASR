@@ -8,33 +8,31 @@ from ppasr.data_utils.audio import AudioSegment
 class AudioFeaturizer(object):
     """音频特征器
 
-    :param target_sample_rate: 用于训练的音频的采样率
-    :type target_sample_rate: int
+    :param sample_rate: 用于训练的音频的采样率
+    :type sample_rate: int
     :param use_dB_normalization: 是否对音频进行音量归一化
     :type use_dB_normalization: bool
     :param target_dB: 对音频进行音量归一化的音量分贝值
     :type target_dB: float
-    :param allow_downsampling: 是否允许对音频采样率进行下采样
-    :type allow_downsampling: bool
-    :param allow_upsampling: 是否允许对音频采样率进行上采样
-    :type allow_upsampling: bool
+    :param train: 是否训练使用
+    :type train: bool
     """
 
     def __init__(self,
-                 feature_method='linear',
-                 target_sample_rate=16000,
+                 feature_method='fbank',
+                 n_mels=80,
+                 n_mfcc=40,
+                 sample_rate=16000,
                  use_dB_normalization=True,
                  target_dB=-20,
-                 allow_downsampling=True,
-                 allow_upsampling=True,
                  train=False):
         self._feature_method = feature_method
-        self._target_sample_rate = target_sample_rate
+        self._target_sample_rate = sample_rate
+        self._n_mels = n_mels
+        self._n_mfcc = n_mfcc
         self._use_dB_normalization = use_dB_normalization
         self._target_dB = target_dB
-        self._allow_downsampling = allow_downsampling
-        self._allow_upsampling = allow_upsampling
-        self.train = train
+        self._train = train
 
     def featurize(self, audio_segment):
         """从AudioSegment中提取音频特征
@@ -45,12 +43,8 @@ class AudioFeaturizer(object):
         :rtype: ndarray
         """
         # upsampling or downsampling
-        if ((audio_segment.sample_rate > self._target_sample_rate and self._allow_downsampling) or
-                (audio_segment.sample_rate < self._target_sample_rate and self._allow_upsampling)):
-            audio_segment.resample(self._target_sample_rate)
         if audio_segment.sample_rate != self._target_sample_rate:
-            raise ValueError("Audio sample rate is not supported. "
-                             "Turn allow_downsampling or allow up_sampling on.")
+            audio_segment.resample(self._target_sample_rate)
         # decibel normalization
         if self._use_dB_normalization:
             audio_segment.normalize(target_db=self._target_dB)
@@ -60,10 +54,17 @@ class AudioFeaturizer(object):
             return self._compute_linear(samples=samples, sample_rate=audio_segment.sample_rate)
         elif self._feature_method == 'mfcc':
             samples = audio_segment.to('int16')
-            return self._compute_mfcc(samples=samples, sample_rate=audio_segment.sample_rate)
+            return self._compute_mfcc(samples=samples,
+                                      sample_rate=audio_segment.sample_rate,
+                                      n_mels=self._n_mels,
+                                      n_mfcc=self._n_mfcc,
+                                      train=self._train)
         elif self._feature_method == 'fbank':
             samples = audio_segment.to('int16')
-            return self._compute_fbank(samples=samples, sample_rate=audio_segment.sample_rate)
+            return self._compute_fbank(samples=samples,
+                                       sample_rate=audio_segment.sample_rate,
+                                       n_mels=self._n_mels,
+                                       train=self._train)
         else:
             raise Exception('没有{}预处理方法'.format(self._feature_method))
 
@@ -100,8 +101,9 @@ class AudioFeaturizer(object):
                       n_mfcc=40,
                       frame_shift=10,
                       frame_length=25,
-                      dither=0.1):
-        dither = dither if self.train else 0.0
+                      dither=0.1,
+                      train=False):
+        dither = dither if train else 0.0
         waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
         # 计算MFCC
         mfcc_feat = mfcc(waveform,
@@ -121,8 +123,9 @@ class AudioFeaturizer(object):
                        n_mels=161,
                        frame_shift=10,
                        frame_length=25,
-                       dither=0.1):
-        dither = dither if self.train else 0.0
+                       dither=0.1,
+                       train=False):
+        dither = dither if train else 0.0
         waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
         # 计算Fbank
         mat = fbank(waveform,
@@ -144,8 +147,8 @@ class AudioFeaturizer(object):
         if self._feature_method == 'linear':
             return 161
         elif self._feature_method == 'mfcc':
-            return 40
+            return self._n_mfcc
         elif self._feature_method == 'fbank':
-            return 161
+            return self._n_mels
         else:
             raise Exception('没有{}预处理方法'.format(self._feature_method))

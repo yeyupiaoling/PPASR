@@ -15,15 +15,22 @@ logger = setup_logger(__name__)
 
 # 音频数据加载器
 class PPASRDataset(Dataset):
-    def __init__(self, data_list, vocab_filepath, mean_std_filepath, feature_method='linear',
-                 min_duration=0, max_duration=20, augmentation_config='{}', train=False):
+    def __init__(self,
+                 preprocess_configs,
+                 data_manifest,
+                 vocab_filepath,
+                 mean_std_filepath,
+                 min_duration=0,
+                 max_duration=20,
+                 augmentation_config='{}',
+                 train=False):
         super(PPASRDataset, self).__init__()
-        self._normalizer = FeatureNormalizer(mean_std_filepath, feature_method=feature_method)
+        self._normalizer = FeatureNormalizer(mean_std_filepath)
         self._augmentation_pipeline = AugmentationPipeline(augmentation_config=augmentation_config)
-        self._audio_featurizer = AudioFeaturizer(feature_method=feature_method, train=train)
+        self._audio_featurizer = AudioFeaturizer(train=train, **preprocess_configs)
         self._text_featurizer = TextFeaturizer(vocab_filepath)
         # 获取数据列表
-        with open(data_list, 'r', encoding='utf-8') as f:
+        with open(data_manifest, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         self.data_list = []
         for line in lines:

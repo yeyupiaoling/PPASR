@@ -11,61 +11,36 @@ from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
 from ppasr.utils.logger import setup_logger
+from ppasr.utils.utils import dict_to_object
 
 logger = setup_logger(__name__)
 
 
 class Predictor:
     def __init__(self,
+                 configs,
                  model_dir='models/deepspeech2/infer/',
-                 vocab_path='dataset/vocabulary.txt',
-                 use_model='deepspeech2',
-                 decoder='ctc_beam_search',
-                 alpha=2.2,
-                 beta=4.3,
-                 lang_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm',
                  use_pun=False,
-                 feature_method='linear',
                  pun_model_dir='models/pun_models/',
-                 beam_size=300,
-                 cutoff_prob=0.99,
-                 cutoff_top_n=40,
                  use_gpu=True,
                  gpu_mem=500,
                  num_threads=10):
         """
         语音识别预测工具
         :param model_dir: 导出的预测模型文件夹路径
-        :param vocab_path: 数据集的词汇表文件路径
-        :param use_model: 所使用的模型
-        :param decoder: 结果解码方法，有集束搜索(ctc_beam_search)、贪婪策略(ctc_greedy)
-        :param alpha: 集束搜索解码相关参数，LM系数
-        :param beta: 集束搜索解码相关参数，WC系数
-        :param lang_model_path: 集束搜索解码相关参数，语言模型文件路径
         :param use_pun: 是否使用加标点符号的模型
-        :param feature_method: 所使用的预处理方法
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
-        :param beam_size: 集束搜索解码相关参数，搜索的大小，范围建议:[5, 500]
-        :param cutoff_prob: 集束搜索解码相关参数，剪枝的概率
-        :param cutoff_top_n: 集束搜索解码相关参数，剪枝的最大值
         :param use_gpu: 是否使用GPU预测
         :param gpu_mem: 预先分配的GPU显存大小
         :param num_threads: 只用CPU预测的线程数量
         """
+        self.configs = dict_to_object(configs)
         self.running = False
-        self.decoder = decoder
-        self.use_model = use_model
-        self.alpha = alpha
-        self.beta = beta
-        self.lang_model_path = lang_model_path
-        self.beam_size = beam_size
-        self.cutoff_prob = cutoff_prob
-        self.cutoff_top_n = cutoff_top_n
         self.use_gpu = use_gpu
         self.lac = None
         self.pun_executor = None
-        self._text_featurizer = TextFeaturizer(vocab_filepath=vocab_path)
-        self._audio_featurizer = AudioFeaturizer(feature_method=feature_method)
+        self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset.dataset_vocab)
+        self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess)
         # 流式解码参数
         self.output_state_h = None
         self.output_state_c = None
@@ -73,37 +48,31 @@ class Predictor:
         self.cached_feat = None
         self.greedy_last_max_prob_list = None
         self.greedy_last_max_index_list = None
-        assert self.use_model in SUPPORT_MODEL, f'没有该模型：{self.use_model}'
+        assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
         # 模型参数
-        if self.use_model == 'deepspeech2':
+        if self.configs.use_model == 'deepspeech2':
             self.hidden_size = 1024
-        elif self.use_model == 'deepspeech2_big':
+        elif self.configs.use_model == 'deepspeech2_big':
             self.hidden_size = 2048
 
         # 集束搜索方法的处理
-        if decoder == "ctc_beam_search":
+        if self.configs.decoder == "ctc_beam_search":
             if platform.system() != 'Windows':
                 try:
                     from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                    self.beam_search_decoder = BeamSearchDecoder(beam_alpha=self.alpha,
-                                                                 beam_beta=self.beta,
-                                                                 beam_size=self.beam_size,
-                                                                 cutoff_prob=self.cutoff_prob,
-                                                                 cutoff_top_n=self.cutoff_top_n,
-                                                                 vocab_list=self._text_featurizer.vocab_list,
-                                                                 language_model_path=self.lang_model_path,
-                                                                 num_processes=1)
+                    self.beam_search_decoder = BeamSearchDecoder(vocab_list=self._text_featurizer.vocab_list,
+                                                                 **self.configs.ctc_beam_search_decoder)
                 except ModuleNotFoundError:
                     logger.warning('==================================================================')
                     logger.warning('缺少 paddlespeech-ctcdecoders 库，请根据文档安装。')
                     logger.warning('【注意】已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
                     logger.warning('==================================================================\n')
-                    self.decoder = 'ctc_greedy'
+                    self.configs.decoder = 'ctc_greedy'
             else:
                 logger.warning('==================================================================')
                 logger.warning('【注意】Windows不支持ctc_beam_search，已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
                 logger.warning('==================================================================\n')
-                self.decoder = 'ctc_greedy'
+                self.configs.decoder = 'ctc_greedy'
 
         # 创建 config
         model_path = os.path.join(model_dir, 'model.pdmodel')
@@ -130,7 +99,7 @@ class Predictor:
         self.audio_data_handle = self.predictor.get_input_handle('audio')
         self.audio_len_handle = self.predictor.get_input_handle('audio_len')
         # 流式模型需要输入RNN的状态
-        if 'no_stream' not in self.use_model:
+        if 'no_stream' not in self.configs.use_model:
             self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
             self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
 
@@ -159,7 +128,7 @@ class Predictor:
         :return:
         """
         # 执行解码
-        if self.decoder == 'ctc_beam_search':
+        if self.configs.decoder == 'ctc_beam_search':
             # 集束搜索解码策略
             result = self.beam_search_decoder.decode_beam_search_offline(probs_split=output_data)
         else:
@@ -214,7 +183,7 @@ class Predictor:
         self.audio_len_handle.copy_from_cpu(audio_len)
 
         # 对流式模型RNN层的initial_states全零初始化
-        if 'no_stream' not in self.use_model:
+        if 'no_stream' not in self.configs.use_model:
             init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size), dtype=np.float32)
             self.init_state_h_box_handle.reshape(init_state_h_box.shape)
             self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
@@ -277,7 +246,7 @@ class Predictor:
         :param to_an: 是否转为阿拉伯数字
         :return: 识别得分, 识别结果
         """
-        assert 'no_stream' not in self.use_model, f'当前模型不是流式模型，当前模型为：{self.use_model}'
+        assert 'no_stream' not in self.configs.use_model, f'当前模型不是流式模型，当前模型为：{self.configs.use_model}'
         assert audio_bytes is not None or audio_ndarray is not None, \
             'audio_bytes和audio_ndarray至少有一个不为None！'
         # 加载音频文件
@@ -329,7 +298,7 @@ class Predictor:
             # 执行识别
             output_chunk_probs, output_lens = self.predict_chunk(x_chunk=x_chunk, x_chunk_lens=x_chunk_lens)
             # 执行解码
-            if self.decoder == 'ctc_beam_search':
+            if self.configs.decoder == 'ctc_beam_search':
                 # 集束搜索解码策略
                 score, text = self.beam_search_decoder.decode_chunk(probs=output_chunk_probs, logits_lens=output_lens)
             else:
@@ -361,7 +330,7 @@ class Predictor:
         self.cached_feat = None
         self.greedy_last_max_prob_list = None
         self.greedy_last_max_index_list = None
-        if self.decoder == 'ctc_beam_search':
+        if self.configs.decoder == 'ctc_beam_search':
             self.beam_search_decoder.reset_decoder()
 
     # 是否转为阿拉伯数字

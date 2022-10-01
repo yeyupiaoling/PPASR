@@ -5,10 +5,10 @@ from ppasr.decoders.swig_wrapper import ctc_beam_search_decoding_batch, ctc_beam
 
 
 class BeamSearchDecoder:
-    def __init__(self, beam_alpha, beam_beta, beam_size, cutoff_prob, cutoff_top_n, vocab_list, num_processes,
+    def __init__(self, alpha, beta, beam_size, cutoff_prob, cutoff_top_n, vocab_list, num_processes=10,
                  blank_id=0, language_model_path='lm/zh_giga.no_cna_cmn.prune01244.klm'):
-        self.beam_alpha = beam_alpha
-        self.beam_beta = beam_beta
+        self.alpha = alpha
+        self.beta = beta
         self.beam_size = beam_size
         self.cutoff_prob = cutoff_prob
         self.cutoff_top_n = cutoff_top_n
@@ -24,7 +24,7 @@ class BeamSearchDecoder:
             print('=' * 70)
         print('=' * 70)
         print("初始化解码器...")
-        self._ext_scorer = Scorer(beam_alpha, beam_beta, language_model_path, vocab_list)
+        self._ext_scorer = Scorer(alpha, beta, language_model_path, vocab_list)
         lm_char_based = self._ext_scorer.is_character_based()
         lm_max_order = self._ext_scorer.get_max_order()
         lm_dict_size = self._ext_scorer.get_dict_size()
@@ -41,7 +41,7 @@ class BeamSearchDecoder:
     # 单个数据解码
     def decode_beam_search_offline(self, probs_split):
         if self._ext_scorer is not None:
-            self._ext_scorer.reset_params(self.beam_alpha, self.beam_beta)
+            self._ext_scorer.reset_params(self.alpha, self.beta)
         # beam search decode
         beam_search_result = ctc_beam_search_decoding(probs_seq=probs_split,
                                                       vocabulary=self.vocab_list,
@@ -55,7 +55,7 @@ class BeamSearchDecoder:
     # 一批数据解码
     def decode_batch_beam_search_offline(self, probs_split):
         if self._ext_scorer is not None:
-            self._ext_scorer.reset_params(self.beam_alpha, self.beam_beta)
+            self._ext_scorer.reset_params(self.alpha, self.beta)
         # beam search decode
         self.num_processes = min(self.num_processes, len(probs_split))
         beam_search_results = ctc_beam_search_decoding_batch(probs_split=probs_split,

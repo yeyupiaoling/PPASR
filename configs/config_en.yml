@@ -1,0 +1,70 @@
+# 数据集参数
+dataset:
+  # 训练的批量大小
+  batch_size: 32
+  # 读取数据的线程数量
+  num_workers: 4
+  # 过滤最短的音频长度
+  min_duration: 0.5
+  # 过滤最长的音频长度，当为-1的时候不限制长度
+  max_duration: 20
+  # 训练数据的数据列表路径
+  train_manifest: 'dataset/manifest.train'
+  # 测试数据的数据列表路径
+  test_manifest: 'dataset/manifest.test'
+  # 数据字典的路径
+  dataset_vocab: 'dataset/vocabulary.txt'
+  # 均值和标准值得json文件路径，后缀 (.json)
+  mean_std_path: 'dataset/mean_std.json'
+  # 噪声数据列表文件
+  noise_manifest_path: 'dataset/manifest.noise'
+
+# 数据预处理参数
+preprocess:
+  # 音频预处理方法，支持：linear、mfcc、fbank
+  feature_method: 'fbank'
+  # 计算fbank得到的mel大小
+  n_mels: 80
+  # 计算mfcc得到的mfcc大小
+  n_mfcc: 40
+  # 音频的采样率
+  sample_rate: 16000
+  # 是否对音频进行音量归一化
+  use_dB_normalization: True
+  # 对音频进行音量归一化的音量分贝值
+  target_dB: -20
+
+# ctc_beam_search解码器参数
+ctc_beam_search_decoder:
+  # 集束搜索的LM系数
+  alpha: 1.9
+  # 集束搜索的WC系数
+  beta: 0.3
+  # 集束搜索的大小，范围:[5, 500]
+  beam_size: 500
+  # 集束搜索方法使用CPU数量
+  num_processes: 10
+  # 剪枝的概率
+  cutoff_prob: 1.0
+  # 剪枝的最大值
+  cutoff_top_n: 40
+  # 语言模型文件路径
+  language_model_path: 'lm/common_crawl_00.prune01111.trie.klm'
+
+optimizer:
+  # 初始学习率的大小
+  learning_rate: 5e-5
+  # 学习率衰减的gamma值
+  gamma: 0.93
+  clip_norm: 3.0
+  weight_decay: 1e-6
+
+
+# 所使用的模型
+use_model: 'deepspeech2'
+# 结果解码方法，支持：ctc_beam_search、ctc_greedy
+decoder: 'ctc_beam_search'
+# 训练的轮数
+num_epoch: 65
+# 计算错误率方法，支持：cer、wer
+metrics_type: 'wer'

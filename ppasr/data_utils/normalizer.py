@@ -1,5 +1,6 @@
 import json
 import math
+import os
 
 import numpy as np
 import random
@@ -17,34 +18,13 @@ __all__ = ['FeatureNormalizer']
 class FeatureNormalizer(object):
     """音频特征归一化类
 
-    如果mean_std_filepath不是None，则normalizer将直接从文件初始化。否则，使用manifest_path应该给特征mean和stddev计算
-
     :param mean_std_filepath: 均值和标准值的文件路径
-    :type mean_std_filepath: None|str
-    :param manifest_path: 用于计算均值和标准值的数据列表，一般是训练的数据列表
-    :type manifest_path: None|str
-    :param num_samples: 用于计算均值和标准值的音频数量
-    :type num_samples: int
-    :param random_seed: 随机种子
-    :type random_seed: int
-    :raises ValueError: 如果mean_std_filepath和manifest_path都为None
     """
 
-    def __init__(self,
-                 mean_std_filepath,
-                 feature_method='linear',
-                 manifest_path=None,
-                 num_workers=4,
-                 num_samples=5000,
-                 eps=1e-20,
-                 random_seed=0):
-        self.feature_method = feature_method
-        if not mean_std_filepath:
-            if not manifest_path:
-                raise ValueError("如果mean_std_filepath是None，那么meanifest_path不应该是None")
-            self._rng = random.Random(random_seed)
-            self._compute_mean_std(manifest_path, num_samples, num_workers)
-        else:
+    def __init__(self, mean_std_filepath, eps=1e-20):
+        self.mean_std_filepath = mean_std_filepath
+        # 读取归一化文件
+        if os.path.exists(mean_std_filepath):
             self.mean, self.std = self._read_mean_std_from_file(mean_std_filepath)
             self.std = np.maximum(self.std, eps)
 
@@ -53,46 +33,39 @@ class FeatureNormalizer(object):
 
         :param features: 需要归一化的音频
         :type features: ndarray
-        :param eps:  添加到标准值以提供数值稳定性
-        :type eps: float
         :return: 已经归一化的数据
         :rtype: ndarray
         """
         return (features - self.mean) / self.std
 
-    def write_to_file(self, filepath):
-        """将计算得到的均值和标准值写入到文件中
-
-        :param filepath: 均值和标准值写入的文件路径
-        :type filepath: str
-        """
-        data = {'mean': self.mean.tolist(),
-                'std': self.std.tolist(),
-                'feature_method': self.feature_method}
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f)
-
-    def _read_mean_std_from_file(self, filepath):
+    @staticmethod
+    def _read_mean_std_from_file(filepath):
         """从文件中加载均值和标准值"""
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-            feature_method = data["feature_method"]
-            if feature_method != self.feature_method:
-                raise Exception(f"加载的归一化文件预处理方法和指定的预处理方法不一致，"
-                                f"加载的为：{feature_method}, 指定的为：{self.feature_method}")
             mean = np.array(data["mean"], dtype=np.float32)
             std = np.array(data["std"], dtype=np.float32)
         return mean, std
 
-    def _compute_mean_std(self, manifest_path, num_samples, num_workers):
-        """从随机抽样的实例中计算均值和标准值"""
+    def compute_mean_std(self,
+                         preprocess_configs,
+                         manifest_path,
+                         num_workers=4,
+                         num_samples=5000):
+        """从随机抽样的实例中计算均值和标准值，并写入到文件中
+
+        :param preprocess_configs: 数据预处理配置参数
+        :param manifest_path: 数据列表文件路径
+        :param num_workers: 计算的线程数量
+        :param num_samples: 用于计算均值和标准值的音频数量
+        """
         paddle.set_device('cpu')
         manifest = read_manifest(manifest_path)
         if num_samples < 0 or num_samples > len(manifest):
             sampled_manifest = manifest
         else:
-            sampled_manifest = self._rng.sample(manifest, num_samples)
-        dataset = NormalizerDataset(sampled_manifest, feature_method=self.feature_method)
+            sampled_manifest = random.sample(manifest, num_samples)
+        dataset = NormalizerDataset(sampled_manifest, preprocess_configs)
         test_loader = DataLoader(dataset=dataset, batch_size=64, collate_fn=collate_fn, num_workers=num_workers)
         with paddle.no_grad():
             # 求总和
@@ -115,14 +88,18 @@ class FeatureNormalizer(object):
                 if std[i] < 1.0e-20:
                     std[i] = 1.0e-20
                 std[i] = math.sqrt(std[i])
-            self.mean = means
-            self.std = std
+        # 写入到文件中
+        data = {'mean': means.tolist(),
+                'std': std.tolist(),
+                'feature_method': preprocess_configs.feature_method}
+        with open(self.mean_std_filepath, 'w', encoding='utf-8') as f:
+            json.dump(data, f)
 
 
 class NormalizerDataset(Dataset):
-    def __init__(self, sampled_manifest, feature_method='linear'):
+    def __init__(self, sampled_manifest, preprocess_configs):
         super(NormalizerDataset, self).__init__()
-        self.audio_featurizer = AudioFeaturizer(feature_method=feature_method)
+        self.audio_featurizer = AudioFeaturizer(**preprocess_configs)
         self.sampled_manifest = sampled_manifest
 
     def __getitem__(self, idx):
