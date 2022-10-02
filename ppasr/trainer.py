@@ -169,6 +169,8 @@ class PPASRTrainer(object):
         :param pretrained_model: 预训练模型的路径，当为None则不使用预训练模型
         :param augment_conf_path: 数据增强的配置文件，为json格式
         """
+        # 训练只能用贪心解码，解码速度快
+        self.configs.decoder = 'ctc_greedy'
         # 获取有多少张显卡训练
         nranks = paddle.distributed.get_world_size()
         local_rank = paddle.distributed.get_rank()

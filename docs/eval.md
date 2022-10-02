@@ -7,21 +7,19 @@ python eval.py --resume_model=models/deepspeech2/best_model
 
 输出结果：
 ```
------------  Configuration Arguments -----------
-alpha: 2.2
+----------- 额外配置参数 -----------
 batch_size: 32
-beam_size: 300
-beta: 4.3
-cutoff_prob: 0.99
-cutoff_top_n: 40
-dataset_vocab: dataset/vocabulary.txt
+configs: configs/config_zh.yml
+resume_model: models/{}_{}/best_model/
+------------------------------------------------
+----------- 配置文件参数 -----------
+ctc_beam_search_decoder: {'alpha': 2.2, 'beta': 4.3, 'beam_size': 300, 'num_processes': 10, 'cutoff_prob': 0.99, 'cutoff_top_n': 40, 'language_model_path': 'lm/zh_giga.no_cna_cmn.prune01244.klm'}
+dataset: {'batch_size': 32, 'num_workers': 4, 'min_duration': 0.5, 'max_duration': 20, 'train_manifest': 'dataset/manifest.train', 'test_manifest': 'dataset/manifest.test', 'dataset_vocab': 'dataset/vocabulary.txt', 'mean_std_path': 'dataset/mean_std.json', 'noise_manifest_path': 'dataset/manifest.noise'}
 decoder: ctc_beam_search
-lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
-mean_std_path: dataset/mean_std.npz
-num_proc_bsearch: 10
-num_workers: 8
-resume_model: models/deepspeech2/best_model/
-test_manifest: dataset/manifest.test
+metrics_type: cer
+num_epoch: 65
+optimizer: {'learning_rate': '5e-5', 'gamma': 0.93, 'clip_norm': 3.0, 'weight_decay': '1e-6'}
+preprocess: {'feature_method': 'fbank', 'n_mels': 80, 'n_mfcc': 40, 'sample_rate': 16000, 'use_dB_normalization': True, 'target_dB': -20}
 use_model: deepspeech2
 ------------------------------------------------
 W0918 10:33:58.960235 16295 device_context.cc:404] Please NOTE: device: 0, GPU Compute Capability: 7.5, Driver API Version: 11.0, Runtime API Version: 10.2

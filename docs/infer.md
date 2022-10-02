@@ -7,31 +7,33 @@ python infer_path.py --wav_path=./dataset/test.wav
 
 输出结果：
 ```
------------  Configuration Arguments -----------
-alpha: 2.2
-beam_size: 300
-beta: 4.3
-cutoff_prob: 0.99
-cutoff_top_n: 40
-decoder: ctc_beam_search
+----------- 额外配置参数 -----------
+configs: configs/config_zh.yml
 is_long_audio: False
-lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
-model_dir: models/deepspeech2/infer/
+model_dir: models/{}_{}/infer/
 pun_model_dir: models/pun_models/
 real_time_demo: False
-to_an: True
+to_an: False
 use_gpu: True
-use_pun: True
+use_pun: False
+wav_path: dataset/test.wav
+------------------------------------------------
+----------- 配置文件参数 -----------
+ctc_beam_search_decoder: {'alpha': 2.2, 'beta': 4.3, 'beam_size': 300, 'num_processes': 10, 'cutoff_prob': 0.99, 'cutoff_top_n': 40, 'language_model_path': 'lm/zh_giga.no_cna_cmn.prune01244.klm'}
+dataset: {'batch_size': 32, 'num_workers': 4, 'min_duration': 0.5, 'max_duration': 20, 'train_manifest': 'dataset/manifest.train', 'test_manifest': 'dataset/manifest.test', 'dataset_vocab': 'dataset/vocabulary.txt', 'mean_std_path': 'dataset/mean_std.json', 'noise_manifest_path': 'dataset/manifest.noise'}
+decoder: ctc_beam_search
+metrics_type: cer
+num_epoch: 65
+optimizer: {'learning_rate': '5e-5', 'gamma': 0.93, 'clip_norm': 3.0, 'weight_decay': '1e-6'}
+preprocess: {'feature_method': 'fbank', 'n_mels': 80, 'n_mfcc': 40, 'sample_rate': 16000, 'use_dB_normalization': True, 'target_dB': -20}
 use_model: deepspeech2
-vocab_path: dataset/vocabulary.txt
-wav_path: ./dataset/test.wav
 ------------------------------------------------
 ======================================================================
 初始化解码器...
 language model: is_character_based = 1, max_order = 5, dict_size = 0
 初始化解码器完成!
 ======================================================================
-消耗时间：101, 识别结果: 近几年，不但我用输给女儿压岁，也劝说亲朋，不要给女儿压岁钱，而改送压岁书。, 得分: 94
+消耗时间：101, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
 ```
 
 ## 长语音预测
@@ -43,22 +45,26 @@ python infer_path.py --wav_path=./dataset/test_long.wav --is_long_audio=True
 
 输出结果：
 ```
------------  Configuration Arguments -----------
-alpha: 2.2
-beam_size: 300
-beta: 4.3
-cutoff_prob: 0.99
-cutoff_top_n: 40
-decoding_method: ctc_beam_search
-is_long_audio: 1
-lang_model_path: ./lm/zh_giga.no_cna_cmn.prune01244.klm
-model_dir: ./models/deepspeech2/infer/
+----------- 额外配置参数 -----------
+configs: configs/config_zh.yml
+is_long_audio: True
+model_dir: models/{}_{}/infer/
 pun_model_dir: models/pun_models/
-to_an: True
-use_pun: False
+real_time_demo: False
+to_an: False
 use_gpu: True
-vocab_path: ./dataset/zh_vocab.txt
+use_pun: False
 wav_path: dataset/test_long.wav
+------------------------------------------------
+----------- 配置文件参数 -----------
+ctc_beam_search_decoder: {'alpha': 2.2, 'beta': 4.3, 'beam_size': 300, 'num_processes': 10, 'cutoff_prob': 0.99, 'cutoff_top_n': 40, 'language_model_path': 'lm/zh_giga.no_cna_cmn.prune01244.klm'}
+dataset: {'batch_size': 32, 'num_workers': 4, 'min_duration': 0.5, 'max_duration': 20, 'train_manifest': 'dataset/manifest.train', 'test_manifest': 'dataset/manifest.test', 'dataset_vocab': 'dataset/vocabulary.txt', 'mean_std_path': 'dataset/mean_std.json', 'noise_manifest_path': 'dataset/manifest.noise'}
+decoder: ctc_beam_search
+metrics_type: cer
+num_epoch: 65
+optimizer: {'learning_rate': '5e-5', 'gamma': 0.93, 'clip_norm': 3.0, 'weight_decay': '1e-6'}
+preprocess: {'feature_method': 'fbank', 'n_mels': 80, 'n_mfcc': 40, 'sample_rate': 16000, 'use_dB_normalization': True, 'target_dB': -20}
+use_model: deepspeech2
 ------------------------------------------------
 ======================================================================
 初始化解码器...
@@ -117,25 +123,26 @@ python infer_path.py --wav_path=./dataset/test.wav --real_time_demo=True
 
 输出结果：
 ```
------------  Configuration Arguments -----------
-alpha: 2.2
-beam_size: 300
-beta: 4.3
-cutoff_prob: 0.99
-cutoff_top_n: 40
-decoder: ctc_beam_search
-feature_method: linear
+----------- 额外配置参数 -----------
+configs: configs/config_zh.yml
 is_long_audio: False
-lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
-model_dir: models/deepspeech2/infer/
+model_dir: models/{}_{}/infer/
 pun_model_dir: models/pun_models/
 real_time_demo: True
 to_an: False
 use_gpu: True
-use_model: deepspeech2
 use_pun: False
-vocab_path: dataset/vocabulary.txt
-wav_path: ./dataset/test.wav
+wav_path: dataset/test.wav
+------------------------------------------------
+----------- 配置文件参数 -----------
+ctc_beam_search_decoder: {'alpha': 2.2, 'beta': 4.3, 'beam_size': 300, 'num_processes': 10, 'cutoff_prob': 0.99, 'cutoff_top_n': 40, 'language_model_path': 'lm/zh_giga.no_cna_cmn.prune01244.klm'}
+dataset: {'batch_size': 32, 'num_workers': 4, 'min_duration': 0.5, 'max_duration': 20, 'train_manifest': 'dataset/manifest.train', 'test_manifest': 'dataset/manifest.test', 'dataset_vocab': 'dataset/vocabulary.txt', 'mean_std_path': 'dataset/mean_std.json', 'noise_manifest_path': 'dataset/manifest.noise'}
+decoder: ctc_beam_search
+metrics_type: cer
+num_epoch: 65
+optimizer: {'learning_rate': '5e-5', 'gamma': 0.93, 'clip_norm': 3.0, 'weight_decay': '1e-6'}
+preprocess: {'feature_method': 'fbank', 'n_mels': 80, 'n_mfcc': 40, 'sample_rate': 16000, 'use_dB_normalization': True, 'target_dB': -20}
+use_model: deepspeech2
 ------------------------------------------------
 ======================================================================
 初始化解码器...

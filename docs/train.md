@@ -1,8 +1,8 @@
 # 训练模型
 
- - 训练流程，首先是准备数据集，具体看[数据准备](./dataset.md)部分，重点是执行`create_data.py`程序，执行完成之后检查是否在`dataset`目录下生成了`manifest.test`、`manifest.train`、`mean_std.npz`、`vocabulary.txt`这四个文件，并确定里面已经包含数据。然后才能往下执行开始训练。
+ - 训练流程，首先是准备数据集，具体看[数据准备](./dataset.md)部分，重点是执行`create_data.py`程序，执行完成之后检查是否在`dataset`目录下生成了`manifest.test`、`manifest.train`、`mean_std.json`、`vocabulary.txt`这四个文件，并确定里面已经包含数据。然后才能往下执行开始训练。
 
- - 执行训练脚本，开始训练语音识别模型，详细参数请查看该程序。每训练一轮和每10000个batch都会保存一次模型，模型保存在`models/<use_model>/epoch_*/`目录下，默认会使用数据增强训练，如何不想使用数据增强，只需要将参数`augment_conf_path`设置为`None`即可。关于数据增强，请查看[数据增强](./augment.md)部分。如果没有关闭测试，在每一轮训练结果之后，都会执行一次测试计算模型在测试集的准确率，注意为了加快训练速度，默认使用的是ctc_greedy解码器，如果需要使用ctc_beam_search解码器，请设置`decoder`参数。如果模型文件夹下包含`last_model`文件夹，在训练的时候会自动加载里面的模型，这是为了方便中断训练的之后继续训练，无需手动指定，如果手动指定了`resume_model`参数，则以`resume_model`指定的路径优先加载。如果不是原来的数据集或者模型结构，需要删除`last_model`这个文件夹。
+ - 执行训练脚本，开始训练语音识别模型，详细参数请查看`configs`下的配置文件。每训练一轮和每10000个batch都会保存一次模型，模型保存在`models/<use_model>_<feature_method>/epoch_*/`目录下，默认会使用数据增强训练，如何不想使用数据增强，只需要将参数`augment_conf_path`设置为`None`即可。关于数据增强，请查看[数据增强](./augment.md)部分。如果没有关闭测试，在每一轮训练结果之后，都会执行一次测试计算模型在测试集的准确率，注意为了加快训练速度，训练只能用贪心解码。如果模型文件夹下包含`last_model`文件夹，在训练的时候会自动加载里面的模型，这是为了方便中断训练的之后继续训练，无需手动指定，如果手动指定了`resume_model`参数，则以`resume_model`指定的路径优先加载。如果不是原来的数据集或者模型结构，需要删除`last_model`这个文件夹。
 ```shell
 # 单机单卡训练
 python3 train.py
@@ -21,29 +21,21 @@ python -m paddle.distributed.launch --ips="192.168.4.17,192.168.4.7" --gpus=0,1 
 
 训练输出结果如下：
 ```
------------  Configuration Arguments -----------
-alpha: 2.2
-augment_conf_path: conf/augmentation.json
-batch_size: 32
-beam_size: 300
-beta: 4.3
-cutoff_prob: 0.99
-cutoff_top_n: 40
-dataset_vocab: dataset/vocabulary.txt
-decoder: ctc_greedy
-lang_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
-learning_rate: 5e-05
-max_duration: 20
-mean_std_path: dataset/mean_std.npz
-min_duration: 0.5
-num_epoch: 65
-num_proc_bsearch: 10
-num_workers: 8
+----------- 额外配置参数 -----------
+augment_conf_path: configs/augmentation.json
+configs: configs/config_zh.yml
 pretrained_model: None
 resume_model: None
 save_model_path: models/
-test_manifest: dataset/manifest.test
-train_manifest: dataset/manifest.train
+------------------------------------------------
+----------- 配置文件参数 -----------
+ctc_beam_search_decoder: {'alpha': 2.2, 'beta': 4.3, 'beam_size': 300, 'num_processes': 10, 'cutoff_prob': 0.99, 'cutoff_top_n': 40, 'language_model_path': 'lm/zh_giga.no_cna_cmn.prune01244.klm'}
+dataset: {'batch_size': 32, 'num_workers': 4, 'min_duration': 0.5, 'max_duration': 20, 'train_manifest': 'dataset/manifest.train', 'test_manifest': 'dataset/manifest.test', 'dataset_vocab': 'dataset/vocabulary.txt', 'mean_std_path': 'dataset/mean_std.json', 'noise_manifest_path': 'dataset/manifest.noise'}
+decoder: ctc_beam_search
+metrics_type: cer
+num_epoch: 65
+optimizer: {'learning_rate': '5e-5', 'gamma': 0.93, 'clip_norm': 3.0, 'weight_decay': '1e-6'}
+preprocess: {'feature_method': 'fbank', 'n_mels': 80, 'n_mfcc': 40, 'sample_rate': 16000, 'use_dB_normalization': True, 'target_dB': -20}
 use_model: deepspeech2
 ------------------------------------------------
 ............

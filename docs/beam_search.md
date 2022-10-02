@@ -23,4 +23,4 @@ python tools/tune.py --resume_model=models/deepspeech2/epoch_50
 
 # 使用集束搜索解码
 
-在需要使用到解码器的程序，如评估，预测，指定参数`--decoder`为`ctc_beam_search`即可，如果alpha和beta参数值有改动，修改对应的值即可。
+在需要使用到解码器的程序，如评估，预测，在`configs/config_zh.yml`配置文件中修改参数`decoder`为`ctc_beam_search`即可，如果alpha和beta参数值有改动，修改对应的值即可。
