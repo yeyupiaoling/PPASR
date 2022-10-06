@@ -68,9 +68,9 @@
 |      deepspeech2      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank |     35     | 中文  |       0.07280        | [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0) |
 |    deepspeech2_big    |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank |    167     | 中文  |       0.05370        | [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0) |
 | deepspeech2_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank |     98     | 中文  |       0.07253        | [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0) |
-|      deepspeech2      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |     35     | 英文  |                      | [点击下载](https://download.csdn.net/download/qq_33200967/77978970)  | 
-|    deepspeech2_big    | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |    167     | 英文  |                      | [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u) | 
-| deepspeech2_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |     98     | 英文  |                      | [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u) | 
+|      deepspeech2      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |     35     | 英文  |       0.16369        | [点击下载](https://download.csdn.net/download/qq_33200967/77978970)  | 
+|    deepspeech2_big    | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |    167     | 英文  |       0.12779        | [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u) | 
+| deepspeech2_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |     98     | 英文  |       0.09131        | [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u) | 
 
 
 **说明：** 
