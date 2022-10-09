@@ -51,7 +51,7 @@ class SpeechRecognitionApp:
         self.playing = False
         self.recording = False
         self.stream = None
-        self.to_an = False
+        self.is_itn = True
         self.use_server = args.use_server
         # 录音参数
         self.frames = []
@@ -83,11 +83,11 @@ class SpeechRecognitionApp:
         self.result_label.place(x=10, y=70)
         self.result_text = Text(self.window, width=120, height=30)
         self.result_text.place(x=10, y=100)
-        # 转阿拉伯数字控件
+        # 对文本进行反标准化
         self.an_frame = Frame(self.window)
-        self.check_var = BooleanVar()
-        self.to_an_check = Checkbutton(self.an_frame, text='中文数字转阿拉伯数字', variable=self.check_var, command=self.to_an_state)
-        self.to_an_check.grid(row=0)
+        self.check_var = BooleanVar(value=True)
+        self.is_itn_check = Checkbutton(self.an_frame, text='是否对文本进行反标准化', variable=self.check_var, command=self.is_itn_state)
+        self.is_itn_check.grid(row=0)
         self.an_frame.grid(row=1)
         self.an_frame.place(x=700, y=10)
 
@@ -100,9 +100,9 @@ class SpeechRecognitionApp:
                                        use_pun=args.use_pun,
                                        pun_model_dir=args.pun_model_dir)
 
-    # 是否中文数字转阿拉伯数字
-    def to_an_state(self):
-        self.to_an = self.check_var.get()
+    # 是否对文本进行反标准化
+    def is_itn_state(self):
+        self.is_itn = self.check_var.get()
 
     # 预测短语音线程
     def predict_audio_thread(self):
@@ -123,7 +123,7 @@ class SpeechRecognitionApp:
             start = time.time()
             # 判断使用本地识别还是调用服务接口
             if not self.use_server:
-                score, text = self.predictor.predict(audio_path=wav_file, use_pun=args.use_pun, to_an=self.to_an)
+                score, text = self.predictor.predict(audio_path=wav_file, use_pun=args.use_pun, is_itn=self.is_itn)
             else:
                 # 调用用服务接口识别
                 url = f"http://{args.host}:{args.port_server}/recognition"
@@ -165,7 +165,7 @@ class SpeechRecognitionApp:
                 scores = []
                 # 执行识别
                 for i, audio_bytes in enumerate(audios_bytes):
-                    score, text = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, to_an=self.to_an)
+                    score, text = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=self.is_itn)
                     texts = texts + text if args.use_pun else texts + '，' + text
                     scores.append(score)
                     self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
@@ -238,7 +238,7 @@ class SpeechRecognitionApp:
             while True:
                 data = self.stream.read(self.CHUNK)
                 self.frames.append(data)
-                score, text = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=self.to_an, is_end=not self.recording)
+                score, text = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=self.is_itn, is_end=not self.recording)
                 self.result_text.delete('1.0', 'end')
                 self.result_text.insert(END, f"{text}\n")
                 if not self.recording:break

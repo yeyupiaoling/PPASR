@@ -27,7 +27,7 @@ add_arg("port_stream",      int,    5001,                 "流式识别服务所
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
-add_arg('to_an',            bool,   False,  "是否转为阿拉伯数字")
+add_arg('is_itn',           bool,   True,   "是否对文本进行反标准化")
 add_arg('num_predictor',    int,    1,      "多少个预测器，也是就可以同时有多少个用户同时识别")
 add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
@@ -62,8 +62,8 @@ def recognition():
     # 可以让客户端自定义
     use_pun = args.use_pun
     # use_pun = request.form.get('use_pun')
-    to_an = args.to_an
-    # to_an = request.form.get('to_an')
+    is_itn = args.is_itn
+    # is_itn = request.form.get('is_itn')
     if f:
         # 临时保存路径
         file_path = os.path.join(args.save_path, f"{int(time.time() * 1000)}.{f.filename.split('.')[-1]}")
@@ -76,7 +76,7 @@ def recognition():
                 if predictor.running:continue
                 predictor.running = True
                 try:
-                    score, text = predictor.predict(audio_path=file_path, use_pun=use_pun, to_an=to_an)
+                    score, text = predictor.predict(audio_path=file_path, use_pun=use_pun, is_itn=is_itn)
                 except Exception as e:
                     predictor.running = False
                     raise Exception(e)
@@ -102,8 +102,8 @@ def recognition_long_audio():
     # 可以让客户端自定义
     use_pun = args.use_pun
     # use_pun = request.form.get('use_pun')
-    to_an = args.to_an
-    # to_an = request.form.get('to_an')
+    is_itn = args.is_itn
+    # is_itn = request.form.get('is_itn')
     if f:
         # 临时保存路径
         file_path = os.path.join(args.save_path, f"{int(time.time() * 1000)}.{f.filename.split('.')[-1]}")
@@ -121,7 +121,7 @@ def recognition_long_audio():
                 try:
                     # 执行识别
                     for i, audio_bytes in enumerate(audios_bytes):
-                        score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=use_pun, to_an=to_an)
+                        score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=use_pun, is_itn=is_itn)
                         texts = texts + text if args.use_pun else texts + '，' + text
                         scores.append(score)
                 except Exception as e:
@@ -169,7 +169,7 @@ async def stream_server_run(websocket, path):
                     is_end = True
                     data = data[:-3]
                 # 开始预测
-                score, text = use_predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=args.to_an,
+                score, text = use_predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=args.is_itn,
                                                            is_end=is_end)
                 send_data = str({"code": 0, "result": text}).replace("'", '"')
                 logger.info(f'向客户端发生消息：{send_data}')

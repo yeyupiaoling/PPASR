@@ -7,6 +7,7 @@ import librosa
 import soundfile
 from tqdm import tqdm
 from zhconv import convert
+from tn.chinese.normalizer import Normalizer
 
 
 def print_arguments(args, configs):
@@ -65,6 +66,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     data_list = []
     test_list = []
     durations = []
+    normalizer = Normalizer()
     for annotation_text in os.listdir(annotation_path):
         annotation_text_path = os.path.join(annotation_path, annotation_text)
         with open(annotation_text_path, 'r', encoding='utf-8') as f:
@@ -78,8 +80,10 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
             audio_data, samplerate = soundfile.read(audio_path)
             duration = float(len(audio_data)) / samplerate
             durations.append(duration)
+            # 对文本进行标准化
+            text = normalizer.normalize(line.split('\t')[1].replace('\n', '').replace('\r', '')).lower()
             # 过滤非法的字符
-            text = is_ustr(line.split('\t')[1].replace('\n', '').replace('\r', '')).lower()
+            text = is_ustr(text)
             if len(text) == 0:continue
             # 保证全部都是简体
             text = convert(text, 'zh-cn')

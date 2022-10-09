@@ -17,7 +17,7 @@ add_arg('is_long_audio',    bool,   False,                       "是否为长�
 add_arg('real_time_demo',   bool,   False,                       "是否使用实时语音识别演示")
 add_arg('use_gpu',          bool,   True,                        "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,                       "是否给识别结果加标点符号")
-add_arg('to_an',            bool,   False,                       "是否转为阿拉伯数字")
+add_arg('is_itn',           bool,   True,                        "是否对文本进行反标准化")
 add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 args = parser.parse_args()
@@ -44,7 +44,7 @@ def predict_long_audio():
     scores = []
     # 执行识别
     for i, audio_bytes in enumerate(audios_bytes):
-        score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, to_an=args.to_an)
+        score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=args.is_itn)
         texts = texts + text if args.use_pun else texts + '，' + text
         scores.append(score)
         print(f"第{i}个分割音频, 得分: {int(score)}, 识别结果: {text}")
@@ -54,7 +54,7 @@ def predict_long_audio():
 # 短语音识别
 def predict_audio():
     start = time.time()
-    score, text = predictor.predict(audio_path=args.wav_path, use_pun=args.use_pun, to_an=args.to_an)
+    score, text = predictor.predict(audio_path=args.wav_path, use_pun=args.use_pun, is_itn=args.is_itn)
     print(f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {int(score)}")
 
 
@@ -70,7 +70,7 @@ def real_time_predict_demo():
     while data != b'':
         start = time.time()
         d = wf.readframes(CHUNK)
-        score, text = predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, to_an=args.to_an, is_end=d == b'')
+        score, text = predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=args.is_itn, is_end=d == b'')
         print(f"【实时结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {text}, 得分: {int(score)}")
         data = d
     # 重置流式识别
