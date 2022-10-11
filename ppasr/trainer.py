@@ -27,7 +27,7 @@ from ppasr.model_utils.deepspeech2_no_stream.model import deepspeech2_no_stream,
 from ppasr.model_utils.utils import DeepSpeech2ModelExport, DeepSpeech2NoStreamModelExport
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
-from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object
+from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object, merge_audio
 from ppasr.utils.utils import labels_to_string
 from ppasr.utils.model_summary import summary
 
@@ -50,7 +50,10 @@ class PPASRTrainer(object):
                     num_samples=1000000,
                     count_threshold=2,
                     is_change_frame_rate=True,
-                    max_test_manifest=10000):
+                    max_test_manifest=10000,
+                    is_merge_audio=False,
+                    save_audio_path='dataset/audio/merge_audio',
+                    max_duration=600):
         """
         创建数据列表和词汇表
         :param annotation_path: 标注文件的路径
@@ -59,7 +62,15 @@ class PPASRTrainer(object):
         :param count_threshold: 字符计数的截断阈值，0为不做限制
         :param is_change_frame_rate: 是否统一改变音频为16000Hz，这会消耗大量的时间
         :param max_test_manifest: 生成测试数据列表的最大数量，如果annotation_path包含了test.txt，就全部使用test.txt的数据
+        :param is_merge_audio: 是否将多个短音频合并成长音频，以减少音频文件数量，注意自动删除原始音频文件
+        :param save_audio_path: 合并音频的保存路径
+        :param max_duration: 合并音频的最大长度，单位秒
         """
+        if is_merge_audio:
+            logger.info('开始合并音频...')
+            merge_audio(annotation_path=annotation_path, save_audio_path=save_audio_path, max_duration=max_duration)
+            logger.info('合并音频已完成，原始音频文件和标注文件已自动删除，其他原始文件可手动删除！')
+
         logger.info('开始生成数据列表...')
         create_manifest(annotation_path=annotation_path,
                         train_manifest_path=self.configs.dataset.train_manifest,

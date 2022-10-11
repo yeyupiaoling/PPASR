@@ -2,7 +2,7 @@ import copy
 import io
 import random
 
-import librosa
+import ffmpeg
 import numpy as np
 import resampy
 import soundfile
@@ -64,7 +64,12 @@ class AudioSegment(object):
         try:
             samples, sample_rate = soundfile.read(file, dtype='float32')
         except:
-            samples, sample_rate = librosa.load(path=file, dtype=np.float32)
+            # 使用ffmpeg读取音频，以支持更多格式数据
+            sample_rate = 16000
+            out, _ = (ffmpeg.input(file, threads=0)
+                      .output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=sample_rate)
+                      .run(cmd=["ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True))
+            samples = np.frombuffer(out, np.int16).flatten().astype(np.float32) / 32768.0
         return cls(samples, sample_rate)
 
     @classmethod
@@ -83,9 +88,9 @@ class AudioSegment(object):
         """
         sndfile = soundfile.SoundFile(file)
         sample_rate = sndfile.samplerate
-        duration = float(len(sndfile)) / sample_rate
-        start = 0. if start is None else start
-        end = duration if end is None else end
+        duration = round(float(len(sndfile)) / sample_rate, 3)
+        start = 0. if start is None else round(start, 3)
+        end = duration if end is None else round(end, 3)
         if start < 0.0:
             start += duration
         if end < 0.0:

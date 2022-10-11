@@ -104,8 +104,18 @@ class NormalizerDataset(Dataset):
 
     def __getitem__(self, idx):
         instance = self.sampled_manifest[idx]
+        if 'start_time' not in instance.keys():
+            # 分割音频路径和标签
+            audio_file, transcript = instance["audio_filepath"], instance["text"]
+            # 读取音频
+            audio = AudioSegment.from_file(audio_file)
+        else:
+            # 分割音频路径和标签
+            audio_file, transcript = instance["audio_filepath"], instance["text"]
+            start_time, end_time = instance["start_time"], instance["end_time"]
+            # 读取音频
+            audio = AudioSegment.slice_from_file(audio_file, start=start_time, end=end_time)
         # 获取音频特征
-        audio = AudioSegment.from_file(instance["audio_filepath"])
         feature = self.audio_featurizer.featurize(audio)
         return feature.astype(np.float32), 0
 

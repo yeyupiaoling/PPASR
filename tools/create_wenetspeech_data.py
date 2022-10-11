@@ -13,25 +13,28 @@ args = parser.parse_args()
 
 def process_wenetspeech(wenetspeech_json, annotation_dir):
     input_dir = os.path.dirname(wenetspeech_json)
-
     if not os.path.exists(annotation_dir):
         os.makedirs(annotation_dir)
-
-    if os.path.exists(os.path.join(annotation_dir, 'wenetspeech.txt')):
-        f_ann = open(os.path.join(annotation_dir, 'wenetspeech.txt'), 'a', encoding='utf-8')
+    # 训练数据列表
+    train_list_path = os.path.join(annotation_dir, 'wenetspeech.json')
+    if os.path.exists(train_list_path):
+        f_ann = open(train_list_path, 'a', encoding='utf-8')
     else:
-        f_ann = open(os.path.join(annotation_dir, 'wenetspeech.txt'), 'w', encoding='utf-8')
-
-    if os.path.exists(os.path.join(annotation_dir, 'test.txt')):
-        f_ann_test = open(os.path.join(annotation_dir, 'test.txt'), 'a', encoding='utf-8')
+        f_ann = open(train_list_path, 'w', encoding='utf-8')
+    # 测试数据列表
+    test_list_path = os.path.join(annotation_dir, 'test.json')
+    if os.path.exists(test_list_path):
+        f_ann_test = open(test_list_path, 'a', encoding='utf-8')
     else:
-        f_ann_test = open(os.path.join(annotation_dir, 'test.txt'), 'w', encoding='utf-8')
-
+        f_ann_test = open(test_list_path, 'w', encoding='utf-8')
+    i = 0
+    # 开始读取数据，因为文件太大，无法获取进度
     with open(wenetspeech_json, 'r', encoding='utf-8') as f:
         objects = ijson.items(f, 'audios.item')
         while True:
             try:
                 long_audio = objects.__next__()
+                i += 1
                 try:
                     long_audio_path = os.path.realpath(os.path.join(input_dir, long_audio['path']))
                     aid = long_audio['aid']
@@ -44,15 +47,15 @@ def process_wenetspeech(wenetspeech_json, annotation_dir):
                     print(f'''Warning: {aid} 数据读取错误，跳过''')
                     continue
                 else:
-                    print(f'正在处理{long_audio_path}音频')
-                    save_dir = long_audio_path[:-5]
-                    os.makedirs(save_dir, exist_ok=True)
+                    print(f'正在处理第{i}音频：{long_audio_path}')
                     source_wav = AudioSegment.from_file(long_audio_path)
+                    target_audio = source_wav.set_frame_rate(16000)
+                    save_audio_path = long_audio_path.replace('.opus', '.wav')
+                    target_audio.export(save_audio_path, format="wav")
                     for segment_file in segments_lists:
                         try:
-                            sid = segment_file['sid']
-                            start_time = segment_file['begin_time']
-                            end_time = segment_file['end_time']
+                            start_time = float(segment_file['begin_time'])
+                            end_time = float(segment_file['end_time'])
                             text = segment_file['text']
                             confidence = segment_file['confidence']
                             if confidence < 0.95: continue
@@ -60,22 +63,26 @@ def process_wenetspeech(wenetspeech_json, annotation_dir):
                             print(f'''Warning: {segment_file} something is wrong, skipped''')
                             continue
                         else:
-                            start = int(start_time * 1000)
-                            end = int(end_time * 1000)
-                            target_audio = source_wav[start:end].set_frame_rate(16000)
-                            save_audio_path = os.path.join(save_dir, sid.split('_')[-1] + '.wav')
-                            target_audio.export(save_audio_path, format="wav")
+                            line = dict(audio_filepath=save_audio_path,
+                                        text=text,
+                                        duration=round(end_time - start_time, 3),
+                                        start_time=round(start_time, 3),
+                                        end_time=round(end_time, 3))
                             if long_audio['path'].split('/')[1] != 'train':
-                                f_ann_test.write('%s\t%s\n' % (save_audio_path, text))
+                                f_ann_test.write('{}\n'.format(str(line).replace("'", '"')))
                             else:
-                                f_ann.write('%s\t%s\n' % (save_audio_path, text))
+                                f_ann.write('{}\n'.format(str(line).replace("'", '"')))
+                            f_ann.flush()
+                            f_ann_test.flush()
                     # 删除已经处理过的音频
                     os.remove(long_audio_path)
             except StopIteration:
                 print("数据读取完成")
                 break
-        shutil.copy(os.path.join(annotation_dir, 'wenetspeech.txt'), os.path.join(input_dir, 'wenetspeech.txt'))
-        shutil.copy(os.path.join(annotation_dir, 'test.txt'), os.path.join(input_dir, 'test.txt'))
+        f_ann.close()
+        f_ann_test.close()
+        shutil.copy(train_list_path, os.path.join(input_dir, 'wenetspeech_train.json'))
+        shutil.copy(test_list_path, os.path.join(input_dir, 'wenetspeech_test.json'))
 
 
 if __name__ == '__main__':

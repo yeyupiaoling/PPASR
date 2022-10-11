@@ -40,14 +40,22 @@ class PPASRDataset(Dataset):
                 continue
             if max_duration != -1 and line["duration"] > max_duration:
                 continue
-            self.data_list.append([line["audio_filepath"], line["text"]])
+            self.data_list.append(dict(line))
 
     def __getitem__(self, idx):
         try:
-            # 分割音频路径和标签
-            audio_file, transcript = self.data_list[idx]
-            # 读取音频
-            audio_segment = AudioSegment.from_file(audio_file)
+            data_list = self.data_list[idx]
+            if 'start_time' not in data_list.keys():
+                # 分割音频路径和标签
+                audio_file, transcript = data_list["audio_filepath"], data_list["text"]
+                # 读取音频
+                audio_segment = AudioSegment.from_file(audio_file)
+            else:
+                # 分割音频路径和标签
+                audio_file, transcript = data_list["audio_filepath"], data_list["text"]
+                start_time, end_time = data_list["start_time"], data_list["end_time"]
+                # 读取音频
+                audio_segment = AudioSegment.slice_from_file(audio_file, start=start_time, end=end_time)
             # 音频增强
             self._augmentation_pipeline.transform_audio(audio_segment)
             # 预处理，提取特征
