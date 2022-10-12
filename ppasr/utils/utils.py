@@ -11,16 +11,20 @@ from tqdm import tqdm
 from zhconv import convert
 from tn.chinese.normalizer import Normalizer
 
+from ppasr.utils.logger import setup_logger
+
+logger = setup_logger(__name__)
+
 
 def print_arguments(args, configs):
-    print("----------- 额外配置参数 -----------")
+    logger.info("----------- 额外配置参数 -----------")
     for arg, value in sorted(vars(args).items()):
-        print("%s: %s" % (arg, value))
-    print("------------------------------------------------")
-    print("----------- 配置文件参数 -----------")
+        logger.info("%s: %s" % (arg, value))
+    logger.info("------------------------------------------------")
+    logger.info("----------- 配置文件参数 -----------")
     for arg, value in sorted(configs.items()):
-        print("%s: %s" % (arg, value))
-    print("------------------------------------------------")
+        logger.info("%s: %s" % (arg, value))
+    logger.info("------------------------------------------------")
 
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
@@ -75,7 +79,11 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
             with open(annotation_text_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             for line in tqdm(lines):
-                d = json.loads(line)
+                try:
+                    d = json.loads(line)
+                except Exception as e:
+                    logger.warning(f'{line} 错误，已跳过，错误信息：{e}')
+                    continue
                 audio_path, text = d["audio_filepath"], d["text"]
                 start_time, end_time, duration = d["start_time"], d["end_time"], d["duration"]
                 # 重新调整音频格式并保存
@@ -150,7 +158,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
             f_train.write('{}\n'.format(str(line).replace("'", '"')))
     f_train.close()
     f_test.close()
-    print("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
+    logger.info("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
 
 
 # 将多段短音频合并为长音频，减少文件数量
@@ -247,10 +255,10 @@ def is_uchar(uchar):
 # 生成噪声的数据列表
 def create_noise(path, noise_manifest_path, is_change_frame_rate=True):
     if not os.path.exists(path):
-        print('噪声音频文件为空，已跳过！')
+        logger.info('噪声音频文件为空，已跳过！')
         return
     json_lines = []
-    print('正在创建噪声数据列表，路径：%s，请等待 ...' % path)
+    logger.info('正在创建噪声数据列表，路径：%s，请等待 ...' % path)
     for file in tqdm(os.listdir(path)):
         audio_path = os.path.join(path, file)
         try:
