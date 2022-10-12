@@ -139,7 +139,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     # 按照音频长度降序
     data_list.sort(key=lambda x: x["duration"], reverse=False)
     if len(test_list) > 0:
-        test_list.sort(key=lambda x: json.loads(x)["duration"], reverse=False)
+        test_list.sort(key=lambda x: x["duration"], reverse=False)
     # 数据写入到文件中
     f_train = open(train_manifest_path, 'w', encoding='utf-8')
     f_test = open(test_manifest_path, 'w', encoding='utf-8')
