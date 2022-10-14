@@ -97,14 +97,15 @@ class PPASRTrainer(object):
                 # 跳过指定的字符阈值，超过这大小的字符都忽略
                 if count < count_threshold: break
                 fout.write('%s\t%d\n' % (char, count))
+            fout.write('<eos>\t-1\n')
         logger.info('数据字典生成完成！')
 
         logger.info('=' * 70)
-        logger.info('开始抽取不超过{}条数据计算均值和标准值...'.format(num_samples))
         normalizer = FeatureNormalizer(mean_std_filepath=self.configs.dataset.mean_std_path)
         normalizer.compute_mean_std(manifest_path=self.configs.dataset.train_manifest,
                                     num_workers=self.configs.dataset.num_workers,
-                                    preprocess_configs=self.configs.preprocess)
+                                    preprocess_configs=self.configs.preprocess,
+                                    num_samples=num_samples)
         print('计算的均值和标准值已保存在 %s！' % self.configs.dataset.mean_std_path)
 
     def evaluate(self, batch_size=32, resume_model='models/deepspeech2_fbank/best_model/'):

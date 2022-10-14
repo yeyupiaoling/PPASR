@@ -91,18 +91,16 @@ class AudioSegment(object):
         duration = round(float(len(sndfile)) / sample_rate, 3)
         start = 0. if start is None else round(start, 3)
         end = duration if end is None else round(end, 3)
-        if start < 0.0:
-            start += duration
-        if end < 0.0:
-            end += duration
-        if start < 0.0:
-            raise ValueError("切片起始位置(%f s)越界" % start)
+        # 从末尾开始计
+        if start < 0.0:  start += duration
+        if end < 0.0: end += duration
+        # 保证数据不越界
+        if start < 0.0: start = 0.0
+        if end > duration: end = duration
         if end < 0.0:
             raise ValueError("切片结束位置(%f s)越界" % end)
         if start > end:
             raise ValueError("切片开始位置(%f s)晚于切片结束位置(%f s)" % (start, end))
-        if end > duration:
-            raise ValueError("切片结束位置(%f s)越界(> %f s)" % (end, duration))
         start_frame = int(start * sample_rate)
         end_frame = int(end * sample_rate)
         sndfile.seek(start_frame)

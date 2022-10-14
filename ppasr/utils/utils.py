@@ -92,7 +92,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 # 获取音频长度
                 durations.append(duration)
                 # 对文本进行标准化
-                text = normalizer.normalize(text).lower()
+                text = normalizer.normalize(text).upper()
                 # 过滤非法的字符
                 text = is_ustr(text)
                 if len(text) == 0: continue
@@ -112,7 +112,11 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
             with open(annotation_text_path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
             for line in tqdm(lines):
-                audio_path = line.split('\t')[0]
+                try:
+                    audio_path, text = line.replace('\n', '').replace('\r', '').split('\t')
+                except Exception as e:
+                    logger.warning(f'{line} 错误，已跳过，错误信息：{e}')
+                    continue
                 # 重新调整音频格式并保存
                 if is_change_frame_rate:
                     change_rate(audio_path)
@@ -121,7 +125,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 duration = float(len(audio_data)) / samplerate
                 durations.append(duration)
                 # 对文本进行标准化
-                text = normalizer.normalize(line.split('\t')[1].replace('\n', '').replace('\r', '')).lower()
+                text = normalizer.normalize(text).upper()
                 # 过滤非法的字符
                 text = is_ustr(text)
                 if len(text) == 0:continue
@@ -197,7 +201,7 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600):
                           end_time=round(sum(duration_sum), 5))
             list_data.append(list_d)
             # 删除已处理的音频文件
-            # os.remove(audio_path)
+            os.remove(audio_path)
             # 保存合并音频文件
             if sum(duration_sum) >= max_duration:
                 # 保存路径
