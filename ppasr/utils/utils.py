@@ -6,6 +6,7 @@ import wave
 
 import librosa
 import numpy as np
+import resampy
 import soundfile
 from tqdm import tqdm
 from zhconv import convert
@@ -227,10 +228,19 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600):
 
 # 改变音频采样率为16000Hz
 def change_rate(audio_path):
-    data, sr = soundfile.read(audio_path)
-    if sr != 16000:
-        data = librosa.resample(data, sr, target_sr=16000)
-        soundfile.write(audio_path, data, samplerate=16000)
+    is_change = False
+    wav, samplerate = soundfile.read(audio_path, dtype='float32')
+    # 多通道转单通道
+    if wav.ndim > 1:
+        wav = wav.T
+        wav = np.mean(wav, axis=tuple(range(wav.ndim - 1)))
+        is_change = True
+    # 重采样
+    if samplerate != 16000:
+        wav = resampy.resample(wav, sr_orig=samplerate, sr_new=16000)
+        is_change = True
+    if is_change:
+        soundfile.write(audio_path, wav, samplerate=16000)
 
 
 # 过滤非法的字符
