@@ -9,7 +9,6 @@ import numpy as np
 import soundfile
 from tqdm import tqdm
 from zhconv import convert
-from tn.chinese.normalizer import Normalizer
 
 from ppasr.utils.logger import setup_logger
 
@@ -72,6 +71,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     data_list = []
     test_list = []
     durations = []
+    from tn.chinese.normalizer import Normalizer
     normalizer = Normalizer()
     for annotation_text in os.listdir(annotation_path):
         annotation_text_path = os.path.join(annotation_path, annotation_text)
