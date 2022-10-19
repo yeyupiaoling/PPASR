@@ -60,7 +60,7 @@ class PPASRTrainer(object):
         :param noise_path: 噪声音频存放的文件夹路径
         :param num_samples: 用于计算均值和标准值得音频数量，当为-1使用全部数据
         :param count_threshold: 字符计数的截断阈值，0为不做限制
-        :param is_change_frame_rate: 是否统一改变音频为16000Hz，这会消耗大量的时间
+        :param is_change_frame_rate: 是否统一改变音频的采样率
         :param max_test_manifest: 生成测试数据列表的最大数量，如果annotation_path包含了test.txt，就全部使用test.txt的数据
         :param is_merge_audio: 是否将多个短音频合并成长音频，以减少音频文件数量，注意自动删除原始音频文件
         :param save_audio_path: 合并音频的保存路径
@@ -68,7 +68,8 @@ class PPASRTrainer(object):
         """
         if is_merge_audio:
             logger.info('开始合并音频...')
-            merge_audio(annotation_path=annotation_path, save_audio_path=save_audio_path, max_duration=max_duration)
+            merge_audio(annotation_path=annotation_path, save_audio_path=save_audio_path, max_duration=max_duration,
+                        target_sr=self.configs.preprocess.sample_rate)
             logger.info('合并音频已完成，原始音频文件和标注文件已自动删除，其他原始文件可手动删除！')
 
         logger.info('开始生成数据列表...')
@@ -76,12 +77,14 @@ class PPASRTrainer(object):
                         train_manifest_path=self.configs.dataset.train_manifest,
                         test_manifest_path=self.configs.dataset.test_manifest,
                         is_change_frame_rate=is_change_frame_rate,
-                        max_test_manifest=max_test_manifest)
+                        max_test_manifest=max_test_manifest,
+                        target_sr=self.configs.preprocess.sample_rate)
         logger.info('=' * 70)
         logger.info('开始生成噪声数据列表...')
         create_noise(path=noise_path,
                      noise_manifest_path=self.configs.dataset.noise_manifest_path,
-                     is_change_frame_rate=is_change_frame_rate)
+                     is_change_frame_rate=is_change_frame_rate,
+                     target_sr=self.configs.preprocess.sample_rate)
         logger.info('=' * 70)
 
         logger.info('开始生成数据字典...')
