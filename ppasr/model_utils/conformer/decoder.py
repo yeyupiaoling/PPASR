@@ -1,4 +1,4 @@
-from typing import List, Tuple, Any
+from typing import List
 from typing import Optional, Tuple
 
 import paddle

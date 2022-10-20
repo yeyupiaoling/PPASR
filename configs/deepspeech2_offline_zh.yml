@@ -2,7 +2,7 @@
 encoder_conf:
     num_rnn_layers: 5
     rnn_size: 1024
-    rnn_direction: bidirect
+    rnn_direction: 'bidirect'
     use_gru: False
 
 # decoder参数

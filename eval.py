@@ -9,9 +9,9 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,   'configs/conformer_offline_zh.yml',     "配置文件")
-add_arg("use_gpu",          bool,  True,                        "是否使用GPU评估模型")
-add_arg('resume_model',     str,   'models/{}_{}/best_model/',  "模型的路径")
+add_arg('configs',          str,   'configs/conformer_online_zh.yml',     "配置文件")
+add_arg("use_gpu",          bool,  True,       "是否使用GPU评估模型")
+add_arg('resume_model',     str,   'models/',  "模型的路径")
 args = parser.parse_args()
 
 

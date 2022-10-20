@@ -1,4 +1,4 @@
-# conformer参数
+# 编码器参数
 encoder_conf:
     output_size: 256    # dimension of attention
     attention_heads: 4
@@ -7,14 +7,14 @@ encoder_conf:
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
     attention_dropout_rate: 0.0
-    input_layer: conv2d # encoder input type, you can chose conv2d, conv2d6 and conv2d8
-    normalize_before: true
+    input_layer: 'conv2d' # encoder input type, you can chose conv2d, conv2d6 and conv2d8
+    normalize_before: True
     cnn_module_kernel: 15
     use_cnn_module: True
     activation_type: 'swish'
     pos_enc_layer_type: 'rel_pos'
 
-# transformer参数
+# 解码器参数
 decoder_conf:
     attention_heads: 4
     linear_units: 2048

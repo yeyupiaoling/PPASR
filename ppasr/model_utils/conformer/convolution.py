@@ -68,7 +68,7 @@ class ConvolutionModule(nn.Layer):
         assert norm in ['batch_norm', 'layer_norm']
         if norm == "batch_norm":
             self.use_layer_norm = False
-            self.norm = nn.BatchNorm1D(channels, momentum=0.1)
+            self.norm = nn.BatchNorm1D(channels)
         else:
             self.use_layer_norm = True
             self.norm = nn.LayerNorm(channels)

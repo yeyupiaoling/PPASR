@@ -116,7 +116,6 @@ class PPASRTrainer(object):
                                           vocab_size=self.test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
-        print(self.model)
         if is_train:
             # 设置优化方法
             grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)
@@ -131,7 +130,7 @@ class PPASRTrainer(object):
         # 加载预训练模型
         if pretrained_model is not None:
             if os.path.isdir(pretrained_model):
-                pretrained_model = os.path.join(pretrained_model, 'model.pt')
+                pretrained_model = os.path.join(pretrained_model, 'model.pdparams')
             assert os.path.exists(pretrained_model), f"{pretrained_model} 模型不存在！"
             model_dict = self.model.state_dict()
             model_state_dict = paddle.load(pretrained_model)
@@ -144,7 +143,7 @@ class PPASRTrainer(object):
                         model_state_dict.pop(name, None)
                 else:
                     logger.warning('Lack weight: {}'.format(name))
-            self.model.load_state_dict(model_state_dict, strict=False)
+            self.model.set_state_dict(model_state_dict)
             logger.info('成功加载预训练模型：{}'.format(pretrained_model))
 
     def __load_checkpoint(self, save_model_path, resume_model):
@@ -478,14 +477,16 @@ class PPASRTrainer(object):
             resume_model = os.path.join(resume_model, 'model.pdparams')
         assert os.path.exists(resume_model), f"{resume_model} 模型不存在！"
         model_state_dict = paddle.load(resume_model)
-        # model.set_state_dict(model_state_dict)
+        model.set_state_dict(model_state_dict)
         logger.info('成功恢复模型参数和优化方法参数：{}'.format(resume_model))
         model.eval()
 
         infer_model_dir = os.path.join(save_model_path,
-                                       f'{self.configs.use_model}_{self.configs.preprocess_conf.feature_method}')
+                                       f'{self.configs.use_model}_{self.configs.preprocess_conf.feature_method}',
+                                       'infer')
         os.makedirs(infer_model_dir, exist_ok=True)
-        infer_model_path = os.path.join(infer_model_dir, 'inference.pt')
-        script_model = paddle.jit.script(model)
-        script_model.save(infer_model_path)
+        input_spec = [InputSpec(shape=[1, None, audio_featurizer.feature_dim], dtype=paddle.float32),
+                      InputSpec(shape=[None,], dtype=paddle.int64)]
+        infer_model_path = os.path.join(infer_model_dir, 'model')
+        paddle.jit.save(model.get_encoder_out, infer_model_path, input_spec)
         logger.info("预测模型已保存：{}".format(infer_model_path))

@@ -157,7 +157,7 @@ class ConformerModel(paddle.nn.Layer):
             )  # (B, maxlen, encoder_dim)
         return encoder_out, encoder_mask
 
-    # @paddle.jit.to_static
+    @paddle.jit.to_static
     def get_encoder_out(self, speech: paddle.Tensor, speech_lengths: paddle.Tensor) -> Tensor:
         """ Get encoder output
 
@@ -171,7 +171,7 @@ class ConformerModel(paddle.nn.Layer):
         ctc_probs = self.ctc.softmax(encoder_out)
         return ctc_probs
 
-    # @paddle.jit.to_static
+    @paddle.jit.to_static
     def get_encoder_out_chunk(
             self,
             speech: paddle.Tensor,

@@ -8,7 +8,7 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,    'configs/conformer_offline_zh.yml',       '配置文件')
+add_arg('configs',          str,    'configs/conformer_online_zh.yml',       '配置文件')
 add_arg("local_rank",       int,    0,                             '多卡训练的本地GPU')
 add_arg("use_gpu",          bool,   True,                          '是否使用GPU训练')
 add_arg('augment_conf_path',str,    'configs/augmentation.json',   '数据增强的配置文件，为json格式')
