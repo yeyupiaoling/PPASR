@@ -23,8 +23,8 @@ from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
-from ppasr.model_utils.conformer.model import ConformerModel
-from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
+from ppasr.model_utils.conformer.model import ConformerModel, ConformerModelOnline, ConformerModelOffline
+from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model, DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
 from ppasr.utils.scheduler import WarmupLR
@@ -105,15 +105,24 @@ class PPASRTrainer(object):
 
     def __setup_model(self, is_train=False):
         # 获取模型
-        if self.configs.use_model == 'conformer':
-            self.model = ConformerModel(configs=self.configs,
-                                        input_dim=self.test_dataset.feature_dim,
-                                        vocab_size=self.test_dataset.vocab_size,
-                                        **self.configs.model_conf)
-        elif self.configs.use_model == 'deepspeech2':
-            self.model = DeepSpeech2Model(configs=self.configs,
-                                          input_dim=self.test_dataset.feature_dim,
-                                          vocab_size=self.test_dataset.vocab_size)
+        if self.configs.use_model == 'conformer_online':
+            self.model = ConformerModelOnline(configs=self.configs,
+                                              input_dim=self.test_dataset.feature_dim,
+                                              vocab_size=self.test_dataset.vocab_size,
+                                              **self.configs.model_conf)
+        elif self.configs.use_model == 'conformer_offline':
+            self.model = ConformerModelOffline(configs=self.configs,
+                                               input_dim=self.test_dataset.feature_dim,
+                                               vocab_size=self.test_dataset.vocab_size,
+                                               **self.configs.model_conf)
+        elif self.configs.use_model == 'deepspeech2_online':
+            self.model = DeepSpeech2ModelOnline(configs=self.configs,
+                                                input_dim=self.test_dataset.feature_dim,
+                                                vocab_size=self.test_dataset.vocab_size)
+        elif self.configs.use_model == 'deepspeech2_offline':
+            self.model = DeepSpeech2ModelOffline(configs=self.configs,
+                                                 input_dim=self.test_dataset.feature_dim,
+                                                 vocab_size=self.test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         if is_train:
@@ -407,7 +416,7 @@ class PPASRTrainer(object):
                 self.__save_checkpoint(save_model_path=save_model_path, epoch_id=epoch_id, error_rate=error_result,
                                        test_loss=loss)
 
-    def evaluate(self, resume_model='models/conformer_fbank/best_model/'):
+    def evaluate(self, resume_model='models/conformer_online_fbank/best_model/'):
         """
         评估模型
         :param resume_model: 所使用的模型
@@ -448,7 +457,7 @@ class PPASRTrainer(object):
         self.model.train()
         return loss, error_result
 
-    def export(self, save_model_path='models/', resume_model='models/conformer_fbank/best_model/'):
+    def export(self, save_model_path='models/', resume_model='models/conformer_online_fbank/best_model/'):
         """
         导出预测模型
         :param save_model_path: 模型保存的路径
@@ -461,15 +470,24 @@ class PPASRTrainer(object):
         if not os.path.exists(self.configs.dataset_conf.mean_istd_path):
             raise Exception(f'归一化列表文件 {self.configs.dataset_conf.mean_istd_path} 不存在')
         # 获取模型
-        if self.configs.use_model == 'conformer':
-            model = ConformerModel(configs=self.configs,
-                                   input_dim=audio_featurizer.feature_dim,
-                                   vocab_size=text_featurizer.vocab_size,
-                                   **self.configs.model_conf)
-        elif self.configs.use_model == 'deepspeech2':
-            model = DeepSpeech2Model(configs=self.configs,
-                                     input_dim=audio_featurizer.feature_dim,
-                                     vocab_size=text_featurizer.vocab_size)
+        if self.configs.use_model == 'conformer_online':
+            model = ConformerModelOnline(configs=self.configs,
+                                         input_dim=self.test_dataset.feature_dim,
+                                         vocab_size=self.test_dataset.vocab_size,
+                                         **self.configs.model_conf)
+        elif self.configs.use_model == 'conformer_offline':
+            model = ConformerModelOffline(configs=self.configs,
+                                          input_dim=self.test_dataset.feature_dim,
+                                          vocab_size=self.test_dataset.vocab_size,
+                                          **self.configs.model_conf)
+        elif self.configs.use_model == 'deepspeech2_online':
+            model = DeepSpeech2ModelOnline(configs=self.configs,
+                                           input_dim=self.test_dataset.feature_dim,
+                                           vocab_size=self.test_dataset.vocab_size)
+        elif self.configs.use_model == 'deepspeech2_offline':
+            model = DeepSpeech2ModelOffline(configs=self.configs,
+                                            input_dim=self.test_dataset.feature_dim,
+                                            vocab_size=self.test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         # 加载预训练模型
@@ -486,7 +504,7 @@ class PPASRTrainer(object):
                                        'infer')
         os.makedirs(infer_model_dir, exist_ok=True)
         input_spec = [InputSpec(shape=[1, None, audio_featurizer.feature_dim], dtype=paddle.float32),
-                      InputSpec(shape=[None,], dtype=paddle.int64)]
+                      InputSpec(shape=[None, ], dtype=paddle.int64)]
         infer_model_path = os.path.join(infer_model_dir, 'model')
         paddle.jit.save(model.get_encoder_out, infer_model_path, input_spec)
         logger.info("预测模型已保存：{}".format(infer_model_path))

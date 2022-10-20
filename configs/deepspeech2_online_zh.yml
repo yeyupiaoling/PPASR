@@ -2,7 +2,6 @@
 encoder_conf:
     num_rnn_layers: 5
     rnn_size: 1024
-    rnn_direction: 'forward'
     use_gru: False
 
 # decoder参数
@@ -76,7 +75,7 @@ train_conf:
   log_interval: 100
 
 # 所使用的模型
-use_model: 'deepspeech2'
+use_model: 'deepspeech2_offline'
 # 结果解码方法，支持：ctc_beam_search、ctc_greedy
 decoder: 'ctc_beam_search'
 # 计算错误率方法，支持：cer、wer

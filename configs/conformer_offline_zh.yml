@@ -3,7 +3,7 @@ encoder_conf:
     output_size: 256    # dimension of attention
     attention_heads: 4
     linear_units: 2048  # the number of units of position-wise feed forward
-    num_blocks: 6      # the number of encoder blocks
+    num_blocks: 12      # the number of encoder blocks
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
     attention_dropout_rate: 0.0
@@ -98,7 +98,7 @@ train_conf:
   log_interval: 100
 
 # 所使用的模型
-use_model: 'conformer'
+use_model: 'conformer_offline'
 # 结果解码方法，支持：ctc_beam_search、ctc_greedy
 decoder: 'ctc_beam_search'
 # 计算错误率方法，支持：cer、wer

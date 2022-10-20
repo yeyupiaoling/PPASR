@@ -22,7 +22,7 @@ logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,    'configs/conformer_offline_zh.yml', "配置文件")
+add_arg('configs',          str,    'configs/conformer_online_zh.yml', "配置文件")
 add_arg("host",             str,    '0.0.0.0',            "监听主机的IP地址")
 add_arg("port_server",      int,    5000,                 "普通识别服务所使用的端口号")
 add_arg("port_stream",      int,    5001,                 "流式识别服务所使用的端口号")

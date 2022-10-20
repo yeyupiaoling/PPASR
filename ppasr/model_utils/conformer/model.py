@@ -21,13 +21,23 @@ class ConformerModel(paddle.nn.Layer):
             ignore_id: int = IGNORE_ID,
             reverse_weight: float = 0.0,
             lsm_weight: float = 0.0,
-            length_normalized_loss: bool = False, ):
+            length_normalized_loss: bool = False,
+            use_dynamic_chunk: bool = False,
+            use_dynamic_left_chunk: bool = False,
+            causal: bool = False,
+            cnn_module_norm: str = "batch_norm"):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
         feature_normalizer = FeatureNormalizer(mean_istd_filepath=configs.dataset_conf.mean_istd_path)
         global_cmvn = GlobalCMVN(paddle.to_tensor(feature_normalizer.mean, dtype=paddle.float32),
                                  paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
-        self.encoder = ConformerEncoder(input_dim, global_cmvn=global_cmvn, **configs.encoder_conf)
+        self.encoder = ConformerEncoder(input_dim,
+                                        global_cmvn=global_cmvn,
+                                        use_dynamic_chunk=use_dynamic_chunk,
+                                        use_dynamic_left_chunk=use_dynamic_left_chunk,
+                                        causal=causal,
+                                        cnn_module_norm=cnn_module_norm,
+                                        **configs.encoder_conf)
         self.decoder = TransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
 
         self.ctc = CTCLoss(vocab_size, self.encoder.output_size())
@@ -157,7 +167,6 @@ class ConformerModel(paddle.nn.Layer):
             )  # (B, maxlen, encoder_dim)
         return encoder_out, encoder_mask
 
-    @paddle.jit.to_static
     def get_encoder_out(self, speech: paddle.Tensor, speech_lengths: paddle.Tensor) -> Tensor:
         """ Get encoder output
 
@@ -171,7 +180,6 @@ class ConformerModel(paddle.nn.Layer):
         ctc_probs = self.ctc.softmax(encoder_out)
         return ctc_probs
 
-    @paddle.jit.to_static
     def get_encoder_out_chunk(
             self,
             speech: paddle.Tensor,
@@ -199,3 +207,45 @@ class ConformerModel(paddle.nn.Layer):
                                                num_decoding_left_chunks, simulate_streaming)  # (B, maxlen, encoder_dim)
         ctc_probs = self.ctc.softmax(encoder_out)
         return ctc_probs
+
+
+def ConformerModelOnline(configs,
+                         input_dim: int,
+                         vocab_size: int,
+                         ctc_weight: float = 0.5,
+                         ignore_id: int = IGNORE_ID,
+                         reverse_weight: float = 0.0,
+                         lsm_weight: float = 0.0,
+                         length_normalized_loss: bool = False):
+    model = ConformerModel(configs=configs,
+                           input_dim=input_dim,
+                           vocab_size=vocab_size,
+                           ctc_weight=ctc_weight,
+                           ignore_id=ignore_id,
+                           reverse_weight=reverse_weight,
+                           lsm_weight=lsm_weight,
+                           length_normalized_loss=length_normalized_loss,
+                           use_dynamic_chunk=True,
+                           use_dynamic_left_chunk=True,
+                           causal=True,
+                           cnn_module_norm='layer_norm')
+    return model
+
+
+def ConformerModelOffline(configs,
+                          input_dim: int,
+                          vocab_size: int,
+                          ctc_weight: float = 0.5,
+                          ignore_id: int = IGNORE_ID,
+                          reverse_weight: float = 0.0,
+                          lsm_weight: float = 0.0,
+                          length_normalized_loss: bool = False):
+    model = ConformerModel(configs=configs,
+                           input_dim=input_dim,
+                           vocab_size=vocab_size,
+                           ctc_weight=ctc_weight,
+                           ignore_id=ignore_id,
+                           reverse_weight=reverse_weight,
+                           lsm_weight=lsm_weight,
+                           length_normalized_loss=length_normalized_loss)
+    return model

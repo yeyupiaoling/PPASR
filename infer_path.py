@@ -11,7 +11,7 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,    'configs/conformer_offline_zh.yml',     "配置文件")
+add_arg('configs',          str,    'configs/conformer_online_zh.yml',     "配置文件")
 add_arg('wav_path',         str,    'dataset/test.wav',          "预测音频的路径")
 add_arg('is_long_audio',    bool,   False,                       "是否为长语音")
 add_arg('real_time_demo',   bool,   False,                       "是否使用实时语音识别演示")

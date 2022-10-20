@@ -24,7 +24,7 @@ logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,   'configs/conformer_offline_zh.yml',       "配置文件")
+add_arg('configs',          str,   'configs/conformer_online_zh.yml',       "配置文件")
 add_arg('use_server',       bool,   False,         "是否使用服务器服务进行识别，否则使用本地识别")
 add_arg("host",             str,    "127.0.0.1",   "服务器IP地址")
 add_arg("port_server",      int,    5000,          "普通识别服务端口号")

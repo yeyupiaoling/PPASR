@@ -22,14 +22,17 @@ class DeepSpeech2Model(nn.Layer):
     def __init__(self,
                  configs,
                  input_dim: int,
-                 vocab_size: int):
+                 vocab_size: int,
+                 rnn_direction='forward'):
         super().__init__()
         feature_normalizer = FeatureNormalizer(mean_istd_filepath=configs.dataset_conf.mean_istd_path)
         global_cmvn = GlobalCMVN(paddle.to_tensor(feature_normalizer.mean, dtype=paddle.float32),
                                  paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
         self.encoder = CRNNEncoder(input_dim=input_dim,
                                    vocab_size=vocab_size,
-                                   global_cmvn=global_cmvn, **configs.encoder_conf)
+                                   global_cmvn=global_cmvn,
+                                   rnn_direction=rnn_direction,
+                                   **configs.encoder_conf)
         self.decoder = CTCDecoder(vocab_size, self.encoder.output_size, **configs.decoder_conf)
 
     def forward(self, speech, speech_lengths, text, text_lengths):
@@ -61,3 +64,23 @@ class DeepSpeech2Model(nn.Layer):
                                                                                           init_state_c_box)
         ctc_probs = self.decoder.softmax(eouts)
         return ctc_probs, eouts_len, final_chunk_state_h_box, final_chunk_state_c_box
+
+
+def DeepSpeech2ModelOnline(configs,
+                           input_dim: int,
+                           vocab_size: int):
+    model = DeepSpeech2Model(configs=configs,
+                             input_dim=input_dim,
+                             vocab_size=vocab_size,
+                             rnn_direction='forward')
+    return model
+
+
+def DeepSpeech2ModelOffline(configs,
+                           input_dim: int,
+                           vocab_size: int):
+    model = DeepSpeech2Model(configs=configs,
+                             input_dim=input_dim,
+                             vocab_size=vocab_size,
+                             rnn_direction='bidirect')
+    return model
