@@ -57,6 +57,7 @@ for _ in range(args.num_predictor):
                            pun_model_dir=args.pun_model_dir)
     predictors.append(predictor1)
 
+
 # 语音识别接口
 @app.route("/recognition", methods=['POST'])
 def recognition():

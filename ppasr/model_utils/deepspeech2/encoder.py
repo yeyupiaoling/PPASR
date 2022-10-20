@@ -27,7 +27,7 @@ class CRNNEncoder(nn.Layer):
         self.output_dim = self.conv.output_dim
 
         i_size = self.conv.output_dim
-        self.rnns = nn.LayerList()
+        self.rnn = nn.LayerList()
         self.layernorm_list = nn.LayerList()
         if rnn_direction == 'bidirect' or rnn_direction == 'bidirectional':
             layernorm_size = 2 * rnn_size
@@ -41,13 +41,13 @@ class CRNNEncoder(nn.Layer):
             else:
                 rnn_input_size = layernorm_size
             if use_gru is True:
-                self.rnns.append(
+                self.rnn.append(
                     nn.GRU(input_size=rnn_input_size,
                            hidden_size=rnn_size,
                            num_layers=1,
                            direction=rnn_direction))
             else:
-                self.rnns.append(
+                self.rnn.append(
                     nn.LSTM(input_size=rnn_input_size,
                             hidden_size=rnn_size,
                             num_layers=1,
@@ -87,7 +87,7 @@ class CRNNEncoder(nn.Layer):
         x, x_lens = self.conv(x, x_lens)
         final_chunk_state_list = []
         for i in range(0, self.num_rnn_layers):
-            x, final_state = self.rnns[i](x, init_state_list[i], x_lens)  # [B, T, D]
+            x, final_state = self.rnn[i](x, init_state_list[i], x_lens)  # [B, T, D]
             final_chunk_state_list.append(final_state)
             x = self.layernorm_list[i](x)
 

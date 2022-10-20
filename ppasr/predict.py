@@ -8,6 +8,8 @@ from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
+from ppasr.model_utils.conformer.model import ConformerModelOffline, ConformerModelOnline
+from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOffline, DeepSpeech2ModelOnline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import dict_to_object
 
@@ -17,13 +19,13 @@ logger = setup_logger(__name__)
 class Predictor:
     def __init__(self,
                  configs,
-                 model_dir='models/deepspeech2/infer/',
+                 model_path='models/conformer_online_fbank/best_model/',
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
                  use_gpu=True):
         """
         语音识别预测工具
-        :param model_dir: 导出的预测模型文件夹路径
+        :param model_path: 导出的预测模型文件夹路径
         :param use_pun: 是否使用加标点符号的模型
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param use_gpu: 是否使用GPU预测
@@ -59,7 +61,8 @@ class Predictor:
                     self.configs.decoder = 'ctc_greedy'
             else:
                 logger.warning('==================================================================')
-                logger.warning('【注意】Windows不支持ctc_beam_search，已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
+                logger.warning(
+                    '【注意】Windows不支持ctc_beam_search，已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
                 logger.warning('==================================================================\n')
                 self.configs.decoder = 'ctc_greedy'
 
@@ -67,11 +70,32 @@ class Predictor:
         if not os.path.exists(model_path):
             raise Exception("模型文件不存在，请检查{}是否存在！".format(model_path))
         # 根据 config 创建 predictor
-        if self.use_gpu:
-            self.predictor = paddle.jit.load(model_path)
-            self.predictor.to('cuda')
+        if self.configs.use_model == 'conformer_online':
+            self.predictor = ConformerModelOnline(configs=self.configs,
+                                                  input_dim=self._audio_featurizer.feature_dim,
+                                                  vocab_size=self._text_featurizer.vocab_size,
+                                                  **self.configs.model_conf)
+        elif self.configs.use_model == 'conformer_offline':
+            self.predictor = ConformerModelOffline(configs=self.configs,
+                                                   input_dim=self._audio_featurizer.feature_dim,
+                                                   vocab_size=self._text_featurizer.vocab_size,
+                                                   **self.configs.model_conf)
+        elif self.configs.use_model == 'deepspeech2_online':
+            self.predictor = DeepSpeech2ModelOnline(configs=self.configs,
+                                                    input_dim=self._audio_featurizer.feature_dim,
+                                                    vocab_size=self._text_featurizer.vocab_size)
+        elif self.configs.use_model == 'deepspeech2_offline':
+            self.predictor = DeepSpeech2ModelOffline(configs=self.configs,
+                                                     input_dim=self._audio_featurizer.feature_dim,
+                                                     vocab_size=self._text_featurizer.vocab_size, )
         else:
-            self.predictor = paddle.jit.load(model_path, map_location='cpu')
+            raise Exception('没有该模型：{}'.format(self.configs.use_model))
+        if os.path.isdir(model_path):
+            model_path = os.path.join(model_path, 'model.pdparams')
+        assert os.path.exists(model_path), f"{model_path} 模型不存在！"
+        model_state_dict = paddle.load(model_path)
+        self.predictor.set_state_dict(model_state_dict)
+        logger.info(f'成功加载模型：{model_path}')
         self.predictor.eval()
 
         logger.info(f'已加载模型：{model_path}')
@@ -154,10 +178,7 @@ class Predictor:
             audio_len = audio_len.cuda()
 
         # 运行predictor
-        if self.configs.use_model in ['conformer', 'deepspeech2']:
-            output_data = self.predictor.get_encoder_out(audio_data, audio_len).numpy()[0]
-        else:
-            raise Exception(f'没有该模型：{self.configs.use_model}')
+        output_data = self.predictor.get_encoder_out(audio_data, audio_len).numpy()[0]
 
         # 解码
         score, text = self.decode(output_data=output_data, use_pun=use_pun, is_itn=is_itn)
@@ -173,7 +194,7 @@ class Predictor:
 
         # 运行predictor
         output_chunk_probs, output_lens, self.output_state_h, self.output_state_c = \
-            self.predictor(audio_data, audio_len, self.output_state_h, self.output_state_c)
+            self.predictor.get_encoder_out_chunk(audio_data, audio_len, self.output_state_h, self.output_state_c)
         output_chunk_probs = output_chunk_probs.cpu().detach().numpy()
         output_lens = output_lens.cpu().detach().numpy()
         return output_chunk_probs, output_lens
@@ -194,8 +215,8 @@ class Predictor:
         :param is_itn: 是否对文本进行反标准化
         :return: 识别的文本结果和解码的得分数
         """
-        raise Exception("暂时不支持")
-        assert 'no_stream' not in self.configs.use_model, f'当前模型不是流式模型，当前模型为：{self.configs.use_model}'
+        if self.configs.use_model != 'deepspeech2_online':
+            raise Exception(f"不支持：{self.configs.use_model}")
         assert audio_bytes is not None or audio_ndarray is not None, \
             'audio_bytes和audio_ndarray至少有一个不为None！'
         # 加载音频文件，并进行预处理
@@ -207,7 +228,8 @@ class Predictor:
         if self.remained_wav is None:
             self.remained_wav = audio_data
         else:
-            self.remained_wav = AudioSegment(np.concatenate([self.remained_wav.samples, audio_data.samples]), audio_data.sample_rate)
+            self.remained_wav = AudioSegment(np.concatenate([self.remained_wav.samples, audio_data.samples]),
+                                             audio_data.sample_rate)
 
         # 预处理语音块
         x_chunk = self._audio_featurizer.featurize(self.remained_wav)
@@ -252,7 +274,7 @@ class Predictor:
                 score, text = self.beam_search_decoder.decode_chunk(probs=output_chunk_probs, logits_lens=output_lens)
             else:
                 # 贪心解码策略
-                score, text, self.greedy_last_max_prob_list, self.greedy_last_max_index_list =\
+                score, text, self.greedy_last_max_prob_list, self.greedy_last_max_index_list = \
                     greedy_decoder_chunk(probs_seq=output_chunk_probs[0], vocabulary=self._text_featurizer.vocab_list,
                                          last_max_index_list=self.greedy_last_max_index_list,
                                          last_max_prob_list=self.greedy_last_max_prob_list)

@@ -51,13 +51,11 @@ class DeepSpeech2Model(nn.Layer):
         loss = self.decoder(eouts, eouts_len, text, text_lengths)
         return {'loss': loss}
 
-    @paddle.jit.to_static
     def get_encoder_out(self, speech, speech_lengths):
         eouts, _, _, _ = self.encoder(speech, speech_lengths, None, None)
         ctc_probs = self.decoder.softmax(eouts)
         return ctc_probs
 
-    @paddle.jit.to_static
     def get_encoder_out_chunk(self, speech, speech_lengths, init_state_h_box=None, init_state_c_box=None):
         eouts, eouts_len, final_chunk_state_h_box, final_chunk_state_c_box = self.encoder(speech, speech_lengths,
                                                                                           init_state_h_box,

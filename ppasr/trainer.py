@@ -23,8 +23,8 @@ from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
-from ppasr.model_utils.conformer.model import ConformerModel, ConformerModelOnline, ConformerModelOffline
-from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model, DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
+from ppasr.model_utils.conformer.model import ConformerModelOnline, ConformerModelOffline
+from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
 from ppasr.utils.scheduler import WarmupLR
@@ -472,22 +472,22 @@ class PPASRTrainer(object):
         # 获取模型
         if self.configs.use_model == 'conformer_online':
             model = ConformerModelOnline(configs=self.configs,
-                                         input_dim=self.test_dataset.feature_dim,
-                                         vocab_size=self.test_dataset.vocab_size,
+                                         input_dim=audio_featurizer.feature_dim,
+                                         vocab_size=text_featurizer.vocab_size,
                                          **self.configs.model_conf)
         elif self.configs.use_model == 'conformer_offline':
             model = ConformerModelOffline(configs=self.configs,
-                                          input_dim=self.test_dataset.feature_dim,
-                                          vocab_size=self.test_dataset.vocab_size,
+                                          input_dim=audio_featurizer.feature_dim,
+                                          vocab_size=text_featurizer.vocab_size,
                                           **self.configs.model_conf)
         elif self.configs.use_model == 'deepspeech2_online':
             model = DeepSpeech2ModelOnline(configs=self.configs,
-                                           input_dim=self.test_dataset.feature_dim,
-                                           vocab_size=self.test_dataset.vocab_size)
+                                           input_dim=audio_featurizer.feature_dim,
+                                           vocab_size=text_featurizer.vocab_size)
         elif self.configs.use_model == 'deepspeech2_offline':
             model = DeepSpeech2ModelOffline(configs=self.configs,
-                                            input_dim=self.test_dataset.feature_dim,
-                                            vocab_size=self.test_dataset.vocab_size)
+                                            input_dim=audio_featurizer.feature_dim,
+                                            vocab_size=text_featurizer.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         # 加载预训练模型

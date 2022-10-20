@@ -196,7 +196,7 @@ class ConformerEncoder(nn.Layer):
             use_cnn_module: bool = True,
             cnn_module_kernel: int = 15,
             causal: bool = False,
-            cnn_module_norm: str = "batch_norm",
+            cnn_module_norm: str = "layer_norm",
             max_len: int = 5000
     ):
         """Construct ConformerEncoder

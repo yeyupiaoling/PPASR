@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Tuple
 
 import paddle
 from paddle import Tensor
@@ -24,8 +24,7 @@ class ConformerModel(paddle.nn.Layer):
             length_normalized_loss: bool = False,
             use_dynamic_chunk: bool = False,
             use_dynamic_left_chunk: bool = False,
-            causal: bool = False,
-            cnn_module_norm: str = "batch_norm"):
+            causal: bool = False):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
         feature_normalizer = FeatureNormalizer(mean_istd_filepath=configs.dataset_conf.mean_istd_path)
@@ -36,7 +35,6 @@ class ConformerModel(paddle.nn.Layer):
                                         use_dynamic_chunk=use_dynamic_chunk,
                                         use_dynamic_left_chunk=use_dynamic_left_chunk,
                                         causal=causal,
-                                        cnn_module_norm=cnn_module_norm,
                                         **configs.encoder_conf)
         self.decoder = TransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
 
@@ -227,8 +225,7 @@ def ConformerModelOnline(configs,
                            length_normalized_loss=length_normalized_loss,
                            use_dynamic_chunk=True,
                            use_dynamic_left_chunk=True,
-                           causal=True,
-                           cnn_module_norm='layer_norm')
+                           causal=True)
     return model
 
 

@@ -1,0 +1,22 @@
+# 训练纯英文的，可以把下面配置文件替换正常的配置文件内容即可
+
+
+# ctc_beam_search解码器参数
+ctc_beam_search_decoder_conf:
+  # 集束搜索的LM系数
+  alpha: 1.9
+  # 集束搜索的WC系数
+  beta: 0.3
+  # 集束搜索的大小，范围:[5, 500]
+  beam_size: 500
+  # 集束搜索方法使用CPU数量
+  num_processes: 10
+  # 剪枝的概率
+  cutoff_prob: 1.0
+  # 剪枝的最大值
+  cutoff_top_n: 40
+  # 语言模型文件路径
+  language_model_path: 'lm/common_crawl_00.prune01111.trie.klm'
+
+# 计算错误率方法，支持：cer、wer
+metrics_type: 'cer'
