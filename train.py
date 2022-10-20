@@ -8,7 +8,9 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,    'configs/config_zh.yml',       '配置文件')
+add_arg('configs',          str,    'configs/conformer_offline_zh.yml',       '配置文件')
+add_arg("local_rank",       int,    0,                             '多卡训练的本地GPU')
+add_arg("use_gpu",          bool,   True,                          '是否使用GPU训练')
 add_arg('augment_conf_path',str,    'configs/augmentation.json',   '数据增强的配置文件，为json格式')
 add_arg('save_model_path',  str,    'models/',                  '模型保存的路径')
 add_arg('resume_model',     str,    None,                       '恢复训练，当为None则不使用预训练模型')
@@ -21,7 +23,7 @@ with open(args.configs, 'r', encoding='utf-8') as f:
 print_arguments(args, configs)
 
 # 获取训练器
-trainer = PPASRTrainer(configs=configs)
+trainer = PPASRTrainer(configs=configs, use_gpu=args.use_gpu)
 
 trainer.train(save_model_path=args.save_model_path,
               resume_model=args.resume_model,

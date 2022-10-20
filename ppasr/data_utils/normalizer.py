@@ -21,40 +21,30 @@ __all__ = ['FeatureNormalizer']
 class FeatureNormalizer(object):
     """音频特征归一化类
 
-    :param mean_std_filepath: 均值和标准值的文件路径
+    :param mean_istd_filepath: 均值和标准值的文件路径
     """
 
-    def __init__(self, mean_std_filepath, eps=1e-20):
-        self.mean_std_filepath = mean_std_filepath
+    def __init__(self, mean_istd_filepath, eps=1e-20):
+        self.mean_std_filepath = mean_istd_filepath
         # 读取归一化文件
-        if os.path.exists(mean_std_filepath):
-            self.mean, self.std = self._read_mean_std_from_file(mean_std_filepath)
-            self.std = np.maximum(self.std, eps)
-
-    def apply(self, features):
-        """使用均值和标准值计算音频特征的归一化值
-
-        :param features: 需要归一化的音频
-        :type features: ndarray
-        :return: 已经归一化的数据
-        :rtype: ndarray
-        """
-        return (features - self.mean) / self.std
+        if os.path.exists(mean_istd_filepath):
+            self.mean, self.istd = self._read_mean_istd_from_file(mean_istd_filepath)
+            self.istd = np.maximum(self.istd, eps)
 
     @staticmethod
-    def _read_mean_std_from_file(filepath):
+    def _read_mean_istd_from_file(filepath):
         """从文件中加载均值和标准值"""
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
             mean = np.array(data["mean"], dtype=np.float32)
-            std = np.array(data["std"], dtype=np.float32)
-        return mean, std
+            istd = np.array(data["istd"], dtype=np.float32)
+        return mean, istd
 
-    def compute_mean_std(self,
-                         preprocess_configs,
-                         manifest_path,
-                         num_workers=4,
-                         num_samples=5000):
+    def compute_mean_istd(self,
+                          preprocess_configs,
+                          manifest_path,
+                          num_workers=4,
+                          num_samples=5000):
         """从随机抽样的实例中计算均值和标准值，并写入到文件中
 
         :param preprocess_configs: 数据预处理配置参数
@@ -62,7 +52,6 @@ class FeatureNormalizer(object):
         :param num_workers: 计算的线程数量
         :param num_samples: 用于计算均值和标准值的音频数量
         """
-        paddle.set_device('cpu')
         manifest = read_manifest(manifest_path)
         if num_samples < 0 or num_samples > len(manifest):
             sampled_manifest = manifest
@@ -92,9 +81,10 @@ class FeatureNormalizer(object):
                 if std[i] < 1.0e-20:
                     std[i] = 1.0e-20
                 std[i] = math.sqrt(std[i])
+        istd = 1.0 / std
         # 写入到文件中
         data = {'mean': means.tolist(),
-                'std': std.tolist(),
+                'istd': istd.tolist(),
                 'feature_method': preprocess_configs.feature_method}
         with open(self.mean_std_filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f)

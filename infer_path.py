@@ -11,14 +11,14 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,    'configs/config_zh.yml',     "配置文件")
+add_arg('configs',          str,    'configs/conformer_offline_zh.yml',     "配置文件")
 add_arg('wav_path',         str,    'dataset/test.wav',          "预测音频的路径")
 add_arg('is_long_audio',    bool,   False,                       "是否为长语音")
 add_arg('real_time_demo',   bool,   False,                       "是否使用实时语音识别演示")
 add_arg('use_gpu',          bool,   True,                        "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,                       "是否给识别结果加标点符号")
-add_arg('is_itn',           bool,   True,                        "是否对文本进行反标准化")
-add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
+add_arg('is_itn',           bool,   False,                       "是否对文本进行反标准化")
+add_arg('model_path',       str,    'models/{}_{}/inference.pt', "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 args = parser.parse_args()
 
@@ -29,7 +29,7 @@ print_arguments(args, configs)
 
 # 获取识别器
 predictor = Predictor(configs=configs,
-                      model_dir=args.model_dir.format(configs['use_model'], configs['preprocess']['feature_method']),
+                      model_path=args.model_path.format(configs['use_model'], configs['preprocess_conf']['feature_method']),
                       use_gpu=args.use_gpu,
                       use_pun=args.use_pun,
                       pun_model_dir=args.pun_model_dir)

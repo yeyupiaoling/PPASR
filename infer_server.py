@@ -3,8 +3,10 @@ import argparse
 import asyncio
 import functools
 import os
+import sys
 import time
 import wave
+from datetime import datetime
 
 import websockets
 import yaml
@@ -20,16 +22,16 @@ logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,    'configs/config_zh.yml', "配置文件")
+add_arg('configs',          str,    'configs/conformer_offline_zh.yml', "配置文件")
 add_arg("host",             str,    '0.0.0.0',            "监听主机的IP地址")
 add_arg("port_server",      int,    5000,                 "普通识别服务所使用的端口号")
 add_arg("port_stream",      int,    5001,                 "流式识别服务所使用的端口号")
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
-add_arg('is_itn',           bool,   True,   "是否对文本进行反标准化")
+add_arg('is_itn',           bool,   False,  "是否对文本进行反标准化")
 add_arg('num_predictor',    int,    1,      "多少个预测器，也是就可以同时有多少个用户同时识别")
-add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
+add_arg('model_path',       str,    'models/{}_{}/inference.pt', "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 args = parser.parse_args()
 
@@ -43,54 +45,36 @@ app = Flask(__name__, template_folder="templates", static_folder="static", stati
 # 允许跨越访问
 CORS(app)
 
-# 创建多个预测器，PaddlePaddle非线程安全，所以要这样处理
+
+# 创建多个预测器，实时语音识别所以要这样处理
 predictors = []
 for _ in range(args.num_predictor):
     predictor1 = Predictor(configs=configs,
-                           model_dir=args.model_dir.format(configs['use_model'],
-                                                           configs['preprocess']['feature_method']),
+                           model_path=args.model_path.format(configs['use_model'],
+                                                             configs['preprocess_conf']['feature_method']),
                            use_gpu=args.use_gpu,
                            use_pun=args.use_pun,
                            pun_model_dir=args.pun_model_dir)
     predictors.append(predictor1)
 
-
 # 语音识别接口
 @app.route("/recognition", methods=['POST'])
 def recognition():
     f = request.files['audio']
-    # 可以让客户端自定义
-    use_pun = args.use_pun
-    # use_pun = request.form.get('use_pun')
-    is_itn = args.is_itn
-    # is_itn = request.form.get('is_itn')
     if f:
         # 临时保存路径
-        file_path = os.path.join(args.save_path, f"{int(time.time() * 1000)}.{f.filename.split('.')[-1]}")
+        file_path = os.path.join(args.save_path, f.filename)
         f.save(file_path)
         try:
             start = time.time()
-            score, text = None, None
-            # PaddlePaddle非线程安全，所以要这样处理
-            for predictor in predictors:
-                if predictor.running:continue
-                predictor.running = True
-                try:
-                    score, text = predictor.predict(audio_path=file_path, use_pun=use_pun, is_itn=is_itn)
-                except Exception as e:
-                    predictor.running = False
-                    raise Exception(e)
-                predictor.running = False
-                break
-            if score is None and text is None:
-                logger.error(f'短语音识别失败，预测器不足')
-                return str({"error": 4, "msg": "recognition fail, no resource!"})
+            # 执行识别
+            score, text = predictors[0].predict(audio_path=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
             end = time.time()
-            logger.info(f"识别时间：{round((end - start) * 1000)}ms，识别结果：{text}， 得分: {score}")
+            print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
             result = str({"code": 0, "msg": "success", "result": text, "score": round(score, 3)}).replace("'", '"')
             return result
         except Exception as e:
-            logger.error(f'短语音识别失败，错误信息：{e}')
+            print(f'[{datetime.now()}] 短语音识别失败，错误信息：{e}', file=sys.stderr)
             return str({"error": 1, "msg": "audio read fail!"})
     return str({"error": 3, "msg": "audio is None!"})
 
@@ -99,14 +83,9 @@ def recognition():
 @app.route("/recognition_long_audio", methods=['POST'])
 def recognition_long_audio():
     f = request.files['audio']
-    # 可以让客户端自定义
-    use_pun = args.use_pun
-    # use_pun = request.form.get('use_pun')
-    is_itn = args.is_itn
-    # is_itn = request.form.get('is_itn')
     if f:
         # 临时保存路径
-        file_path = os.path.join(args.save_path, f"{int(time.time() * 1000)}.{f.filename.split('.')[-1]}")
+        file_path = os.path.join(args.save_path, f.filename)
         f.save(file_path)
         try:
             start = time.time()
@@ -114,30 +93,17 @@ def recognition_long_audio():
             audios_bytes = crop_audio_vad(file_path)
             texts = ''
             scores = []
-            # PaddlePaddle非线程安全，所以要这样处理
-            for predictor in predictors:
-                if predictor.running:continue
-                predictor.running = True
-                try:
-                    # 执行识别
-                    for i, audio_bytes in enumerate(audios_bytes):
-                        score, text = predictor.predict(audio_bytes=audio_bytes, use_pun=use_pun, is_itn=is_itn)
-                        texts = texts + text if args.use_pun else texts + '，' + text
-                        scores.append(score)
-                except Exception as e:
-                    predictor.running = False
-                    raise Exception(e)
-                predictor.running = False
-                break
-            if len(scores) == 0:
-                logger.error(f'短语音识别失败，预测器不足')
-                return str({"error": 4, "msg": "recognition fail, no resource!"})
+            # 执行识别
+            for i, audio_bytes in enumerate(audios_bytes):
+                score, text = predictors[0].predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=args.is_itn)
+                texts = texts + text if args.use_pun else texts + '，' + text
+                scores.append(score)
             end = time.time()
-            logger.info(f"识别时间：{round((end - start) * 1000)}ms，识别结果：{texts}, 得分: {sum(scores) / len(scores)}")
+            print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), texts, sum(scores) / len(scores)))
             result = str({"code": 0, "msg": "success", "result": texts, "score": round(float(sum(scores) / len(scores)), 3)}).replace("'", '"')
             return result
         except Exception as e:
-            logger.error(f'短语音识别失败，错误信息：{e}')
+            print(f'[{datetime.now()}] 长语音识别失败，错误信息：{e}', file=sys.stderr)
             return str({"error": 1, "msg": "audio read fail!"})
     return str({"error": 3, "msg": "audio is None!"})
 
@@ -213,4 +179,3 @@ if __name__ == '__main__':
     # 启动WebSocket服务
     asyncio.get_event_loop().run_until_complete(server)
     asyncio.get_event_loop().run_forever()
-

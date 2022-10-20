@@ -1,80 +1,63 @@
+import paddle
 from paddle import nn
 
-from ppasr.model_utils.deepspeech2.conv import ConvStack
-from ppasr.model_utils.deepspeech2.rnn import RNNStack
-
-__all__ = ['deepspeech2', 'deepspeech2_big']
+from ppasr.data_utils.normalizer import FeatureNormalizer
+from ppasr.model_utils.deepspeech2.decoder import CTCDecoder
+from ppasr.model_utils.deepspeech2.encoder import CRNNEncoder
+from ppasr.model_utils.utils.cmvn import GlobalCMVN
 
 
 class DeepSpeech2Model(nn.Layer):
-    """DeepSpeech2模型结构
+    """The DeepSpeech2 network structure.
 
-    :param feat_size: 输入的特征大小
-    :type feat_size: int
-    :param vocab_size: 字典的大小，用来分类输出
+    :param input_dim: feature size for audio.
+    :type input_dim: int
+    :param vocab_size: Dictionary size for tokenized transcription.
     :type vocab_size: int
-    :param cnn_size: 卷积层的隐层大小
-    :type cnn_size: int
-    :param num_rnn_layers: 堆叠RNN层数
-    :type num_rnn_layers: int
-    :param rnn_size: RNN层大小
-    :type rnn_size: int
-    :param use_gru: 是否使用GRU，否则使用LSTM，大数据时LSTM效果会更好一些
-    :type use_gru: bool
-
-    :return: DeepSpeech2模型
-    :rtype: nn.Layer
+    :return: A tuple of an output unnormalized log probability layer (
+             before softmax) and a ctc cost layer.
+    :rtype: tuple of LayerOutput
     """
 
-    def __init__(self, feat_size, vocab_size, cnn_size=32, num_rnn_layers=5, rnn_size=1024, use_gru=True):
+    def __init__(self,
+                 configs,
+                 input_dim: int,
+                 vocab_size: int):
         super().__init__()
-        self.num_rnn_layers = num_rnn_layers
-        self.rnn_size = rnn_size
-        # 卷积层堆
-        self.conv = ConvStack(feat_size=feat_size, conv_out_channels=cnn_size)
-        # RNN层堆
-        self.rnn = RNNStack(i_size=self.conv.output_dim, h_size=rnn_size, num_rnn_layers=num_rnn_layers, use_gru=use_gru)
-        # 分类输入层
-        self.output = nn.Linear(self.rnn.output_dim, vocab_size)
+        feature_normalizer = FeatureNormalizer(mean_istd_filepath=configs.dataset_conf.mean_istd_path)
+        global_cmvn = GlobalCMVN(paddle.to_tensor(feature_normalizer.mean, dtype=paddle.float32),
+                                 paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
+        self.encoder = CRNNEncoder(input_dim=input_dim,
+                                   vocab_size=vocab_size,
+                                   global_cmvn=global_cmvn, **configs.encoder_conf)
+        self.decoder = CTCDecoder(vocab_size, self.encoder.output_size, **configs.decoder_conf)
 
-    def forward(self, audio, audio_len, init_state_h_box=None, init_state_c_box=None):
-        """
+    def forward(self, speech, speech_lengths, text, text_lengths):
+        """Compute Model loss
+
         Args:
-            audio (Tensor): [B, Tmax, D]
-            audio_len (Tensor): [B, Umax]
-            init_state_h_box (Tensor): [num_rnn_layers, B, rnn_size]
+            speech (Tensor): [B, T, D]
+            speech_lengths (Tensor): [B]
+            text (Tensor): [B, U]
+            text_lengths (Tensor): [B]
+
         Returns:
-            logits (Tensor): [B, T, D]
-            x_lens (Tensor): [B]
+            loss (Tensor): [1]
         """
-        # [B, T, D]
-        x, x_lens = self.conv(audio, audio_len)
-        # [B, T, D] [num_rnn_layers, B, rnn_size] [num_rnn_layers, B, rnn_size]
-        x, final_chunk_state_h_box, final_chunk_state_c_box = self.rnn(x, x_lens, init_state_h_box, init_state_c_box)
-        logits = self.output(x)
-        if init_state_h_box is None:
-            return logits, x_lens
-        else:
-            return logits, x_lens, final_chunk_state_h_box, final_chunk_state_c_box
+        eouts, eouts_len, final_state_h_box, final_state_c_box = self.encoder(speech, speech_lengths, None, None)
+        loss = self.decoder(eouts, eouts_len, text, text_lengths)
+        return {'loss': loss}
 
+    @paddle.jit.to_static
+    def get_encoder_out(self, speech, speech_lengths):
+        eouts, _, _, _ = self.encoder(speech, speech_lengths, None, None)
+        ctc_probs = self.decoder.softmax(eouts)
+        return ctc_probs
 
-# 获取普通的DeepSpeech模型
-def deepspeech2(feat_size, vocab_size):
-    model = DeepSpeech2Model(feat_size=feat_size,
-                             vocab_size=vocab_size,
-                             cnn_size=32,
-                             num_rnn_layers=5,
-                             rnn_size=1024,
-                             use_gru=True)
-    return model
-
-
-# 获取大的DeepSpeech模型，适合训练Wenetspeech等大数据集
-def deepspeech2_big(feat_size, vocab_size):
-    model = DeepSpeech2Model(feat_size=feat_size,
-                             vocab_size=vocab_size,
-                             cnn_size=32,
-                             num_rnn_layers=5,
-                             rnn_size=2048,
-                             use_gru=False)
-    return model
+    @paddle.jit.to_static
+    def get_encoder_out_chunk(self, speech, speech_lengths, init_state_h_box=None, init_state_c_box=None):
+        eouts, eouts_len, final_chunk_state_h_box, final_chunk_state_c_box = self.encoder(speech, speech_lengths,
+                                                                                          init_state_h_box,
+                                                                                          init_state_c_box)
+        ctc_probs = self.decoder.softmax(eouts)
+        return ctc_probs, eouts_len, final_chunk_state_h_box, final_chunk_state_c_box

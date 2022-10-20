@@ -9,8 +9,6 @@ import numpy as np
 import soundfile
 from tqdm import tqdm
 from zhconv import convert
-from tn.chinese.normalizer import Normalizer
-
 from ppasr.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
@@ -50,10 +48,10 @@ def dict_to_object(dict_obj):
     return inst
 
 
-def labels_to_string(label, vocabulary, blank_index=0):
+def labels_to_string(label, vocabulary, eos, blank_index=0):
     labels = []
     for l in label:
-        index_list = [index for index in l if index != blank_index and index != -1]
+        index_list = [index for index in l if index != blank_index and index != -1 and index != eos]
         labels.append((''.join([vocabulary[index] for index in index_list])).replace('<space>', ' '))
     return labels
 
@@ -72,6 +70,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     data_list = []
     test_list = []
     durations = []
+    from tn.chinese.normalizer import Normalizer
     normalizer = Normalizer()
     for annotation_text in os.listdir(annotation_path):
         annotation_text_path = os.path.join(annotation_path, annotation_text)

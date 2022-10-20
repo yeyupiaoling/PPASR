@@ -1,5 +1,6 @@
 import _thread
 import argparse
+import asyncio
 import functools
 import json
 import os
@@ -9,11 +10,9 @@ import wave
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 
-import asyncio
-
+import pyaudio
 import requests
 import websockets
-import pyaudio
 import yaml
 
 from ppasr.predict import Predictor
@@ -25,14 +24,14 @@ logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,   'configs/config_zh.yml',       "配置文件")
+add_arg('configs',          str,   'configs/conformer_offline_zh.yml',       "配置文件")
 add_arg('use_server',       bool,   False,         "是否使用服务器服务进行识别，否则使用本地识别")
 add_arg("host",             str,    "127.0.0.1",   "服务器IP地址")
 add_arg("port_server",      int,    5000,          "普通识别服务端口号")
 add_arg("port_stream",      int,    5001,          "流式识别服务端口号")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
-add_arg('model_dir',        str,    'models/{}_{}/infer/',       "导出的预测模型文件夹路径")
+add_arg('model_path',       str,    'models/{}_{}/inference.pt', "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
 args = parser.parse_args()
 
@@ -51,12 +50,14 @@ class SpeechRecognitionApp:
         self.playing = False
         self.recording = False
         self.stream = None
-        self.is_itn = True
+        self.is_itn = False
         self.use_server = args.use_server
         # 录音参数
         self.frames = []
         interval_time = 0.5
         self.CHUNK = int(16000 * interval_time)
+        # 最大录音时长
+        self.max_record = 600
         # 录音保存的路径
         self.output_path = 'dataset/record'
         # 创建一个播放器
@@ -85,7 +86,7 @@ class SpeechRecognitionApp:
         self.result_text.place(x=10, y=100)
         # 对文本进行反标准化
         self.an_frame = Frame(self.window)
-        self.check_var = BooleanVar(value=True)
+        self.check_var = BooleanVar(value=False)
         self.is_itn_check = Checkbutton(self.an_frame, text='是否对文本进行反标准化', variable=self.check_var, command=self.is_itn_state)
         self.is_itn_check.grid(row=0)
         self.an_frame.grid(row=1)
@@ -95,7 +96,7 @@ class SpeechRecognitionApp:
             # 获取识别器
             self.predictor = Predictor(configs=configs,
                                        model_dir=args.model_dir.format(configs['use_model'],
-                                                                       configs['preprocess']['feature_method']),
+                                                                       configs['preprocess_conf']['feature_method']),
                                        use_gpu=args.use_gpu,
                                        use_pun=args.use_pun,
                                        pun_model_dir=args.pun_model_dir)

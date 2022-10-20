@@ -8,7 +8,7 @@ from ppasr.utils.utils import add_arguments, print_arguments
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',              str,  'configs/config_zh.yml',    '配置文件')
+add_arg('configs',              str,  'configs/deepspeech2_online_zh.yml',    '配置文件')
 add_arg('annotation_path',      str,  'dataset/annotation/',      '标注文件的路径')
 add_arg('noise_path',           str,  'dataset/audio/noise',      '噪声音频存放的文件夹路径')
 add_arg('save_audio_path',      str,  'dataset/audio/merge_audio','合并音频的保存路径')

@@ -1,11 +1,8 @@
 import os
 import platform
 
-import cn2an
 import numpy as np
-import paddle.inference as paddle_infer
-
-from itn.chinese.inverse_normalizer import InverseNormalizer
+import paddle
 from ppasr import SUPPORT_MODEL
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
@@ -23,25 +20,21 @@ class Predictor:
                  model_dir='models/deepspeech2/infer/',
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
-                 use_gpu=True,
-                 gpu_mem=500,
-                 num_threads=10):
+                 use_gpu=True):
         """
         语音识别预测工具
         :param model_dir: 导出的预测模型文件夹路径
         :param use_pun: 是否使用加标点符号的模型
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param use_gpu: 是否使用GPU预测
-        :param gpu_mem: 预先分配的GPU显存大小
-        :param num_threads: 只用CPU预测的线程数量
         """
         self.configs = dict_to_object(configs)
         self.running = False
         self.use_gpu = use_gpu
-        self.inv_normalizer = InverseNormalizer()
+        self.inv_normalizer = None
         self.pun_executor = None
-        self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset.dataset_vocab)
-        self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess)
+        self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset_conf.dataset_vocab)
+        self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess_conf)
         # 流式解码参数
         self.output_state_h = None
         self.output_state_c = None
@@ -50,11 +43,6 @@ class Predictor:
         self.greedy_last_max_prob_list = None
         self.greedy_last_max_index_list = None
         assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
-        # 模型参数
-        if self.configs.use_model == 'deepspeech2':
-            self.hidden_size = 1024
-        elif self.configs.use_model == 'deepspeech2_big':
-            self.hidden_size = 2048
 
         # 集束搜索方法的处理
         if self.configs.decoder == "ctc_beam_search":
@@ -62,7 +50,7 @@ class Predictor:
                 try:
                     from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
                     self.beam_search_decoder = BeamSearchDecoder(vocab_list=self._text_featurizer.vocab_list,
-                                                                 **self.configs.ctc_beam_search_decoder)
+                                                                 **self.configs.ctc_beam_search_decoder_conf)
                 except ModuleNotFoundError:
                     logger.warning('==================================================================')
                     logger.warning('缺少 paddlespeech-ctcdecoders 库，请根据文档安装。')
@@ -75,37 +63,18 @@ class Predictor:
                 logger.warning('==================================================================\n')
                 self.configs.decoder = 'ctc_greedy'
 
-        # 创建 config
-        model_path = os.path.join(model_dir, 'model.pdmodel')
-        params_path = os.path.join(model_dir, 'model.pdiparams')
-        if not os.path.exists(model_path) or not os.path.exists(params_path):
-            raise Exception("模型文件不存在，请检查%s和%s是否存在！" % (model_path, params_path))
-        self.config = paddle_infer.Config(model_path, params_path)
-
-        if self.use_gpu:
-            self.config.enable_use_gpu(gpu_mem, 0)
-        else:
-            self.config.disable_gpu()
-            self.config.set_cpu_math_library_num_threads(num_threads)
-        # enable memory optim
-        self.config.enable_memory_optim()
-        self.config.disable_glog_info()
-
+        # 创建模型
+        if not os.path.exists(model_path):
+            raise Exception("模型文件不存在，请检查{}是否存在！".format(model_path))
         # 根据 config 创建 predictor
-        self.predictor = paddle_infer.create_predictor(self.config)
+        if self.use_gpu:
+            self.predictor = paddle.jit.load(model_path)
+            self.predictor.to('cuda')
+        else:
+            self.predictor = paddle.jit.load(model_path, map_location='cpu')
+        self.predictor.eval()
 
-        logger.info(f'已加载模型：{model_dir}')
-
-        # 获取输入层
-        self.audio_data_handle = self.predictor.get_input_handle('audio')
-        self.audio_len_handle = self.predictor.get_input_handle('audio_len')
-        # 流式模型需要输入RNN的状态
-        if 'no_stream' not in self.configs.use_model:
-            self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
-            self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
-
-        # 获取输出的名称
-        self.output_names = self.predictor.get_output_names()
+        logger.info(f'已加载模型：{model_path}')
 
         # 加标点符号
         if use_pun:
@@ -143,7 +112,7 @@ class Predictor:
                 text = self.pun_executor(text)
             else:
                 logger.warning('标点符号模型没有初始化！')
-        # 是否转为阿拉伯数字
+        # 是否对文本进行反标准化
         if is_itn:
             text = self.inverse_text_normalization(text)
         return score, text
@@ -177,58 +146,36 @@ class Predictor:
         audio_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
         audio_len = np.array([audio_data.shape[1]]).astype(np.int64)
 
-        # 设置输入
-        self.audio_data_handle.reshape([audio_data.shape[0], audio_data.shape[1], audio_data.shape[2]])
-        self.audio_len_handle.reshape([audio_data.shape[0]])
-        self.audio_data_handle.copy_from_cpu(audio_data)
-        self.audio_len_handle.copy_from_cpu(audio_len)
+        audio_data = paddle.to_tensor(audio_data, dtype=paddle.float32)
+        audio_len = paddle.to_tensor(audio_len)
 
-        # 对流式模型RNN层的initial_states全零初始化
-        if 'no_stream' not in self.configs.use_model:
-            init_state_h_box = np.zeros(shape=(5, audio_data.shape[0], self.hidden_size), dtype=np.float32)
-            self.init_state_h_box_handle.reshape(init_state_h_box.shape)
-            self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
-            self.init_state_c_box_handle.reshape(init_state_h_box.shape)
-            self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
+        if self.use_gpu:
+            audio_data = audio_data.cuda()
+            audio_len = audio_len.cuda()
 
         # 运行predictor
-        self.predictor.run()
+        if self.configs.use_model in ['conformer', 'deepspeech2']:
+            output_data = self.predictor.get_encoder_out(audio_data, audio_len).numpy()[0]
+        else:
+            raise Exception(f'没有该模型：{self.configs.use_model}')
 
-        # 获取输出
-        output_handle = self.predictor.get_output_handle(self.output_names[0])
-        output_data = output_handle.copy_to_cpu()[0]
         # 解码
         score, text = self.decode(output_data=output_data, use_pun=use_pun, is_itn=is_itn)
         return score, text
 
     def predict_chunk(self, x_chunk, x_chunk_lens):
-        # 设置输入
-        self.audio_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])
-        self.audio_len_handle.reshape([x_chunk.shape[0]])
-        self.audio_data_handle.copy_from_cpu(x_chunk.astype(np.float32))
-        self.audio_len_handle.copy_from_cpu(x_chunk_lens.astype(np.int64))
+        audio_data = paddle.to_tensor(x_chunk, dtype=paddle.float32)
+        audio_len = paddle.to_tensor(x_chunk_lens)
 
-        if self.output_state_h is None or self.output_state_c is None:
-            # 对RNN层的initial_states全零初始化
-            self.output_state_h = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size), dtype=np.float32)
-            self.output_state_c = np.zeros(shape=(5, x_chunk.shape[0], self.hidden_size), dtype=np.float32)
-        self.init_state_h_box_handle.reshape(self.output_state_h.shape)
-        self.init_state_h_box_handle.copy_from_cpu(self.output_state_h)
-        self.init_state_c_box_handle.reshape(self.output_state_c.shape)
-        self.init_state_c_box_handle.copy_from_cpu(self.output_state_c)
+        if self.use_gpu:
+            audio_data = audio_data.cuda()
+            audio_len = audio_len.cuda()
 
         # 运行predictor
-        self.predictor.run()
-
-        # 获取输出
-        output_handle = self.predictor.get_output_handle(self.output_names[0])
-        output_chunk_probs = output_handle.copy_to_cpu()
-        output_lens_handle = self.predictor.get_output_handle(self.output_names[1])
-        output_lens = output_lens_handle.copy_to_cpu()
-        output_state_h_handle = self.predictor.get_output_handle(self.output_names[2])
-        self.output_state_h = output_state_h_handle.copy_to_cpu()
-        output_state_c_handle = self.predictor.get_output_handle(self.output_names[3])
-        self.output_state_c = output_state_c_handle.copy_to_cpu()
+        output_chunk_probs, output_lens, self.output_state_h, self.output_state_c = \
+            self.predictor(audio_data, audio_len, self.output_state_h, self.output_state_c)
+        output_chunk_probs = output_chunk_probs.cpu().detach().numpy()
+        output_lens = output_lens.cpu().detach().numpy()
         return output_chunk_probs, output_lens
 
     # 预测音频
@@ -239,18 +186,19 @@ class Predictor:
                        use_pun=False,
                        is_itn=True):
         """
-        预测函数，流式预测，通过一直输入音频数据，实现实现实时识别。
+        预测函数，流式预测，通过一直输入音频数据，实现实时识别。
         :param audio_bytes: 需要预测的音频wave读取的字节流
         :param audio_ndarray: 需要预测的音频未预处理的numpy值
         :param is_end: 是否结束语音识别
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
-        :return: 识别得分, 识别结果
+        :return: 识别的文本结果和解码的得分数
         """
+        raise Exception("暂时不支持")
         assert 'no_stream' not in self.configs.use_model, f'当前模型不是流式模型，当前模型为：{self.configs.use_model}'
         assert audio_bytes is not None or audio_ndarray is not None, \
             'audio_bytes和audio_ndarray至少有一个不为None！'
-        # 加载音频文件
+        # 加载音频文件，并进行预处理
         if audio_ndarray is not None:
             audio_data = AudioSegment.from_ndarray(audio_ndarray)
         else:
@@ -317,7 +265,7 @@ class Predictor:
                 text = self.pun_executor(text)
             else:
                 logger.warning('标点符号模型没有初始化！')
-        # 是否转为阿拉伯数字
+        # 是否对文本进行反标准化
         if is_itn:
             text = self.inverse_text_normalization(text)
 
@@ -336,5 +284,11 @@ class Predictor:
 
     # 对文本进行反标准化
     def inverse_text_normalization(self, text):
+        if self.configs.decoder == 'ctc_beam_search':
+            logger.error("当解码器为ctc_beam_search时，因为包冲突，不能使用文本反标准化")
+            return text
+        if self.inv_normalizer is None:
+            from itn.chinese.inverse_normalizer import InverseNormalizer
+            self.inv_normalizer = InverseNormalizer()
         result_text = self.inv_normalizer.normalize(text)
         return result_text
