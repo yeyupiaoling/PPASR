@@ -21,7 +21,12 @@ def print_arguments(args, configs):
     logger.info("------------------------------------------------")
     logger.info("----------- 配置文件参数 -----------")
     for arg, value in sorted(configs.items()):
-        logger.info("%s: %s" % (arg, value))
+        if isinstance(value, dict):
+            logger.info(f"{arg}:")
+            for a, v in sorted(value.items()):
+                logger.info("\t%s: %s" % (a, v))
+        else:
+            logger.info("%s: %s" % (arg, value))
     logger.info("------------------------------------------------")
 
 

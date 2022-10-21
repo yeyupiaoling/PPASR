@@ -53,9 +53,6 @@ class PPASRTrainer(object):
         self.model = None
         self.test_loader = None
         self.beam_search_decoder = None
-        if platform.system().lower() == 'windows':
-            self.configs.dataset_conf.num_workers = 0
-            logger.warning('Windows系统不支持多线程读取数据，已自动关闭！')
 
     def __setup_dataloader(self, augment_conf_path=None, is_train=False):
         # 获取训练数据
@@ -125,7 +122,7 @@ class PPASRTrainer(object):
                                                  vocab_size=self.test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
-        print(self.model)
+        # print(self.model)
         if is_train:
             # 设置优化方法
             grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)

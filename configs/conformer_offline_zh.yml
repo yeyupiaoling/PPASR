@@ -86,7 +86,7 @@ ctc_beam_search_decoder_conf:
 
 optimizer_conf:
   # 初始学习率的大小
-  learning_rate: 0.002
+  learning_rate: 0.001
   warmup_steps: 25000
   weight_decay: 1e-6
 
@@ -94,7 +94,7 @@ train_conf:
   grad_clip: 5
   accum_grad: 4
   # 训练的轮数
-  max_epoch: 65
+  max_epoch: 100
   log_interval: 100
 
 # 所使用的模型

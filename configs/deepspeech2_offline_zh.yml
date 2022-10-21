@@ -68,7 +68,7 @@ optimizer_conf:
   weight_decay: 1e-6
 
 train_conf:
-  grad_clip: 5
+  grad_clip: 5.0
   accum_grad: 1
   # 训练的轮数
   max_epoch: 65

@@ -31,7 +31,7 @@
 
 ## 项目快速了解
 
- 1. 本项目支持流式识别模型`deepspeech2`、`deepspeech2_big`，非流式模型`deepspeech2_no_stream`、`deepspeech2_big_no_stream`。
+ 1. 本项目支持流式识别模型`deepspeech2`、`conformer`，每个模型又分online(在线)和offline(离线)，对应的是流式识别和非流式识别。
  2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高，但不支持Windows。
 
 ## 更新记录
@@ -60,25 +60,32 @@
 
 ## 模型下载
 
-本项目支持流式识别模型`deepspeech2`、`deepspeech2_big`，非流式模型`deepspeech2_no_stream`、`deepspeech2_big_no_stream`。
 
-|         使用模型          |                                  数据集                                  | 预处理方式 | 参数大小（M）`*` | 语言  |     测试集字错率（词错率）      |                               下载地址                               |
-|:---------------------:|:---------------------------------------------------------------------:|:-----:|:----------:|:---:|:--------------------:|:----------------------------------------------------------------:|
-|    deepspeech2_big    |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank |    167     | 中文  | 0.07392(AIShell的测试集) | [点击下载](https://pan.baidu.com/s/1DDU92HGH3RRMySBfroXz5w?pwd=ai6p) |
-|      deepspeech2      |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank |     35     | 中文  |       0.07280        | [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0) |
-|    deepspeech2_big    |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank |    167     | 中文  |       0.05370        | [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0) |
-| deepspeech2_no_stream |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank |     98     | 中文  |       0.07253        | [点击下载](https://pan.baidu.com/s/1KFRDIxxlW092Ad70-TNKlw?pwd=m0e0) |
-|      deepspeech2      | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |     35     | 英文  |       0.16369        | [点击下载](https://download.csdn.net/download/qq_33200967/77978970)  | 
-|    deepspeech2_big    | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |    167     | 英文  |       0.12779        | [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u) | 
-| deepspeech2_no_stream | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank |     98     | 英文  |       0.09131        | [点击下载](https://pan.baidu.com/s/1xfVPDuOAA3rc_6_1JaR5QQ?pwd=673u) | 
+1. `conformer`预训练模型列表：
+
+|       使用模型        |                                  数据集                                  | 预处理方式 | 语言  |     测试集字错率（词错率）      |                               下载地址                               |
+|:-----------------:|:---------------------------------------------------------------------:|:-----:|:---:|:--------------------:|:----------------------------------------------------------------:|
+| conformer_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.03944(AIShell的测试集) | [点击下载](https://pan.baidu.com/s/1V2U1Q_xBWJX22zDxt7-GPg?pwd=a1te) |
+| conformer_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |                      | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| conformer_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |                      | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| conformer_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                      | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| conformer_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                      | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+
+
+2. `deepspeech2`预训练模型列表：
+
+|        使用模型         |                                  数据集                                  | 预处理方式 | 语言  |  测试集字错率（词错率）  |                               下载地址                               |
+|:-------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:-------------:|:----------------------------------------------------------------:|
+| deepspeech2_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | (AIShell的测试集) | [点击下载](https://pan.baidu.com/s/1V2U1Q_xBWJX22zDxt7-GPg?pwd=a1te) |
+| deepspeech2_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| deepspeech2_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| deepspeech2_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |               | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| deepspeech2_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |               | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
 
 
 **说明：** 
 1. 这里字错率或者词错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
 2. 把全部文件复制到项目根目录下。
-3. 模型名称包含`no_stream`为非流式模型，不能用于流式识别。
-4. 由于算力不足，大部分的模型都没有训练足够轮数，具体轮数可以查看`model.state`文件。
-5. 由于音频的长度不一，所以参数大小也有所变化，以上参数大小为同一音频长度下的结果，仅供对比使用。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 
