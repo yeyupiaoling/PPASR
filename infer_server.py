@@ -13,7 +13,7 @@ import yaml
 from flask import request, Flask, render_template
 from flask_cors import CORS
 
-from ppasr.predict import Predictor
+from ppasr.predict import PPASRPredictor
 from ppasr.utils.audio_vad import crop_audio_vad
 from ppasr.utils.utils import add_arguments, print_arguments
 from ppasr.utils.logger import setup_logger
@@ -49,12 +49,12 @@ CORS(app)
 # 创建多个预测器，实时语音识别所以要这样处理
 predictors = []
 for _ in range(args.num_predictor):
-    predictor1 = Predictor(configs=configs,
-                           model_path=args.model_path.format(configs['use_model'],
+    predictor1 = PPASRPredictor(configs=configs,
+                                model_path=args.model_path.format(configs['use_model'],
                                                              configs['preprocess_conf']['feature_method']),
-                           use_gpu=args.use_gpu,
-                           use_pun=args.use_pun,
-                           pun_model_dir=args.pun_model_dir)
+                                use_gpu=args.use_gpu,
+                                use_pun=args.use_pun,
+                                pun_model_dir=args.pun_model_dir)
     predictors.append(predictor1)
 
 

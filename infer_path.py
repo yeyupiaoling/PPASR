@@ -5,7 +5,7 @@ import wave
 
 import yaml
 
-from ppasr.predict import Predictor
+from ppasr.predict import PPASRPredictor
 from ppasr.utils.audio_vad import crop_audio_vad
 from ppasr.utils.utils import add_arguments, print_arguments
 
@@ -28,11 +28,11 @@ with open(args.configs, 'r', encoding='utf-8') as f:
 print_arguments(args, configs)
 
 # 获取识别器
-predictor = Predictor(configs=configs,
-                      model_path=args.model_path.format(configs['use_model'], configs['preprocess_conf']['feature_method']),
-                      use_gpu=args.use_gpu,
-                      use_pun=args.use_pun,
-                      pun_model_dir=args.pun_model_dir)
+predictor = PPASRPredictor(configs=configs,
+                           model_path=args.model_path.format(configs['use_model'], configs['preprocess_conf']['feature_method']),
+                           use_gpu=args.use_gpu,
+                           use_pun=args.use_pun,
+                           pun_model_dir=args.pun_model_dir)
 
 
 # 长语音识别

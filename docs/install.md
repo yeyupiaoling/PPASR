@@ -7,7 +7,7 @@
 conda install paddlepaddle-gpu==2.3.2 cudatoolkit=11.6 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge 
 ```
 
-**注意：**Windows要安装这个版本，以上版本在Windows是有问题的。
+**注意：** Windows要安装这个版本，以上版本在Windows是有问题的。
 ```shell
 conda install paddlepaddle-gpu==2.3.2 cudatoolkit=10.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/
 ```
@@ -26,4 +26,36 @@ cd PPASR
 python setup.py install
 ```
 
-**注意：** 如果出现LLVM版本错误，解决办法[LLVM版本错误](./faq.md)。
+**常见安装问题：** 
+
+1. LLVM版本错误，则执行下面的命令，然后重新执行上面的安装命令，否则不需要执行。
+```shell
+cd ~
+wget https://releases.llvm.org/9.0.0/llvm-9.0.0.src.tar.xz
+wget http://releases.llvm.org/9.0.0/cfe-9.0.0.src.tar.xz
+wget http://releases.llvm.org/9.0.0/clang-tools-extra-9.0.0.src.tar.xz
+tar xvf llvm-9.0.0.src.tar.xz
+tar xvf cfe-9.0.0.src.tar.xz
+tar xvf clang-tools-extra-9.0.0.src.tar.xz
+mv llvm-9.0.0.src llvm-src
+mv cfe-9.0.0.src llvm-src/tools/clang
+mv clang-tools-extra-9.0.0.src llvm-src/tools/clang/tools/extra
+sudo mkdir -p /usr/local/llvm
+sudo mkdir -p llvm-src/build
+cd llvm-src/build
+sudo cmake -G "Unix Makefiles" -DLLVM_TARGETS_TO_BUILD=X86 -DCMAKE_BUILD_TYPE="Release" -DCMAKE_INSTALL_PREFIX="/usr/local/llvm" ..
+sudo make -j8
+sudo make install
+export LLVM_CONFIG=/usr/local/llvm/bin/llvm-config
+```
+
+2. Linux 报错 OSError: sndfile library not found
+
+```shell
+sudo apt-get install libsndfile1
+```
+
+3. 安装pynini出错，可以执行下面命令安装。
+```shell
+conda install -c conda-forge pynini
+```

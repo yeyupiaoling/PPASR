@@ -16,7 +16,7 @@ from ppasr.utils.utils import dict_to_object
 logger = setup_logger(__name__)
 
 
-class Predictor:
+class PPASRPredictor:
     def __init__(self,
                  configs,
                  model_path='models/conformer_online_fbank/best_model/',
@@ -193,8 +193,8 @@ class Predictor:
         # 运行predictor
         output_chunk_probs, output_lens, self.output_state_h, self.output_state_c = \
             self.predictor.get_encoder_out_chunk(audio_data, audio_len, self.output_state_h, self.output_state_c)
-        output_chunk_probs = output_chunk_probs.cpu().detach().numpy()
-        output_lens = output_lens.cpu().detach().numpy()
+        output_chunk_probs = output_chunk_probs.numpy()
+        output_lens = output_lens.numpy()
         return output_chunk_probs, output_lens
 
     # 预测音频

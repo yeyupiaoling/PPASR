@@ -15,7 +15,7 @@ import requests
 import websockets
 import yaml
 
-from ppasr.predict import Predictor
+from ppasr.predict import PPASRPredictor
 from ppasr.utils.audio_vad import crop_audio_vad
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import add_arguments, print_arguments
@@ -94,12 +94,12 @@ class SpeechRecognitionApp:
 
         if not self.use_server:
             # 获取识别器
-            self.predictor = Predictor(configs=configs,
-                                       model_dir=args.model_dir.format(configs['use_model'],
+            self.predictor = PPASRPredictor(configs=configs,
+                                            model_dir=args.model_dir.format(configs['use_model'],
                                                                        configs['preprocess_conf']['feature_method']),
-                                       use_gpu=args.use_gpu,
-                                       use_pun=args.use_pun,
-                                       pun_model_dir=args.pun_model_dir)
+                                            use_gpu=args.use_gpu,
+                                            use_pun=args.use_pun,
+                                            pun_model_dir=args.pun_model_dir)
 
     # 是否对文本进行反标准化
     def is_itn_state(self):
