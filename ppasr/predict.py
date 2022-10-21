@@ -98,8 +98,6 @@ class Predictor:
         logger.info(f'成功加载模型：{model_path}')
         self.predictor.eval()
 
-        logger.info(f'已加载模型：{model_path}')
-
         # 加标点符号
         if use_pun:
             from ppasr.utils.text_utils import PunctuationExecutor

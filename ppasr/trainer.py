@@ -141,7 +141,7 @@ class PPASRTrainer(object):
             assert os.path.exists(pretrained_model), f"{pretrained_model} 模型不存在！"
             model_dict = self.model.state_dict()
             model_state_dict = paddle.load(pretrained_model)
-            # 特征层
+            # 过滤不存在的参数
             for name, weight in model_dict.items():
                 if name in model_state_dict.keys():
                     if list(weight.shape) != list(model_state_dict[name].shape):
