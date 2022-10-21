@@ -6,6 +6,7 @@ from paddle import nn
 from typeguard import check_argument_types
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
+from ppasr.model_utils.conformer.base import Embedding, LayerNorm, Linear
 from ppasr.model_utils.conformer.embedding import PositionalEncoding
 from ppasr.model_utils.conformer.positionwise import PositionwiseFeedForward
 from ppasr.model_utils.utils.mask import (subsequent_mask, make_non_pad_mask)
@@ -56,16 +57,15 @@ class TransformerDecoder(nn.Layer):
 
         if input_layer == "embed":
             self.embed = nn.Sequential(
-                nn.Embedding(vocab_size, attention_dim),
-                PositionalEncoding(
-                    attention_dim, positional_dropout_rate, max_len=max_len), )
+                Embedding(vocab_size, attention_dim),
+                PositionalEncoding(attention_dim, positional_dropout_rate, max_len=max_len), )
         else:
             raise ValueError(f"only 'embed' is supported: {input_layer}")
 
         self.normalize_before = normalize_before
-        self.after_norm = nn.LayerNorm(attention_dim, epsilon=1e-12)
+        self.after_norm = LayerNorm(attention_dim, epsilon=1e-12)
         self.use_output_layer = use_output_layer
-        self.output_layer = nn.Linear(attention_dim, vocab_size)
+        self.output_layer = Linear(attention_dim, vocab_size)
 
         self.decoders = nn.LayerList([
             DecoderLayer(
@@ -196,15 +196,15 @@ class DecoderLayer(nn.Layer):
         self.self_attn = self_attn
         self.src_attn = src_attn
         self.feed_forward = feed_forward
-        self.norm1 = nn.LayerNorm(size, epsilon=1e-12)
-        self.norm2 = nn.LayerNorm(size, epsilon=1e-12)
-        self.norm3 = nn.LayerNorm(size, epsilon=1e-12)
+        self.norm1 = LayerNorm(size, epsilon=1e-12)
+        self.norm2 = LayerNorm(size, epsilon=1e-12)
+        self.norm3 = LayerNorm(size, epsilon=1e-12)
         self.dropout = nn.Dropout(dropout_rate)
         self.normalize_before = normalize_before
         self.concat_after = concat_after
         if self.concat_after:
-            self.concat_linear1 = nn.Linear(size + size, size)
-            self.concat_linear2 = nn.Linear(size + size, size)
+            self.concat_linear1 = Linear(size + size, size)
+            self.concat_linear2 = Linear(size + size, size)
         else:
             self.concat_linear1 = nn.Identity()
             self.concat_linear2 = nn.Identity()

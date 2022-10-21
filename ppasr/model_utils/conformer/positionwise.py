@@ -1,5 +1,7 @@
 import paddle
-import paddle.nn as nn
+from paddle import nn
+
+from ppasr.model_utils.conformer.base import Linear
 
 
 class PositionwiseFeedForward(nn.Layer):
@@ -22,10 +24,10 @@ class PositionwiseFeedForward(nn.Layer):
             activation (paddle.nn.Layer): Activation function
         """
         super().__init__()
-        self.w_1 = nn.Linear(idim, hidden_units)
+        self.w_1 = Linear(idim, hidden_units)
         self.activation = activation
         self.dropout = nn.Dropout(dropout_rate)
-        self.w_2 = nn.Linear(hidden_units, idim)
+        self.w_2 = Linear(hidden_units, idim)
 
     def forward(self, xs: paddle.Tensor) -> paddle.Tensor:
         """Forward function.

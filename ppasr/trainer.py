@@ -125,6 +125,7 @@ class PPASRTrainer(object):
                                                  vocab_size=self.test_dataset.vocab_size)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
+        print(self.model)
         if is_train:
             # 设置优化方法
             grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)
@@ -357,6 +358,7 @@ class PPASRTrainer(object):
         :param pretrained_model: 预训练模型的路径，当为None则不使用预训练模型
         :param augment_conf_path: 数据增强的配置文件，为json格式
         """
+        paddle.seed(1001)
         # 训练只能用贪心解码，解码速度快
         self.configs.decoder = 'ctc_greedy'
         # 获取有多少张显卡训练

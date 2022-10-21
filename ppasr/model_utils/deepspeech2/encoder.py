@@ -84,6 +84,8 @@ class CRNNEncoder(nn.Layer):
         else:
             init_state_list = [None] * self.num_rnn_layers
 
+        if self.global_cmvn is not None:
+            x = self.global_cmvn(x)
         x, x_lens = self.conv(x, x_lens)
         final_chunk_state_list = []
         for i in range(0, self.num_rnn_layers):

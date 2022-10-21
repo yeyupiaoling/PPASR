@@ -94,7 +94,7 @@
 - [训练模型](./docs/train.md)
 - [集束搜索解码](./docs/beam_search.md)
 - [执行评估](./docs/eval.md)
-- [导出模型](./docs/export_model.md)
+- [导出模型](./docs/export_model.md) **【目前不支持导出】**
 - [使用标点符号模型](./docs/punctuation.md)
 - 预测
    - [本地预测](./docs/infer.md)

@@ -6,6 +6,7 @@ from typeguard import check_argument_types
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 from ppasr.model_utils.conformer.attention import RelPositionMultiHeadedAttention
+from ppasr.model_utils.conformer.base import LayerNorm, Linear
 from ppasr.model_utils.conformer.convolution import ConvolutionModule
 from ppasr.model_utils.conformer.embedding import NoPositionalEncoding
 from ppasr.model_utils.conformer.embedding import PositionalEncoding
@@ -61,22 +62,22 @@ class ConformerEncoderLayer(nn.Layer):
         self.feed_forward = feed_forward
         self.feed_forward_macaron = feed_forward_macaron
         self.conv_module = conv_module
-        self.norm_ff = nn.LayerNorm(size, epsilon=1e-5)  # for the FNN module
-        self.norm_mha = nn.LayerNorm(size, epsilon=1e-5)  # for the MHA module
+        self.norm_ff = LayerNorm(size, epsilon=1e-5)  # for the FNN module
+        self.norm_mha = LayerNorm(size, epsilon=1e-5)  # for the MHA module
         if feed_forward_macaron is not None:
-            self.norm_ff_macaron = nn.LayerNorm(size, epsilon=1e-5)
+            self.norm_ff_macaron = LayerNorm(size, epsilon=1e-5)
             self.ff_scale = 0.5
         else:
             self.ff_scale = 1.0
         if self.conv_module is not None:
-            self.norm_conv = nn.LayerNorm(size, epsilon=1e-5)  # for the CNN module
-            self.norm_final = nn.LayerNorm(size, epsilon=1e-5)  # for the final output of the block
+            self.norm_conv = LayerNorm(size, epsilon=1e-5)  # for the CNN module
+            self.norm_final = LayerNorm(size, epsilon=1e-5)  # for the final output of the block
         self.dropout = nn.Dropout(dropout_rate)
         self.size = size
         self.normalize_before = normalize_before
         self.concat_after = concat_after
         if self.concat_after:
-            self.concat_linear = nn.Linear(size + size, size)
+            self.concat_linear = Linear(size + size, size)
         else:
             self.concat_linear = nn.Identity()
 
@@ -128,8 +129,7 @@ class ConformerEncoderLayer(nn.Layer):
         if self.normalize_before:
             x = self.norm_mha(x)
 
-        x_att, new_att_cache = self.self_attn(
-            x, x, x, mask, pos_emb, cache=att_cache)
+        x_att, new_att_cache = self.self_attn(x, x, x, mask, pos_emb, cache=att_cache)
 
         if self.concat_after:
             x_concat = paddle.concat((x, x_att), axis=-1)
@@ -274,7 +274,7 @@ class ConformerEncoder(nn.Layer):
                 max_len=max_len), )
 
         self.normalize_before = normalize_before
-        self.after_norm = nn.LayerNorm(output_size, epsilon=1e-5)
+        self.after_norm = LayerNorm(output_size, epsilon=1e-5)
         self.static_chunk_size = static_chunk_size
         self.use_dynamic_chunk = use_dynamic_chunk
         self.use_dynamic_left_chunk = use_dynamic_left_chunk

@@ -5,6 +5,7 @@ import paddle
 from paddle import nn
 from paddle.nn import initializer as I
 from ppasr.model_utils.utils.common import masked_fill
+from ppasr.model_utils.conformer.base import Linear
 
 __all__ = ["MultiHeadedAttention", "RelPositionMultiHeadedAttention"]
 
@@ -25,10 +26,10 @@ class MultiHeadedAttention(nn.Layer):
         # We assume d_v always equals d_k
         self.d_k = n_feat // n_head
         self.h = n_head
-        self.linear_q = nn.Linear(n_feat, n_feat)
-        self.linear_k = nn.Linear(n_feat, n_feat)
-        self.linear_v = nn.Linear(n_feat, n_feat)
-        self.linear_out = nn.Linear(n_feat, n_feat)
+        self.linear_q = Linear(n_feat, n_feat)
+        self.linear_k = Linear(n_feat, n_feat)
+        self.linear_v = Linear(n_feat, n_feat)
+        self.linear_out = Linear(n_feat, n_feat)
         self.dropout = nn.Dropout(p=dropout_rate)
 
     def forward_qkv(self,
@@ -167,7 +168,7 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         """
         super().__init__(n_head, n_feat, dropout_rate)
         # linear transformation for positional encoding
-        self.linear_pos = nn.Linear(n_feat, n_feat, bias_attr=False)
+        self.linear_pos = Linear(n_feat, n_feat, bias_attr=False)
         pos_bias_u = self.create_parameter(
             [self.h, self.d_k], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_u', pos_bias_u)

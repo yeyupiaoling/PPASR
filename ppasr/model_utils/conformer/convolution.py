@@ -5,6 +5,7 @@ from paddle import nn
 from typeguard import check_argument_types
 
 from ppasr.model_utils.utils.common import masked_fill
+from ppasr.model_utils.conformer.base import Conv1D
 
 __all__ = ['ConvolutionModule']
 
@@ -30,7 +31,7 @@ class ConvolutionModule(nn.Layer):
         """
         assert check_argument_types()
         super().__init__()
-        self.pointwise_conv1 = nn.Conv1D(
+        self.pointwise_conv1 = Conv1D(
             channels,
             2 * channels,
             kernel_size=1,
@@ -54,7 +55,7 @@ class ConvolutionModule(nn.Layer):
             padding = (kernel_size - 1) // 2
             self.lorder = 0
 
-        self.depthwise_conv = nn.Conv1D(
+        self.depthwise_conv = Conv1D(
             channels,
             channels,
             kernel_size,
@@ -73,7 +74,7 @@ class ConvolutionModule(nn.Layer):
             self.use_layer_norm = True
             self.norm = nn.LayerNorm(channels)
 
-        self.pointwise_conv2 = nn.Conv1D(
+        self.pointwise_conv2 = Conv1D(
             channels,
             channels,
             kernel_size=1,

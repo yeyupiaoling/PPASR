@@ -8,6 +8,8 @@ __all__ = [
     "Conv2dSubsampling8"
 ]
 
+from ppasr.model_utils.conformer.base import Conv2D, Linear
+
 
 class BaseSubsampling(nn.Layer):
     def __init__(self):
@@ -80,13 +82,11 @@ class Conv2dSubsampling4(BaseSubsampling):
             dropout_rate (float): Dropout rate.
         """
         super().__init__()
-        self.conv = nn.Sequential(
-            nn.Conv2D(1, odim, 3, 2),
-            nn.ReLU(),
-            nn.Conv2D(odim, odim, 3, 2),
-            nn.ReLU(), )
-        self.out = nn.Sequential(
-            nn.Linear(odim * (((idim - 1) // 2 - 1) // 2), odim))
+        self.conv = nn.Sequential(Conv2D(1, odim, 3, 2),
+                                  nn.ReLU(),
+                                  Conv2D(odim, odim, 3, 2),
+                                  nn.ReLU(), )
+        self.out = nn.Sequential(nn.Linear(odim * (((idim - 1) // 2 - 1) // 2), odim))
         self.pos_enc = pos_enc_class
         self.subsampling_rate = 4
         # The right context for every conv layer is computed by:
@@ -133,14 +133,14 @@ class Conv2dSubsampling6(BaseSubsampling):
             pos_enc (PositionalEncoding): Custom position encoding layer.
         """
         super().__init__()
-        self.conv = nn.Sequential(nn.Conv2D(1, odim, 3, 2),
+        self.conv = nn.Sequential(Conv2D(1, odim, 3, 2),
                                   nn.ReLU(),
-                                  nn.Conv2D(odim, odim, 5, 3),
+                                  Conv2D(odim, odim, 5, 3),
                                   nn.ReLU(), )
         self.pos_enc = pos_enc_class
         # O = (I - F + Pstart + Pend) // S + 1
         # when Padding == 0, O = (I - F - S) // S
-        self.linear = nn.Linear(odim * (((idim - 1) // 2 - 2) // 3), odim)
+        self.linear = Linear(odim * (((idim - 1) // 2 - 2) // 3), odim)
         # The right context for every conv layer is computed by:
         # (kernel_size - 1) * frame_rate_of_this_layer
         # 10 = (3 - 1) * 1 + (5 - 1) * 2
@@ -185,13 +185,13 @@ class Conv2dSubsampling8(BaseSubsampling):
             dropout_rate (float): Dropout rate.
         """
         super().__init__()
-        self.conv = nn.Sequential(nn.Conv2D(1, odim, 3, 2),
+        self.conv = nn.Sequential(Conv2D(1, odim, 3, 2),
                                   nn.ReLU(),
-                                  nn.Conv2D(odim, odim, 3, 2),
+                                  Conv2D(odim, odim, 3, 2),
                                   nn.ReLU(),
-                                  nn.Conv2D(odim, odim, 3, 2),
+                                  Conv2D(odim, odim, 3, 2),
                                   nn.ReLU(), )
-        self.linear = nn.Linear(odim * ((((idim - 1) // 2 - 1) // 2 - 1) // 2), odim)
+        self.linear = Linear(odim * ((((idim - 1) // 2 - 1) // 2 - 1) // 2), odim)
         self.pos_enc = pos_enc_class
         self.subsampling_rate = 8
         # The right context for every conv layer is computed by:
