@@ -43,7 +43,7 @@ class PPASRTrainer(object):
         """
         if use_gpu:
             assert paddle.is_compiled_with_cuda(), 'GPU不可用'
-            # paddle.device.set_device("gpu")
+            paddle.device.set_device("gpu")
         else:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
             paddle.device.set_device("cpu")
@@ -73,7 +73,7 @@ class PPASRTrainer(object):
                                               augmentation_config=augmentation_config,
                                               train=is_train)
             # 设置支持多卡训练
-            if paddle.distributed.get_world_size() > 1:
+            if paddle.distributed.get_world_size() > 1 and self.use_gpu:
                 self.train_batch_sampler = SortagradDistributedBatchSampler(self.train_dataset,
                                                                             batch_size=self.configs.dataset_conf.batch_size,
                                                                             sortagrad=True,
@@ -368,13 +368,19 @@ class PPASRTrainer(object):
         if local_rank == 0:
             # 日志记录器
             writer = LogWriter(logdir='log')
-        if nranks > 1:
-            # 初始化Fleet环境
-            fleet.init(is_collective=True)
 
+        if nranks > 1 and self.use_gpu:
+            # 初始化Fleet环境
+            strategy = fleet.DistributedStrategy()
+            fleet.init(is_collective=True, strategy=strategy)
+
+        # 获取数据
         self.__setup_dataloader(augment_conf_path=augment_conf_path, is_train=True)
+        # 获取模型
         self.__setup_model(is_train=True)
-        if nranks > 1:
+
+        # 支持多卡训练
+        if nranks > 1 and self.use_gpu:
             self.optimizer = fleet.distributed_optimizer(self.optimizer)
             self.model = fleet.distributed_model(self.model)
         logger.info('训练数据：{}'.format(len(self.train_dataset)))
@@ -436,6 +442,10 @@ class PPASRTrainer(object):
             self.model.set_state_dict(model_state_dict)
             logger.info(f'成功加载模型：{resume_model}')
         self.model.eval()
+        if isinstance(self.model, paddle.DataParallel):
+            eval_model = self.model._layers
+        else:
+            eval_model = self.model
 
         error_results, losses = [], []
         eos = self.test_dataset.vocab_size - 1
@@ -445,7 +455,7 @@ class PPASRTrainer(object):
                 loss_dict = self.model(inputs, input_lens, labels, label_lens)
                 losses.append(loss_dict['loss'].numpy()[0] / self.configs.train_conf.accum_grad)
                 # 获取模型编码器输出
-                outputs = self.model.get_encoder_out(inputs, input_lens).numpy()
+                outputs = eval_model.get_encoder_out(inputs, input_lens).numpy()
                 out_strings = self.__decoder_result(outs=outputs, vocabulary=self.test_dataset.vocab_list)
                 labels_str = labels_to_string(labels, self.test_dataset.vocab_list, eos=eos)
                 for out_string, label in zip(*(out_strings, labels_str)):
