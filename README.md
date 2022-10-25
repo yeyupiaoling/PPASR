@@ -18,7 +18,7 @@
 
 **1. [在AI Studio平台训练预测](https://aistudio.baidu.com/aistudio/projectdetail/3290199)**
 
-<!-- **2. [在线使用Dome](https://ppasr.yeyupiaoling.cn)** -->
+**2. [在线使用Dome](https://03q5072792.imdo.co)**
 
 <br/>
 
