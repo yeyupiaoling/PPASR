@@ -1,6 +1,5 @@
 import paddle
 from paddle import nn
-import paddle.nn.functional as F
 
 from ppasr.model_utils.deepspeech2.conv import Conv2dSubsampling4Pure
 

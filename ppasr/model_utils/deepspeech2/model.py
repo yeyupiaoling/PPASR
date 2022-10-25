@@ -63,6 +63,28 @@ class DeepSpeech2Model(nn.Layer):
         ctc_probs = self.decoder.softmax(eouts)
         return ctc_probs, eouts_len, final_chunk_state_h_box, final_chunk_state_c_box
 
+    def export(self):
+        if self.encoder.rnn_direction == "forward":
+            static_model = paddle.jit.to_static(
+                self.get_encoder_out_chunk,
+                input_spec=[
+                    paddle.static.InputSpec(shape=[None, None, self.encoder.input_dim],
+                                            dtype='float32'),  # [B, chunk_size, feat_dim]
+                    paddle.static.InputSpec(shape=[None], dtype='int64'),  # audio_length, [B]
+                    paddle.static.InputSpec(shape=[None, None, None], dtype='float32'),
+                    paddle.static.InputSpec(shape=[None, None, None], dtype='float32')
+                ])
+        elif self.encoder.rnn_direction == "bidirect":
+            static_model = paddle.jit.to_static(
+                self.get_encoder_out,
+                input_spec=[
+                    paddle.static.InputSpec(shape=[None, None, self.encoder.input_dim], dtype='float32'),  # [B, T, D]
+                    paddle.static.InputSpec(shape=[None], dtype='int64'),  # audio_length, [B]
+                ])
+        else:
+            raise Exception(f"模型错误，没有：{self.encoder.rnn_direction}")
+        return static_model
+
 
 def DeepSpeech2ModelOnline(configs,
                            input_dim: int,
@@ -75,8 +97,8 @@ def DeepSpeech2ModelOnline(configs,
 
 
 def DeepSpeech2ModelOffline(configs,
-                           input_dim: int,
-                           vocab_size: int):
+                            input_dim: int,
+                            vocab_size: int):
     model = DeepSpeech2Model(configs=configs,
                              input_dim=input_dim,
                              vocab_size=vocab_size,

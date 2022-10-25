@@ -27,6 +27,7 @@ class ConformerModel(paddle.nn.Layer):
             causal: bool = False):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
+        self.input_dim = input_dim
         feature_normalizer = FeatureNormalizer(mean_istd_filepath=configs.dataset_conf.mean_istd_path)
         global_cmvn = GlobalCMVN(paddle.to_tensor(feature_normalizer.mean, dtype=paddle.float32),
                                  paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
@@ -134,36 +135,10 @@ class ConformerModel(paddle.nn.Layer):
         if reverse_weight > 0.0:
             r_loss_att = self.criterion_att(r_decoder_out, r_ys_out_pad)
         loss_att = loss_att * (1 - reverse_weight) + r_loss_att * reverse_weight
-        acc_att = th_accuracy(
-            decoder_out.reshape([-1, self.vocab_size] ),
-            ys_out_pad,
-            ignore_label=self.ignore_id, )
+        acc_att = th_accuracy(decoder_out.reshape([-1, self.vocab_size]),
+                              ys_out_pad,
+                              ignore_label=self.ignore_id, )
         return loss_att, acc_att
-
-    def _forward_encoder(
-            self,
-            speech: paddle.Tensor,
-            speech_lengths: paddle.Tensor,
-            decoding_chunk_size: int = -1,
-            num_decoding_left_chunks: int = -1,
-            simulate_streaming: bool = False,
-    ) -> Tuple[paddle.Tensor, paddle.Tensor]:
-        # Let's assume B = batch_size
-        # 1. Encoder
-        if simulate_streaming and decoding_chunk_size > 0:
-            encoder_out, encoder_mask = self.encoder.forward_chunk_by_chunk(
-                speech,
-                decoding_chunk_size=decoding_chunk_size,
-                num_decoding_left_chunks=num_decoding_left_chunks
-            )  # (B, maxlen, encoder_dim)
-        else:
-            encoder_out, encoder_mask = self.encoder(
-                speech,
-                speech_lengths,
-                decoding_chunk_size=decoding_chunk_size,
-                num_decoding_left_chunks=num_decoding_left_chunks
-            )  # (B, maxlen, encoder_dim)
-        return encoder_out, encoder_mask
 
     def get_encoder_out(self, speech: paddle.Tensor, speech_lengths: paddle.Tensor) -> Tensor:
         """ Get encoder output
@@ -174,38 +149,45 @@ class ConformerModel(paddle.nn.Layer):
         Returns:
             Tensor: ctc softmax output
         """
-        encoder_out, _ = self._forward_encoder(speech, speech_lengths)  # (B, maxlen, encoder_dim)
+        encoder_out, _ = self.encoder(speech,
+                                      speech_lengths,
+                                      decoding_chunk_size=-1,
+                                      num_decoding_left_chunks=-1)  # (B, maxlen, encoder_dim)
         ctc_probs = self.ctc.softmax(encoder_out)
         return ctc_probs
 
-    def get_encoder_out_chunk(
-            self,
-            speech: paddle.Tensor,
-            speech_lengths: paddle.Tensor,
-            decoding_chunk_size: int = -1,
-            num_decoding_left_chunks: int = -1,
-            simulate_streaming: bool = False,
-    ) -> Tensor:
+    def get_encoder_out_chunk(self,
+                              speech: paddle.Tensor,
+                              offset: int,
+                              required_cache_size: int,
+                              att_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
+                              cnn_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
+                              ) -> [Tensor, Tensor, Tensor]:
         """ Get encoder output
 
         Args:
             speech (paddle.Tensor): (batch, max_len, feat_dim)
-            speech_lengths (paddle.Tensor): (batch, )
-            decoding_chunk_size (int): decoding chunk for dynamic chunk
-                trained model.
-                <0: for decoding, use full chunk.
-                >0: for decoding, use fixed chunk size as set.
-                0: used for training, it's prohibited here
-            simulate_streaming (bool): whether you do encoder forward in a
-                streaming fashion
         Returns:
             Tensor: ctc softmax output
         """
-        encoder_out, _ = self._forward_encoder(speech, speech_lengths, decoding_chunk_size,
-                                               num_decoding_left_chunks, simulate_streaming)  # (B, maxlen, encoder_dim)
-        ctc_probs = self.ctc.softmax(encoder_out)
-        return ctc_probs
+        xs, att_cache, cnn_cache = self.encoder.forward_chunk(xs=speech,
+                                                              offset=offset,
+                                                              required_cache_size=required_cache_size,
+                                                              att_cache=att_cache,
+                                                              cnn_cache=cnn_cache)
+        ctc_probs = self.ctc.softmax(xs)
+        return ctc_probs, att_cache, cnn_cache
 
+    @paddle.no_grad()
+    def export(self):
+        static_model = paddle.jit.to_static(
+            self.get_encoder_out,
+            input_spec=[
+                paddle.static.InputSpec(shape=[1, 100, self.input_dim], dtype='float32'),  # [B, T, D]
+                paddle.static.InputSpec(shape=[1], dtype='int64'),  # audio_length, [B]
+            ])
+
+        return static_model
 
 def ConformerModelOnline(configs,
                          input_dim: int,

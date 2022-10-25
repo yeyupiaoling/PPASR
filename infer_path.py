@@ -13,6 +13,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('configs',          str,    'configs/conformer_online_zh.yml',     "配置文件")
 add_arg('wav_path',         str,    'dataset/test.wav',          "预测音频的路径")
+add_arg('predictor_type',   str,    'python',                    "预测器类型")
 add_arg('is_long_audio',    bool,   False,                       "是否为长语音")
 add_arg('real_time_demo',   bool,   False,                       "是否使用实时语音识别演示")
 add_arg('use_gpu',          bool,   True,                        "是否使用GPU预测")
@@ -30,6 +31,7 @@ print_arguments(args, configs)
 # 获取识别器
 predictor = PPASRPredictor(configs=configs,
                            model_path=args.model_path.format(configs['use_model'], configs['preprocess_conf']['feature_method']),
+                           predictor_type=args.predictor_type,
                            use_gpu=args.use_gpu,
                            use_pun=args.use_pun,
                            pun_model_dir=args.pun_model_dir)

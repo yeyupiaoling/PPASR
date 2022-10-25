@@ -2,14 +2,14 @@ import os
 import platform
 
 import numpy as np
-import paddle
+
 from ppasr import SUPPORT_MODEL
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
-from ppasr.model_utils.conformer.model import ConformerModelOffline, ConformerModelOnline
-from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOffline, DeepSpeech2ModelOnline
+from ppasr.infer_utils.inference_predictor import InferencePredictor
+from ppasr.infer_utils.python_predictor import PythonPredictor
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import dict_to_object
 
@@ -19,6 +19,7 @@ logger = setup_logger(__name__)
 class PPASRPredictor:
     def __init__(self,
                  configs,
+                 predictor_type='python',
                  model_path='models/conformer_online_fbank/best_model/',
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
@@ -26,11 +27,13 @@ class PPASRPredictor:
         """
         语音识别预测工具
         :param model_path: 导出的预测模型文件夹路径
+        :param predictor_type: 预测器类型
         :param use_pun: 是否使用加标点符号的模型
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param use_gpu: 是否使用GPU预测
         """
         self.configs = dict_to_object(configs)
+        assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
         self.running = False
         self.use_gpu = use_gpu
         self.inv_normalizer = None
@@ -38,14 +41,41 @@ class PPASRPredictor:
         self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset_conf.dataset_vocab)
         self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess_conf)
         # 流式解码参数
-        self.output_state_h = None
-        self.output_state_c = None
         self.remained_wav = None
         self.cached_feat = None
         self.greedy_last_max_prob_list = None
         self.greedy_last_max_index_list = None
-        assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
+        self.__init_decoder()
+        # 创建模型
+        if not os.path.exists(model_path):
+            raise Exception("模型文件不存在，请检查{}是否存在！".format(model_path))
+        # 加标点符号
+        if use_pun:
+            from ppasr.utils.text_utils import PunctuationExecutor
+            self.pun_executor = PunctuationExecutor(model_dir=pun_model_dir, use_gpu=use_gpu)
+        # 获取预测器
+        if predictor_type == 'inference':
+            if 'deepspeech2' not in self.configs.use_model:
+                raise Exception(f'目前只支持deepspeech2使用inference预测器')
+            self.predictor = InferencePredictor(configs=self.configs,
+                                                use_model=self.configs.use_model,
+                                                model_dir=model_path,
+                                                use_gpu=self.use_gpu)
+        elif predictor_type == 'python':
+            self.predictor = PythonPredictor(configs=self.configs,
+                                             use_model=self.configs.use_model,
+                                             input_dim=self._audio_featurizer.feature_dim,
+                                             vocab_size=self._text_featurizer.vocab_size,
+                                             model_dir=model_path,
+                                             use_gpu=self.use_gpu)
+        else:
+            raise Exception(f'没有该预测器：{predictor_type}')
+        # 预热
+        warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
+        self.predict(audio_ndarray=warmup_audio, is_itn=False)
 
+    # 初始化解码器
+    def __init_decoder(self):
         # 集束搜索方法的处理
         if self.configs.decoder == "ctc_beam_search":
             if platform.system() != 'Windows':
@@ -65,50 +95,6 @@ class PPASRPredictor:
                     '【注意】Windows不支持ctc_beam_search，已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
                 logger.warning('==================================================================\n')
                 self.configs.decoder = 'ctc_greedy'
-
-        # 创建模型
-        if not os.path.exists(model_path):
-            raise Exception("模型文件不存在，请检查{}是否存在！".format(model_path))
-        # 根据 config 创建 predictor
-        if self.configs.use_model == 'conformer_online':
-            self.predictor = ConformerModelOnline(configs=self.configs,
-                                                  input_dim=self._audio_featurizer.feature_dim,
-                                                  vocab_size=self._text_featurizer.vocab_size,
-                                                  **self.configs.model_conf)
-        elif self.configs.use_model == 'conformer_offline':
-            self.predictor = ConformerModelOffline(configs=self.configs,
-                                                   input_dim=self._audio_featurizer.feature_dim,
-                                                   vocab_size=self._text_featurizer.vocab_size,
-                                                   **self.configs.model_conf)
-        elif self.configs.use_model == 'deepspeech2_online':
-            self.predictor = DeepSpeech2ModelOnline(configs=self.configs,
-                                                    input_dim=self._audio_featurizer.feature_dim,
-                                                    vocab_size=self._text_featurizer.vocab_size)
-        elif self.configs.use_model == 'deepspeech2_offline':
-            self.predictor = DeepSpeech2ModelOffline(configs=self.configs,
-                                                     input_dim=self._audio_featurizer.feature_dim,
-                                                     vocab_size=self._text_featurizer.vocab_size, )
-        else:
-            raise Exception('没有该模型：{}'.format(self.configs.use_model))
-        if os.path.isdir(model_path):
-            model_path = os.path.join(model_path, 'model.pdparams')
-        assert os.path.exists(model_path), f"{model_path} 模型不存在！"
-        model_state_dict = paddle.load(model_path)
-        self.predictor.set_state_dict(model_state_dict)
-        logger.info(f'成功加载模型：{model_path}')
-        self.predictor.eval()
-
-        # 加标点符号
-        if use_pun:
-            from ppasr.utils.text_utils import PunctuationExecutor
-            self.pun_executor = PunctuationExecutor(model_dir=pun_model_dir,
-                                                    use_gpu=use_gpu,
-                                                    gpu_mem=gpu_mem,
-                                                    num_threads=num_threads)
-
-        # 预热
-        warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
-        self.predict(audio_ndarray=warmup_audio, is_itn=False)
 
     # 解码模型输出结果
     def decode(self, output_data, use_pun, is_itn):
@@ -168,34 +154,12 @@ class PPASRPredictor:
         audio_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
         audio_len = np.array([audio_data.shape[1]]).astype(np.int64)
 
-        audio_data = paddle.to_tensor(audio_data, dtype=paddle.float32)
-        audio_len = paddle.to_tensor(audio_len)
-
-        if self.use_gpu:
-            audio_data = audio_data.cuda()
-            audio_len = audio_len.cuda()
-
         # 运行predictor
-        output_data = self.predictor.get_encoder_out(audio_data, audio_len).numpy()[0]
+        output_data = self.predictor.predict(audio_data, audio_len)[0]
 
         # 解码
         score, text = self.decode(output_data=output_data, use_pun=use_pun, is_itn=is_itn)
         return score, text
-
-    def predict_chunk(self, x_chunk, x_chunk_lens):
-        audio_data = paddle.to_tensor(x_chunk, dtype=paddle.float32)
-        audio_len = paddle.to_tensor(x_chunk_lens)
-
-        if self.use_gpu:
-            audio_data = audio_data.cuda()
-            audio_len = audio_len.cuda()
-
-        # 运行predictor
-        output_chunk_probs, output_lens, self.output_state_h, self.output_state_c = \
-            self.predictor.get_encoder_out_chunk(audio_data, audio_len, self.output_state_h, self.output_state_c)
-        output_chunk_probs = output_chunk_probs.numpy()
-        output_lens = output_lens.numpy()
-        return output_chunk_probs, output_lens
 
     # 预测音频
     def predict_stream(self,
@@ -265,7 +229,7 @@ class PPASRPredictor:
             x_chunk = self.cached_feat[:, cur:end, :]
             x_chunk_lens = np.array([x_chunk.shape[1]])
             # 执行识别
-            output_chunk_probs, output_lens = self.predict_chunk(x_chunk=x_chunk, x_chunk_lens=x_chunk_lens)
+            output_chunk_probs, output_lens = self.predictor.predict_chunk(x_chunk=x_chunk, x_chunk_lens=x_chunk_lens)
             # 执行解码
             if self.configs.decoder == 'ctc_beam_search':
                 # 集束搜索解码策略
@@ -293,8 +257,7 @@ class PPASRPredictor:
 
     # 重置流式识别，每次流式识别完成之后都要执行
     def reset_stream(self):
-        self.output_state_h = None
-        self.output_state_c = None
+        self.predictor.reset_stream()
         self.remained_wav = None
         self.cached_feat = None
         self.greedy_last_max_prob_list = None

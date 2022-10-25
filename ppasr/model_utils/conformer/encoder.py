@@ -362,7 +362,6 @@ class ConformerEncoder(nn.Layer):
             required_cache_size: int,
             att_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
             cnn_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
-            att_mask: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool)
     ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """ Forward just one chunk
         Args:
@@ -414,6 +413,7 @@ class ConformerEncoder(nn.Layer):
 
         r_att_cache = []
         r_cnn_cache = []
+        att_mask = paddle.ones([0, 0, 0], dtype=paddle.bool)
         for i, layer in enumerate(self.encoders):
             xs, _, new_att_cache, new_cnn_cache = layer(
                 xs,

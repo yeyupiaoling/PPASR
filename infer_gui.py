@@ -27,6 +27,7 @@ add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('configs',          str,   'configs/deepspeech2_online_zh.yml',       "配置文件")
 add_arg('use_server',       bool,   False,         "是否使用服务器服务进行识别，否则使用本地识别")
 add_arg("host",             str,    "127.0.0.1",   "服务器IP地址")
+add_arg('predictor_type',   str,    "python",      "预测器类型")
 add_arg("port_server",      int,    5000,          "普通识别服务端口号")
 add_arg("port_stream",      int,    5001,          "流式识别服务端口号")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
@@ -97,6 +98,7 @@ class SpeechRecognitionApp:
             self.predictor = PPASRPredictor(configs=configs,
                                             model_path=args.model_path.format(configs['use_model'],
                                                                               configs['preprocess_conf']['feature_method']),
+                                            predictor_type=args.predictor_type,
                                             use_gpu=args.use_gpu,
                                             use_pun=args.use_pun,
                                             pun_model_dir=args.pun_model_dir)
