@@ -51,7 +51,7 @@ class SpeechRecognitionApp:
         self.playing = False
         self.recording = False
         self.stream = None
-        self.is_itn = True
+        self.is_itn = False
         self.use_server = args.use_server
         # 录音参数
         self.frames = []
@@ -85,7 +85,7 @@ class SpeechRecognitionApp:
         self.result_text.place(x=10, y=100)
         # 对文本进行反标准化
         self.an_frame = Frame(self.window)
-        self.check_var = BooleanVar(value=True)
+        self.check_var = BooleanVar(value=False)
         self.is_itn_check = Checkbutton(self.an_frame, text='是否对文本进行反标准化', variable=self.check_var, command=self.is_itn_state)
         self.is_itn_check.grid(row=0)
         self.an_frame.grid(row=1)

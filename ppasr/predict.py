@@ -5,7 +5,6 @@ import cn2an
 import numpy as np
 import paddle.inference as paddle_infer
 
-from itn.chinese.inverse_normalizer import InverseNormalizer
 from ppasr import SUPPORT_MODEL
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
@@ -38,7 +37,7 @@ class Predictor:
         self.configs = dict_to_object(configs)
         self.running = False
         self.use_gpu = use_gpu
-        self.inv_normalizer = InverseNormalizer()
+        self.inv_normalizer = None
         self.pun_executor = None
         self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset.dataset_vocab)
         self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess)
@@ -336,5 +335,8 @@ class Predictor:
 
     # 对文本进行反标准化
     def inverse_text_normalization(self, text):
+        if self.inv_normalizer is None:
+            from itn.chinese.inverse_normalizer import InverseNormalizer
+            self.inv_normalizer = InverseNormalizer()
         result_text = self.inv_normalizer.normalize(text)
         return result_text
