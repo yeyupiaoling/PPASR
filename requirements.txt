@@ -21,3 +21,4 @@ paddleaudio~=1.0.1
 requests~=2.25.1
 websockets~=10.3
 ffmpeg-python>=0.2.0
+cn2an>=0.5.17
