@@ -11,7 +11,6 @@ from datetime import timedelta
 import paddle
 from paddle.distributed import fleet
 from paddle.io import DataLoader
-from paddle.static import InputSpec
 from tqdm import tqdm
 from visualdl import LogWriter
 
@@ -22,9 +21,8 @@ from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
+from ppasr.data_utils.utils import create_manifest_binary
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
-from ppasr.model_utils.conformer.model import ConformerModelOnline, ConformerModelOffline
-from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
 from ppasr.utils.scheduler import WarmupLR
@@ -71,6 +69,7 @@ class PPASRTrainer(object):
                                               min_duration=self.configs.dataset_conf.min_duration,
                                               max_duration=self.configs.dataset_conf.max_duration,
                                               augmentation_config=augmentation_config,
+                                              manifest_type=self.configs.dataset_conf.get('manifest_type', 'txt'),
                                               train=is_train)
             # 设置支持多卡训练
             if paddle.distributed.get_world_size() > 1 and self.use_gpu:
@@ -93,6 +92,7 @@ class PPASRTrainer(object):
         self.test_dataset = PPASRDataset(preprocess_configs=self.configs.preprocess_conf,
                                          data_manifest=self.configs.dataset_conf.test_manifest,
                                          vocab_filepath=self.configs.dataset_conf.dataset_vocab,
+                                         manifest_type=self.configs.dataset_conf.get('manifest_type', 'txt'),
                                          min_duration=self.configs.dataset_conf.min_duration,
                                          max_duration=self.configs.dataset_conf.max_duration)
         self.test_loader = DataLoader(dataset=self.test_dataset,
@@ -101,6 +101,8 @@ class PPASRTrainer(object):
                                       num_workers=self.configs.dataset_conf.num_workers)
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
+        from ppasr.model_utils.conformer.model import ConformerModelOnline, ConformerModelOffline
+        from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
         # 获取模型
         if self.configs.use_model == 'conformer_online':
             self.model = ConformerModelOnline(configs=self.configs,
@@ -188,8 +190,12 @@ class PPASRTrainer(object):
                                       f'{self.configs.use_model}_{self.configs.preprocess_conf.feature_method}',
                                       'epoch_{}'.format(epoch_id))
         os.makedirs(model_path, exist_ok=True)
-        paddle.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
-        paddle.save(self.model.state_dict(), os.path.join(model_path, 'model.pdparams'))
+        try:
+            paddle.save(self.optimizer.state_dict(), os.path.join(model_path, 'optimizer.pdopt'))
+            paddle.save(self.model.state_dict(), os.path.join(model_path, 'model.pdparams'))
+        except Exception as e:
+            logger.error(f'保存模型时出现错误，错误信息：{e}')
+            return
         with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
             f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (
                 epoch_id, self.configs.metrics_type, error_rate, test_loss))
@@ -265,13 +271,16 @@ class PPASRTrainer(object):
             # 多卡训练只使用一个进程打印
             train_times.append((time.time() - start) * 1000)
             if batch_id % self.configs.train_conf.log_interval == 0 and local_rank == 0:
+                # 计算每秒训练数据量
+                train_speed = self.configs.dataset_conf.batch_size / (sum(train_times) / len(train_times) / 1000)
+                # 计算剩余时间
                 eta_sec = (sum(train_times) / len(train_times)) * (
                         sum_batch - (epoch_id - 1) * len(self.train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
-                logger.info('Train epoch: [{}/{}], batch: [{}/{}], loss: {:.5f}, learning rate: {:>.8f}, '
-                            'eta: {}'.format(epoch_id, self.configs.train_conf.max_epoch, batch_id,
-                                             len(self.train_loader),
-                                             loss.numpy()[0], self.scheduler.get_lr(), eta_str))
+                logger.info(f'Train epoch: [{epoch_id}/{self.configs.train_conf.max_epoch}], '
+                            f'batch: [{batch_id}/{len(self.train_loader)}], loss: {loss.numpy()[0]:.5f},'
+                            f' learning rate: {self.scheduler.get_lr():>.8f}, '
+                            f'speed: {train_speed:.2f} data/sec, eta: {eta_str}')
                 writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
                 train_times = []
             # 固定步数也要保存一次模型
@@ -345,6 +354,13 @@ class PPASRTrainer(object):
                                      preprocess_configs=self.configs.preprocess_conf,
                                      num_samples=num_samples)
         print('计算的均值和标准值已保存在 %s！' % self.configs.dataset_conf.mean_istd_path)
+
+        if self.configs.dataset_conf.get('manifest_type', 'txt') == 'binary':
+            logger.info('=' * 70)
+            logger.info('正在生成数据列表的二进制文件...')
+            create_manifest_binary(train_manifest_path=self.configs.dataset_conf.train_manifest,
+                                   test_manifest_path=self.configs.dataset_conf.test_manifest)
+            logger.info('数据列表的二进制文件生成完成！')
 
     def train(self,
               save_model_path='models/',

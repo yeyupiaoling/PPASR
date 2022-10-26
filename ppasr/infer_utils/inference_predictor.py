@@ -14,7 +14,8 @@ class InferencePredictor:
                  use_model,
                  model_dir='models/deepspeech2_online_fbank/infer/',
                  use_gpu=True,
-                 gpu_mem=500,
+                 use_tensorrt=False,
+                 gpu_mem=1000,
                  num_threads=10):
         """
         语音识别预测工具
@@ -36,19 +37,32 @@ class InferencePredictor:
         params_path = os.path.join(model_dir, 'model.pdiparams')
         if not os.path.exists(model_path) or not os.path.exists(params_path):
             raise Exception("模型文件不存在，请检查%s和%s是否存在！" % (model_path, params_path))
-        self.config = paddle_infer.Config(model_path, params_path)
+        config = paddle_infer.Config(model_path, params_path)
 
         if self.use_gpu:
-            self.config.enable_use_gpu(gpu_mem, 0)
+            config.enable_use_gpu(gpu_mem, 0)
+            if use_tensorrt:
+                config.enable_tensorrt_engine(workspace_size=1 << 28,
+                                              max_batch_size=1,
+                                              min_subgraph_size=3,
+                                              precision_mode=paddle_infer.PrecisionType.Float32)
+                config.set_trt_dynamic_shape_info(min_input_shape={"speech": [1, 10, 80]},
+                                                  max_input_shape={"speech": [1, 900, 161]},
+                                                  optim_input_shape={"speech": [1, 500, 80]})
+
         else:
-            self.config.disable_gpu()
-            self.config.set_cpu_math_library_num_threads(num_threads)
+            config.disable_gpu()
+            config.enable_mkldnn()
+            config.set_mkldnn_cache_capacity(1)
+            config.set_cpu_math_library_num_threads(num_threads)
+        config.disable_glog_info()
         # enable memory optim
-        self.config.enable_memory_optim()
-        self.config.disable_glog_info()
+        config.enable_memory_optim()
+        config.switch_ir_optim(True)
+        config.switch_use_feed_fetch_ops(False)
 
         # 根据 config 创建 predictor
-        self.predictor = paddle_infer.create_predictor(self.config)
+        self.predictor = paddle_infer.create_predictor(config)
 
         logger.info(f'已加载模型：{model_dir}')
 

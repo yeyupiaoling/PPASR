@@ -5,6 +5,7 @@ from paddle.io import Dataset
 
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.augmentor.augmentation import AugmentationPipeline
+from ppasr.data_utils.binary import DatasetReader
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.utils.logger import setup_logger
@@ -21,26 +22,38 @@ class PPASRDataset(Dataset):
                  min_duration=0,
                  max_duration=20,
                  augmentation_config='{}',
+                 manifest_type='txt',
                  train=False):
         super(PPASRDataset, self).__init__()
         self._augmentation_pipeline = AugmentationPipeline(augmentation_config=augmentation_config)
         self._audio_featurizer = AudioFeaturizer(train=train, **preprocess_configs)
         self._text_featurizer = TextFeaturizer(vocab_filepath)
-        # 获取数据列表
-        with open(data_manifest, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-        self.data_list = []
-        for line in lines:
-            line = json.loads(line)
-            # 跳过超出长度限制的音频
-            if line["duration"] < min_duration:
-                continue
-            if max_duration != -1 and line["duration"] > max_duration:
-                continue
-            self.data_list.append(dict(line))
+        self.manifest_type = manifest_type
+        if self.manifest_type == 'txt':
+            # 获取文本格式数据列表
+            with open(data_manifest, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+            self.data_list = []
+            for line in lines:
+                line = json.loads(line)
+                # 跳过超出长度限制的音频
+                if line["duration"] < min_duration:
+                    continue
+                if max_duration != -1 and line["duration"] > max_duration:
+                    continue
+                self.data_list.append(dict(line))
+        else:
+            # 获取二进制的数据列表
+            self.dataset_reader = DatasetReader(data_path=data_manifest)
+            self.data_list = self.dataset_reader.get_keys()
 
     def __getitem__(self, idx):
-        data_list = self.data_list[idx]
+        if self.manifest_type == 'txt':
+            data_list = self.data_list[idx]
+        elif self.manifest_type == 'binary':
+            data_list = self.dataset_reader.get_data(self.data_list[idx])
+        else:
+            raise Exception(f'没有该类型：{self.manifest_type}')
         if 'start_time' not in data_list.keys():
             # 分割音频路径和标签
             audio_file, transcript = data_list["audio_filepath"], data_list["text"]

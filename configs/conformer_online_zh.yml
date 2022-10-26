@@ -51,6 +51,8 @@ dataset_conf:
   mean_istd_path: 'dataset/mean_istd.json'
   # 噪声数据列表文件
   noise_manifest_path: 'dataset/manifest.noise'
+  # 数据列表类型，支持txt、binary
+  manifest_type: 'txt'
 
 # 数据预处理参数
 preprocess_conf:

@@ -3,6 +3,9 @@ import json
 import audioread
 import numpy as np
 from pydub import AudioSegment
+from tqdm import tqdm
+
+from ppasr.data_utils.binary import DatasetWriter
 
 
 def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.5):
@@ -28,6 +31,29 @@ def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.5):
         if max_duration >= json_data["duration"] >= min_duration:
             manifest.append(json_data)
     return manifest
+
+
+def create_manifest_binary(train_manifest_path, test_manifest_path):
+    """
+    生成数据列表的二进制文件
+    :param train_manifest_path: 训练列表的路径
+    :param test_manifest_path: 测试列表的路径
+    :return:
+    """
+    dataset_writer = DatasetWriter(train_manifest_path)
+    with open(train_manifest_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    for line in tqdm(lines):
+        line = line.replace('\n', '')
+        dataset_writer.add_data(line)
+    dataset_writer.close()
+    dataset_writer = DatasetWriter(test_manifest_path)
+    with open(test_manifest_path, 'r', encoding='utf-8') as f:
+        lines = f.readlines()
+    for line in tqdm(lines):
+        line = line.replace('\n', '')
+        dataset_writer.add_data(line)
+    dataset_writer.close()
 
 
 # 读取soundfile不支持的格式音频
@@ -95,11 +121,12 @@ def delta(feat, N):
     if N < 1:
         raise ValueError('N must be an integer >= 1')
     NUMFRAMES = len(feat)
-    denominator = 2 * sum([i**2 for i in range(1, N+1)])
+    denominator = 2 * sum([i ** 2 for i in range(1, N + 1)])
     delta_feat = np.empty_like(feat)
-    padded = np.pad(feat, ((N, N), (0, 0)), mode='edge')   # padded version of feat
+    padded = np.pad(feat, ((N, N), (0, 0)), mode='edge')  # padded version of feat
     for t in range(NUMFRAMES):
-        delta_feat[t] = np.dot(np.arange(-N, N+1), padded[t : t+2*N+1]) / denominator   # [t : t+2*N+1] == [(N+t)-N : (N+t)+N+1]
+        delta_feat[t] = np.dot(np.arange(-N, N + 1),
+                               padded[t: t + 2 * N + 1]) / denominator  # [t : t+2*N+1] == [(N+t)-N : (N+t)+N+1]
     return delta_feat
 
 
@@ -107,4 +134,3 @@ def opus_to_wav(opus_path, save_wav_path, rate=16000):
     source_wav = AudioSegment.from_file(opus_path)
     target_audio = source_wav.set_frame_rate(rate)
     target_audio.export(save_wav_path, format="wav")
-
