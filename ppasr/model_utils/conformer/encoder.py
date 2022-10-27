@@ -286,16 +286,14 @@ class ConformerEncoder(nn.Layer):
             encoder_selfattn_layer = MultiHeadedAttention
         else:
             encoder_selfattn_layer = RelPositionMultiHeadedAttention
-        encoder_selfattn_layer_args = (attention_heads, output_size,
-                                       attention_dropout_rate)
+        encoder_selfattn_layer_args = (attention_heads, output_size, attention_dropout_rate)
         # feed-forward module definition
         positionwise_layer = PositionwiseFeedForward
         positionwise_layer_args = (output_size, linear_units, dropout_rate,
                                    activation)
         # convolution module definition
         convolution_layer = ConvolutionModule
-        convolution_layer_args = (output_size, cnn_module_kernel, activation,
-                                  cnn_module_norm, causal)
+        convolution_layer_args = (output_size, cnn_module_kernel, activation, cnn_module_norm, causal)
 
         self.encoders = nn.LayerList([
             ConformerEncoderLayer(
@@ -368,8 +366,7 @@ class ConformerEncoder(nn.Layer):
             xs (paddle.Tensor): chunk audio feat input, [B=1, T, D], where
                 `T==(chunk_size-1)*subsampling_rate + subsample.right_context + 1`
             offset (int): current offset in encoder output time stamp
-            required_cache_size (int): cache size required for next chunk
-                compuation
+            required_cache_size (int): cache size required for next chunk compuation
                 >=0: actual cache size
                 <0: means all history cache is required
             att_cache(paddle.Tensor): cache tensor for key & val in
@@ -396,13 +393,12 @@ class ConformerEncoder(nn.Layer):
         xs, pos_emb, _ = self.embed(xs, tmp_masks, offset=offset)
         # after embed, xs=(B=1, chunk_size, hidden-dim)
 
-        elayers, _, cache_t1, _ = att_cache.shape
+        _, _, cache_t1, _ = att_cache.shape
         chunk_size = xs.shape[1]
         attention_key_size = cache_t1 + chunk_size
 
         # only used when using `RelPositionMultiHeadedAttention`
-        pos_emb = self.embed.position_encoding(
-            offset=offset - cache_t1, size=attention_key_size)
+        pos_emb = self.embed.position_encoding(offset=offset - cache_t1, size=attention_key_size)
 
         if required_cache_size < 0:
             next_cache_start = 0
@@ -422,8 +418,8 @@ class ConformerEncoder(nn.Layer):
                 att_cache=att_cache[i:i + 1],
                 cnn_cache=cnn_cache[i:i + 1], )
             # new_att_cache = (1, head, attention_key_size, d_k*2)
-            # new_cnn_cache = (B=1, hidden-dim, cache_t2)
             r_att_cache.append(new_att_cache[:, :, next_cache_start:, :])
+            # new_cnn_cache = (B=1, hidden-dim, cache_t2)
             r_cnn_cache.append(new_cnn_cache)  # add elayer dim
 
         if self.normalize_before:
@@ -441,8 +437,8 @@ class ConformerEncoder(nn.Layer):
             decoding_chunk_size: int,
             num_decoding_left_chunks: int = -1,
     ) -> Tuple[paddle.Tensor, paddle.Tensor]:
-        """ Forward input chunk by chunk with chunk_size like a streaming
-            fashion
+        """ Forward input chunk by chunk with chunk_size like a streaming fashion
+
         Here we should pay special attention to computation cache in the
         streaming style forward chunk by chunk. Three things should be taken
         into account for computation in the current network:

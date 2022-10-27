@@ -24,7 +24,6 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg('configs',          str,    'configs/conformer_online_zh.yml', "配置文件")
 add_arg("host",             str,    '0.0.0.0',            "监听主机的IP地址")
-add_arg('predictor_type',   str,    "python",             "预测器类型")
 add_arg("port_server",      int,    5000,                 "普通识别服务所使用的端口号")
 add_arg("port_stream",      int,    5001,                 "流式识别服务所使用的端口号")
 add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的保存目录")
@@ -52,8 +51,7 @@ predictors = []
 for _ in range(args.num_predictor):
     predictor1 = PPASRPredictor(configs=configs,
                                 model_path=args.model_path.format(configs['use_model'],
-                                                             configs['preprocess_conf']['feature_method']),
-                                predictor_type=args.predictor_type,
+                                                                  configs['preprocess_conf']['feature_method']),
                                 use_gpu=args.use_gpu,
                                 use_pun=args.use_pun,
                                 pun_model_dir=args.pun_model_dir)

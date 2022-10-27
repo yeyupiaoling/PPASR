@@ -10,7 +10,6 @@ from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
 from ppasr.infer_utils.inference_predictor import InferencePredictor
-from ppasr.infer_utils.python_predictor import PythonPredictor
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import dict_to_object
 
@@ -20,7 +19,6 @@ logger = setup_logger(__name__)
 class PPASRPredictor:
     def __init__(self,
                  configs,
-                 predictor_type='python',
                  model_path='models/conformer_online_fbank/best_model/',
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
@@ -28,7 +26,6 @@ class PPASRPredictor:
         """
         语音识别预测工具
         :param model_path: 导出的预测模型文件夹路径
-        :param predictor_type: 预测器类型
         :param use_pun: 是否使用加标点符号的模型
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param use_gpu: 是否使用GPU预测
@@ -55,22 +52,10 @@ class PPASRPredictor:
             from ppasr.utils.text_utils import PunctuationExecutor
             self.pun_executor = PunctuationExecutor(model_dir=pun_model_dir, use_gpu=use_gpu)
         # 获取预测器
-        if predictor_type == 'inference':
-            if 'deepspeech2' not in self.configs.use_model:
-                raise Exception(f'目前只支持deepspeech2使用inference预测器')
-            self.predictor = InferencePredictor(configs=self.configs,
-                                                use_model=self.configs.use_model,
-                                                model_dir=model_path,
-                                                use_gpu=self.use_gpu)
-        elif predictor_type == 'python':
-            self.predictor = PythonPredictor(configs=self.configs,
-                                             use_model=self.configs.use_model,
-                                             input_dim=self._audio_featurizer.feature_dim,
-                                             vocab_size=self._text_featurizer.vocab_size,
-                                             model_dir=model_path,
-                                             use_gpu=self.use_gpu)
-        else:
-            raise Exception(f'没有该预测器：{predictor_type}')
+        self.predictor = InferencePredictor(configs=self.configs,
+                                            use_model=self.configs.use_model,
+                                            model_dir=model_path,
+                                            use_gpu=self.use_gpu)
         # 预热
         warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
         self.predict(audio_ndarray=warmup_audio, is_itn=False)
@@ -179,7 +164,9 @@ class PPASRPredictor:
         :return: 识别的文本结果和解码的得分数
         """
         if self.configs.use_model != 'deepspeech2_online':
-            raise Exception(f"不支持：{self.configs.use_model}")
+            raise Exception("目前只支持deepspeech2_online流式识别")
+        if 'online' not in self.configs.use_model:
+            raise Exception(f"不支持改该模型流式识别，当前模型：{self.configs.use_model}")
         assert audio_bytes is not None or audio_ndarray is not None, \
             'audio_bytes和audio_ndarray至少有一个不为None！'
         # 加载音频文件，并进行预处理

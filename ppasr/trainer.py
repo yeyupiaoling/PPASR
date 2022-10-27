@@ -495,8 +495,6 @@ class PPASRTrainer(object):
         :param resume_model: 准备转换的模型路径
         :return:
         """
-        if 'deepspeech2' not in self.configs.use_model:
-            raise Exception(f'目前只支持deepspeech2导出预测模型')
         # 获取训练数据
         audio_featurizer = AudioFeaturizer(**self.configs.preprocess_conf)
         text_featurizer = TextFeaturizer(self.configs.dataset_conf.dataset_vocab)
