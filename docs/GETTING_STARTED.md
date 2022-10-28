@@ -8,7 +8,7 @@ cd download_data/
 python thchs_30.py
 ```
 
-**注意：** 以上代码只支持在Linux下执行，如果是Windows的话，可以获取程序中的`DATA_URL`的下载地址单独下载，建议用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下。
+**注意：** 以上代码只支持在Linux下执行，**如果是Windows的话**，可以获取程序中的`DATA_URL`的下载地址单独下载，建议用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下。
 ```python
 # 把这行代码
 filepath = download(url, md5sum, target_dir)
@@ -25,7 +25,7 @@ python create_data.py
 
 执行下面命令开始训练。
 ```shell
-python3 train.py
+python train.py
 ```
 
 
@@ -33,14 +33,14 @@ python3 train.py
 
 执行下面这个脚本对模型进行评估，通过字符错误率来评价模型的性能。
 ```shell
-python eval.py
+python eval.py --resume_model=models/conformer_online_fbank/best_model/
 ```
 
 ### 导出模型
 
 导出为预测模型。
 ```shell
-python export_model.py --resume_model=models/deepspeech2/epoch_50/
+python export_model.py --resume_model=models/conformer_online_fbank/best_model/
 ```
 
 ### 预测

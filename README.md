@@ -6,7 +6,7 @@
 
 # PPASR流式与非流式语音识别项目
 
-本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级，持续维护版本。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。**别忘了star**
+本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级的V2版本，如果想使用最终级的V版本，请在这个分支[r1.x](https://github.com/yeyupiaoling/PPASR/tree/r1.x)。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。**别忘了star**
 
 **欢迎大家扫码入QQ群讨论**，或者直接搜索QQ群号`1169600237`，问题答案为博主Github的ID`yeyupiaoling`。
 
@@ -36,22 +36,7 @@
 
 ## 更新记录
 
- - 2022.10.01: 调整数据预处理，此前下载的模型，需要重新下载。
- - 2022.09.18: 支持使用WebSocket调用流式识别。
- - 2022.08.26: 修改使用kaldi实现`fbank`和`mfcc`预处理方法。
- - 2022.08.22: 增加非流式模型`deepspeech2_no_stream`和`deepspeech2_big_no_stream`。
- - 2022.08.04: 发布1.0版本，优化实时识别流程。
- - 2022.07.12: 完成GUI界面的录音实时识别。
- - 2022.06.14: 支持`deepspeech2_big`模型，适合WenetSpeech大数据集训练模型。
- - 2022.01.16: 支持多种预处理方法。
- - 2022.01.15: 支持英文语音识别。
- - 2022.01.13: 支持给识别结果加标点符号。
- - 2021.12.23: 支持pip安装。
- - 2021.11.30: 全面修改为流式语音识别模型。
- - 2021.11.09: 增加制作WenetSpeech数据集脚本和文档。
- - 2021.10.10: 提供三个公开数据集的DeepSpeech2预训练模型下载。
- - 2021.09.30: 在导出模型时，把归一化放在模型用，推理时直接在模型中完成数据归一化，不需要额外对数据归一化再输入到网络模型中。
- - 2021.09.18: 初步完成基本程序。
+ - 2022.10.29: 正式发布最终级的V2版本。
 
 ## 视频讲解
 
@@ -85,7 +70,7 @@
 
 **说明：** 
 1. 这里字错率或者词错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
-2. 把全部文件复制到项目根目录下。
+2. 没有提供预测模型，需要把全部文件复制到项目的根目录下，执行`export_model.py`导出预测模型。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 
@@ -101,7 +86,7 @@
 - [训练模型](./docs/train.md)
 - [集束搜索解码](./docs/beam_search.md)
 - [执行评估](./docs/eval.md)
-- [导出模型](./docs/export_model.md) **【目前不支持导出】**
+- [导出模型](./docs/export_model.md)
 - [使用标点符号模型](./docs/punctuation.md)
 - 预测
    - [本地预测](./docs/infer.md)
@@ -113,35 +98,13 @@
 
 ## 快速预测
 
- - 下载作者提供的模型，或者训练模型并[导出模型](./docs/export_model.md)，使用`infer_path.py`预测音频，通过参数`--wav_path`指定需要预测的音频路径，完成语音识别，详情请查看[模型部署](./docs/infer.md)。
+ - 下载作者提供的模型或者训练模型，并[导出模型](./docs/export_model.md)，使用`infer_path.py`预测音频，通过参数`--wav_path`指定需要预测的音频路径，完成语音识别，详情请查看[模型部署](./docs/infer.md)。
 ```shell script
 python infer_path.py --wav_path=./dataset/test.wav
 ```
 
 输出结果：
 ```
------------ 额外配置参数 -----------
-configs: configs/config_zh.yml
-is_long_audio: False
-model_dir: models/{}_{}/infer/
-pun_model_dir: models/pun_models/
-real_time_demo: False
-to_an: False
-use_gpu: True
-use_pun: False
-wav_path: dataset/test.wav
-------------------------------------------------
------------ 配置文件参数 -----------
-ctc_beam_search_decoder: {'alpha': 2.2, 'beta': 4.3, 'beam_size': 300, 'num_processes': 10, 'cutoff_prob': 0.99, 'cutoff_top_n': 40, 'language_model_path': 'lm/zh_giga.no_cna_cmn.prune01244.klm'}
-dataset: {'batch_size': 32, 'num_workers': 4, 'min_duration': 0.5, 'max_duration': 20, 'train_manifest': 'dataset/manifest.train', 'test_manifest': 'dataset/manifest.test', 'dataset_vocab': 'dataset/vocabulary.txt', 'mean_std_path': 'dataset/mean_std.json', 'noise_manifest_path': 'dataset/manifest.noise'}
-decoder: ctc_beam_search
-metrics_type: cer
-num_epoch: 65
-optimizer: {'learning_rate': '5e-5', 'gamma': 0.93, 'clip_norm': 3.0, 'weight_decay': '1e-6'}
-preprocess: {'feature_method': 'fbank', 'n_mels': 80, 'n_mfcc': 40, 'sample_rate': 16000, 'use_dB_normalization': True, 'target_dB': -20}
-use_model: deepspeech2
-------------------------------------------------
-
 消耗时间：132, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
 ```
 

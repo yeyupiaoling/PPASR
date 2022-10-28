@@ -9,7 +9,7 @@ python thchs_30.py
 python noise.py
 ```
 
-**注意：** 以上代码只支持在Linux下执行，如果是Windows的话，可以获取程序中的`DATA_URL`单独下载，建议用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下，我把`aishell.py`的文件单独下载，然后替换`download()`函数，再执行该程序，就会自动解压文件文本生成数据列表。
+**注意：** 以上代码只支持在Linux下执行，**如果是Windows的话**，可以获取程序中的`DATA_URL`单独下载，建议用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下，我把`aishell.py`的文件单独下载，然后替换`download()`函数，再执行该程序，就会自动解压文件文本生成数据列表。
 ```python
 # 把这行代码
 filepath = download(url, md5sum, target_dir)
@@ -38,7 +38,10 @@ dataset/audio/LibriSpeech/dev-clean/1272/135031/1272-135031-0007.flac   he eats 
 dataset/audio/LibriSpeech/dev-clean/1272/135031/1272-135031-0008.flac   i hope he doesn't work too hard said shaggy
 ```
 
-3. 最后执行下面的数据集处理程序，详细参数请查看该程序。这个程序是把我们的数据集生成三个JSON格式的数据列表，分别是`manifest.test、manifest.train、manifest.noise`。然后建立词汇表，把所有出现的字符都存放子在`vocabulary.txt`文件中，一行一个字符。最后计算均值和标准差用于归一化，默认使用全部的语音计算均值和标准差，并将结果保存在`mean_std.json`中。以上生成的文件都存放在`dataset/`目录下。数据划分说明，如果`dataset/annotation`存在`test.txt`，那全部测试数据都使用这个数据，否则使用全部数据的1/500的数据，直到指定的最大测试数据量。
+3. 最后执行下面的数据集处理程序，详细参数请查看该程序。这个程序是把我们的数据集生成三个JSON格式的数据列表，分别是`manifest.test、manifest.train、manifest.noise`。然后建立词汇表，把所有出现的字符都存放子在`vocabulary.txt`文件中，一行一个字符。最后计算均值和标准差用于归一化，默认使用全部的语音计算均值和标准差，并将结果保存在`mean_istd.json`中。以上生成的文件都存放在`dataset/`目录下。数据划分说明，如果`dataset/annotation`存在`test.txt`，那全部测试数据都使用这个数据，否则使用全部数据的1/500的数据，直到指定的最大测试数据量。
 ```python
 python create_data.py
 ```
+
+# 超大数据集
+

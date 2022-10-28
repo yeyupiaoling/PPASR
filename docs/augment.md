@@ -5,6 +5,7 @@
 目前提供五个可选的增强组件供选择，配置并插入处理过程。
 
 - 噪声干扰（需要背景噪音的音频文件）
+- 随机采样率增强
 - 速度扰动
 - 移动扰动
 - 音量扰动
@@ -16,49 +17,62 @@
 [
   {
     "type": "noise",
+    "aug_type": "audio",
     "params": {
       "min_snr_dB": 10,
       "max_snr_dB": 50,
+      "repetition": 2,
       "noise_manifest_path": "dataset/manifest.noise"
     },
     "prob": 0.5
   },
   {
+    "type": "resample",
+    "aug_type": "audio",
+    "params": {
+      "new_sample_rate": [8000, 32000, 44100, 48000]
+    },
+    "prob": 0.0
+  },
+  {
     "type": "speed",
+    "aug_type": "audio",
     "params": {
       "min_speed_rate": 0.9,
-      "max_speed_rate": 1.1
+      "max_speed_rate": 1.1,
+      "num_rates": 3
     },
-    "prob": 0.5
+    "prob": 1.0
   },
   {
     "type": "shift",
+    "aug_type": "audio",
     "params": {
       "min_shift_ms": -5,
       "max_shift_ms": 5
     },
-    "prob": 0.5
+    "prob": 1.0
   },
   {
     "type": "volume",
+    "aug_type": "audio",
     "params": {
       "min_gain_dBFS": -15,
       "max_gain_dBFS": 15
     },
-    "prob": 0.5
+    "prob": 1.0
   },
   {
     "type": "specaug",
+    "aug_type": "feature",
     "params": {
-      "F": 10,
-      "T": 50,
+      "inplace": true,
+      "max_time_warp": 5,
+      "max_t_ratio": 0.05,
       "n_freq_masks": 2,
+      "max_f_ratio": 0.15,
       "n_time_masks": 2,
-      "p": 1.0,
-      "W": 80,
-      "adaptive_number_ratio": 0,
-      "adaptive_size_ratio": 0,
-      "max_n_time_masks": 20
+      "replace_with_zero": false
     },
     "prob": 1.0
   }

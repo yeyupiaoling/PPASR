@@ -2,14 +2,14 @@
 
 本人用的就是本地环境和使用Anaconda，并创建了Python3.8的虚拟环境，出现安装问题，随时提[issue](https://github.com/yeyupiaoling/PPASR/issues)。
 
- - 首先安装的是PaddlePaddle 2.3.2的GPU版本，如果已经安装过了，请跳过。
+ - 首先安装的是PaddlePaddle 2.4.0的GPU版本，如果已经安装过了，请跳过。
 ```shell
-conda install paddlepaddle-gpu==2.3.2 cudatoolkit=11.6 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge 
+conda install paddlepaddle-gpu==2.4.0 cudatoolkit=11.6 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge 
 ```
 
 **注意：** Windows要安装这个版本，以上版本在Windows是有问题的。
 ```shell
-conda install paddlepaddle-gpu==2.3.2 cudatoolkit=10.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/
+conda install paddlepaddle-gpu==2.4.0 cudatoolkit=10.2 --channel https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/
 ```
 
  - 安装PPASR库。
@@ -19,7 +19,7 @@ conda install paddlepaddle-gpu==2.3.2 cudatoolkit=10.2 --channel https://mirrors
 python -m pip install ppasr -U -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-源码安装，源码安装能保证使用最新代码。
+**建议源码安装**，源码安装能保证使用最新代码。
 ```shell
 git clone https://github.com/yeyupiaoling/PPASR.git
 cd PPASR
@@ -55,7 +55,12 @@ export LLVM_CONFIG=/usr/local/llvm/bin/llvm-config
 sudo apt-get install libsndfile1
 ```
 
-3. 安装pynini出错，可以执行下面命令安装。
+3. 如果提示缺少`it`依赖库，请安装。
+```shell
+python -m pip install WeTextProcessing>=0.0.4
+```
+
+5. 安装pynini出错，可以执行下面命令安装。
 ```shell
 conda install -c conda-forge pynini
 ```

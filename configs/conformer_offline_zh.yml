@@ -89,6 +89,7 @@ ctc_beam_search_decoder_conf:
 optimizer_conf:
   # 初始学习率的大小
   learning_rate: 0.001
+  # 学习率预热步数
   warmup_steps: 25000
   weight_decay: 1e-6
 
