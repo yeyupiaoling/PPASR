@@ -19,7 +19,7 @@ logger = setup_logger(__name__)
 class PPASRPredictor:
     def __init__(self,
                  configs,
-                 model_path='models/conformer_online_fbank/best_model/',
+                 model_path='models/conformer_online_fbank/infer/',
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
                  use_gpu=True):

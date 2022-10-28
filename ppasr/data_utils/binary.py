@@ -41,7 +41,9 @@ class DatasetReader(object):
         self.m = mmap.mmap(self.fp.fileno(), 0, access=mmap.ACCESS_READ)
         for line in open(data_path + '.header', 'rb'):
             key, val_pos, val_len = line.split('\t'.encode('ascii'))
-            data = self.get_data(key)
+            data = self.m[int(val_pos):int(val_pos) + int(val_len)]
+            data = str(data, encoding="utf-8")
+            data = json.loads(data)
             # 跳过超出长度限制的音频
             if data["duration"] < min_duration:
                 continue
