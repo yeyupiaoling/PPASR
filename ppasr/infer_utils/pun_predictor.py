@@ -9,10 +9,10 @@ from ppasr.utils.logger import setup_logger
 
 logger = setup_logger(__name__)
 
-__all__ = ['PunctuationExecutor']
+__all__ = ['PunctuationPredictor']
 
 
-class PunctuationExecutor:
+class PunctuationPredictor:
     def __init__(self, model_dir, use_gpu=True, gpu_mem=500, num_threads=4):
         # 创建 config
         model_path = os.path.join(model_dir, 'model.pdmodel')

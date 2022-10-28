@@ -35,7 +35,8 @@ class PPASRPredictor:
         self.running = False
         self.use_gpu = use_gpu
         self.inv_normalizer = None
-        self.pun_executor = None
+        self.pun_predictor = None
+        self.vad_predictor = None
         self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset_conf.dataset_vocab)
         self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess_conf)
         # 流式解码参数
@@ -49,8 +50,8 @@ class PPASRPredictor:
             raise Exception("模型文件不存在，请检查{}是否存在！".format(model_path))
         # 加标点符号
         if use_pun:
-            from ppasr.utils.text_utils import PunctuationExecutor
-            self.pun_executor = PunctuationExecutor(model_dir=pun_model_dir, use_gpu=use_gpu)
+            from ppasr.infer_utils.pun_predictor import PunctuationPredictor
+            self.pun_predictor = PunctuationPredictor(model_dir=pun_model_dir, use_gpu=use_gpu)
         # 获取预测器
         self.predictor = InferencePredictor(configs=self.configs,
                                             use_model=self.configs.use_model,
@@ -102,8 +103,8 @@ class PPASRPredictor:
         score, text = result[0], result[1]
         # 加标点符号
         if use_pun and len(text) > 0:
-            if self.pun_executor is not None:
-                text = self.pun_executor(text)
+            if self.pun_predictor is not None:
+                text = self.pun_predictor(text)
             else:
                 logger.warning('标点符号模型没有初始化！')
         # 是否对文本进行反标准化
@@ -117,7 +118,8 @@ class PPASRPredictor:
                 audio_bytes=None,
                 audio_ndarray=None,
                 use_pun=False,
-                is_itn=True):
+                is_itn=True,
+                sample_rate=16000):
         """
         预测函数，只预测完整的一句话。
         :param audio_path: 需要预测音频的路径
@@ -125,6 +127,7 @@ class PPASRPredictor:
         :param audio_ndarray: 需要预测的音频未预处理的numpy值
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
+        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
         assert audio_path is not None or audio_bytes is not None or audio_ndarray is not None, \
@@ -133,9 +136,9 @@ class PPASRPredictor:
         if audio_path is not None:
             audio_data = AudioSegment.from_file(audio_path)
         elif audio_ndarray is not None:
-            audio_data = AudioSegment.from_ndarray(audio_ndarray)
+            audio_data = AudioSegment.from_ndarray(audio_ndarray, sample_rate)
         else:
-            audio_data = AudioSegment.from_wave_bytes(audio_bytes)
+            audio_data = AudioSegment.from_bytes(audio_bytes)
         audio_feature = self._audio_featurizer.featurize(audio_data)
         audio_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
         audio_len = np.array([audio_data.shape[1]]).astype(np.int64)
@@ -148,13 +151,61 @@ class PPASRPredictor:
         result = {'text': text, 'score': score}
         return result
 
+    # 长语音预测
+    def predict_long(self,
+                     audio_path=None,
+                     audio_bytes=None,
+                     audio_ndarray=None,
+                     use_pun=False,
+                     is_itn=True,
+                     sample_rate=16000):
+        """
+        预测函数，只预测完整的一句话。
+        :param audio_path: 需要预测音频的路径
+        :param audio_bytes: 需要预测的音频wave读取的字节流
+        :param audio_ndarray: 需要预测的音频未预处理的numpy值
+        :param use_pun: 是否使用加标点符号的模型
+        :param is_itn: 是否对文本进行反标准化
+        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
+        :return: 识别的文本结果和解码的得分数
+        """
+        if self.vad_predictor is None:
+            from ppasr.infer_utils.vad_predictor import VADPredictor
+            self.vad_predictor = VADPredictor()
+
+        assert audio_path is not None or audio_bytes is not None or audio_ndarray is not None, \
+            'audio_path，audio_bytes和audio_ndarray至少有一个不为None！'
+        # 加载音频文件，并进行预处理
+        if audio_path is not None:
+            audio_segment = AudioSegment.from_file(audio_path)
+        elif audio_ndarray is not None:
+            audio_segment = AudioSegment.from_ndarray(audio_ndarray, sample_rate)
+        else:
+            audio_segment = AudioSegment.from_bytes(audio_bytes)
+        # 重采样，方便进行语音活动检测
+        if audio_segment.sample_rate != self.configs.preprocess_conf.sample_rate:
+            audio_segment.resample(self.configs.preprocess_conf.sample_rate)
+        # 获取语音活动区域
+        speech_timestamps = self.vad_predictor.get_speech_timestamps(audio_segment.samples, audio_segment.sample_rate)
+        texts, scores = '', []
+        for t in speech_timestamps:
+            audio_ndarray = audio_segment.samples[t['start']: t['end']]
+            # 执行识别
+            result = self.predict(audio_ndarray=audio_ndarray, use_pun=use_pun, is_itn=is_itn)
+            score, text = result['score'], result['text']
+            texts = texts + text if use_pun else texts + '，' + text
+            scores.append(score)
+        result = {'text': texts, 'score': round(sum(scores) / len(scores), 2)}
+        return result
+
     # 预测音频
     def predict_stream(self,
                        audio_bytes=None,
                        audio_ndarray=None,
                        is_end=False,
                        use_pun=False,
-                       is_itn=True):
+                       is_itn=True,
+                       sample_rate=16000):
         """
         预测函数，流式预测，通过一直输入音频数据，实现实时识别。
         :param audio_bytes: 需要预测的音频wave读取的字节流
@@ -162,6 +213,7 @@ class PPASRPredictor:
         :param is_end: 是否结束语音识别
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
+        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
         if 'online' not in self.configs.use_model:
@@ -170,7 +222,7 @@ class PPASRPredictor:
             'audio_bytes和audio_ndarray至少有一个不为None！'
         # 加载音频文件，并进行预处理
         if audio_ndarray is not None:
-            audio_data = AudioSegment.from_ndarray(audio_ndarray)
+            audio_data = AudioSegment.from_ndarray(audio_ndarray, sample_rate)
         else:
             audio_data = AudioSegment.from_wave_bytes(audio_bytes)
 
@@ -241,8 +293,8 @@ class PPASRPredictor:
 
         # 加标点符号
         if use_pun and is_end and len(text) > 0:
-            if self.pun_executor is not None:
-                text = self.pun_executor(text)
+            if self.pun_predictor is not None:
+                text = self.pun_predictor(text)
             else:
                 logger.warning('标点符号模型没有初始化！')
         # 是否对文本进行反标准化

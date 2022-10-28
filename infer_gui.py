@@ -16,7 +16,6 @@ import websockets
 import yaml
 
 from ppasr.predict import PPASRPredictor
-from ppasr.utils.audio_vad import crop_audio_vad
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import add_arguments, print_arguments
 
@@ -24,15 +23,15 @@ logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-add_arg('configs',          str,   'configs/deepspeech2_online_zh.yml',       "配置文件")
+add_arg('configs',          str,   'configs/conformer_online_zh.yml',       "配置文件")
 add_arg('use_server',       bool,   False,         "是否使用服务器服务进行识别，否则使用本地识别")
 add_arg("host",             str,    "127.0.0.1",   "服务器IP地址")
 add_arg("port_server",      int,    5000,          "普通识别服务端口号")
 add_arg("port_stream",      int,    5001,          "流式识别服务端口号")
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
-add_arg('model_path',       str,    'models/{}_{}/best_model/',  "导出的预测模型文件路径")
-add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
+add_arg('model_path',       str,    'models/{}_{}/infer/',   "导出的预测模型文件路径")
+add_arg('pun_model_dir',    str,    'models/pun_models/',    "加标点符号的模型文件夹路径")
 args = parser.parse_args()
 
 
@@ -161,18 +160,8 @@ class SpeechRecognitionApp:
             start = time.time()
             # 判断使用本地识别还是调用服务接口
             if not self.use_server:
-                # 分割长音频
-                audios_bytes = crop_audio_vad(wav_path)
-                texts = ''
-                scores = []
-                # 执行识别
-                for i, audio_bytes in enumerate(audios_bytes):
-                    result = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=self.is_itn)
-                    score, text = result['score'], result['text']
-                    texts = texts + text if args.use_pun else texts + '，' + text
-                    scores.append(score)
-                    self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
-                text, score = texts, sum(scores) / len(scores)
+                result = self.predictor.predict_long(audio_path=wav_path, use_pun=args.use_pun, is_itn=self.is_itn)
+                score, text = result['score'], result['text']
             else:
                 # 调用用服务接口识别
                 url = f"http://{args.host}:{args.port_server}/recognition_long_audio"

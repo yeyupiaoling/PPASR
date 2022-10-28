@@ -77,6 +77,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     data_list = []
     test_list = []
     durations = []
+    # 需要安装WeTextProcessing>=0.0.4
     from tn.chinese.normalizer import Normalizer
     normalizer = Normalizer()
     for annotation_text in os.listdir(annotation_path):
