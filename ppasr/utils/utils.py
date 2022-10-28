@@ -155,18 +155,18 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     f_train = open(train_manifest_path, 'w', encoding='utf-8')
     f_test = open(test_manifest_path, 'w', encoding='utf-8')
     for line in test_list:
-        f_test.write('{}\n'.format(str(line).replace("'", '"')))
+        f_test.write('{}\n'.format(json.dumps(line)))
     interval = 500
     if len(data_list) / 500 > max_test_manifest:
         interval = len(data_list) // max_test_manifest
     for i, line in enumerate(data_list):
         if i % interval == 0:
             if len(test_list) == 0:
-                f_test.write('{}\n'.format(str(line).replace("'", '"')))
+                f_test.write('{}\n'.format(json.dumps(line)))
             else:
-                f_train.write('{}\n'.format(str(line).replace("'", '"')))
+                f_train.write('{}\n'.format(json.dumps(line)))
         else:
-            f_train.write('{}\n'.format(str(line).replace("'", '"')))
+            f_train.write('{}\n'.format(json.dumps(line)))
     f_train.close()
     f_test.close()
     logger.info("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
@@ -224,7 +224,7 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16
                 # 写入到列表文件
                 for list_d in list_data:
                     list_d['audio_filepath'] = save_path
-                    f_ann.write('{}\n'.format(str(list_d).replace("'", '"')))
+                    f_ann.write('{}\n'.format(json.dumps(list_d)))
                 f_ann.flush()
                 wav, duration_sum, list_data = [], [], []
         # 删除已处理的标注文件
