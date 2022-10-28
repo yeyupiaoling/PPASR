@@ -34,7 +34,7 @@ model_conf:
 # 数据集参数
 dataset_conf:
   # 训练的批量大小
-  batch_size: 16
+  batch_size: 32
   # 读取数据的线程数量
   num_workers: 4
   # 过滤最短的音频长度
@@ -93,7 +93,7 @@ optimizer_conf:
   weight_decay: 1e-6
 
 train_conf:
-  grad_clip: 5
+  grad_clip: 5.0
   accum_grad: 4
   # 训练的轮数
   max_epoch: 100

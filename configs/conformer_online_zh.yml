@@ -1,9 +1,9 @@
 # 编码器参数
 encoder_conf:
-    output_size: 512    # dimension of attention
-    attention_heads: 8
+    output_size: 256    # dimension of attention
+    attention_heads: 4
     linear_units: 2048  # the number of units of position-wise feed forward
-    num_blocks: 12      # the number of encoder blocks
+    num_blocks: 6      # the number of encoder blocks
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
     attention_dropout_rate: 0.0
@@ -34,7 +34,7 @@ model_conf:
 # 数据集参数
 dataset_conf:
   # 训练的批量大小
-  batch_size: 16
+  batch_size: 32
   # 读取数据的线程数量
   num_workers: 4
   # 过滤最短的音频长度
@@ -51,6 +51,8 @@ dataset_conf:
   mean_istd_path: 'dataset/mean_istd.json'
   # 噪声数据列表文件
   noise_manifest_path: 'dataset/manifest.noise'
+  # 数据列表类型，支持txt、binary
+  manifest_type: 'txt'
 
 # 数据预处理参数
 preprocess_conf:
@@ -86,15 +88,15 @@ ctc_beam_search_decoder_conf:
 
 optimizer_conf:
   # 初始学习率的大小
-  learning_rate: 0.002
+  learning_rate: 0.001
   warmup_steps: 25000
   weight_decay: 1e-6
 
 train_conf:
-  grad_clip: 5
+  grad_clip: 5.0
   accum_grad: 4
   # 训练的轮数
-  max_epoch: 65
+  max_epoch: 100
   log_interval: 100
 
 # 所使用的模型

@@ -1,7 +1,7 @@
 # encoder参数
 encoder_conf:
     num_rnn_layers: 5
-    rnn_size: 2048
+    rnn_size: 1024
     use_gru: False
 
 # decoder参数
@@ -28,13 +28,15 @@ dataset_conf:
   mean_istd_path: 'dataset/mean_istd.json'
   # 噪声数据列表文件
   noise_manifest_path: 'dataset/manifest.noise'
+  # 数据列表类型，支持txt、binary
+  manifest_type: 'txt'
 
 # 数据预处理参数
 preprocess_conf:
   # 音频预处理方法，支持：linear、mfcc、fbank
   feature_method: 'fbank'
   # 计算fbank得到的mel大小
-  n_mels: 161
+  n_mels: 80
   # 计算mfcc得到的mfcc大小
   n_mfcc: 40
   # 音频的采样率
