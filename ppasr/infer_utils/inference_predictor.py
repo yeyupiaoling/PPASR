@@ -12,7 +12,7 @@ class InferencePredictor:
     def __init__(self,
                  configs,
                  use_model,
-                 model_dir='models/deepspeech2_online_fbank/infer/',
+                 model_dir='models/conformer_online_fbank/infer/',
                  use_gpu=True,
                  use_tensorrt=False,
                  gpu_mem=1000,
@@ -25,13 +25,15 @@ class InferencePredictor:
         :param gpu_mem: 预先分配的GPU显存大小
         :param num_threads: 只用CPU预测的线程数量
         """
-        self.running = False
         self.configs = configs
         self.use_gpu = use_gpu
         self.use_model = use_model
-        # 流式解码参数
+        # 流式参数
         self.output_state_h = None
         self.output_state_c = None
+        self.cnn_cache = np.zeros([0, 0, 0, 0], dtype=np.float32)
+        self.att_cache = np.zeros([0, 0, 0, 0], dtype=np.float32)
+        self.offset = np.array([0], dtype=np.int32)
         # 创建 config
         model_path = os.path.join(model_dir, 'model.pdmodel')
         params_path = os.path.join(model_dir, 'model.pdiparams')
@@ -68,11 +70,18 @@ class InferencePredictor:
 
         # 获取输入层
         self.speech_data_handle = self.predictor.get_input_handle('speech')
-        self.speech_lengths_handle = self.predictor.get_input_handle('speech_lengths')
-        # 流式模型需要输入RNN的状态
+        if self.use_model != 'conformer_online':
+            self.speech_lengths_handle = self.predictor.get_input_handle('speech_lengths')
+
+        # 流式模型需要输入的状态
         if self.use_model == 'deepspeech2_online':
             self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
             self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
+        if self.use_model == 'conformer_online':
+            self.offset_handle = self.predictor.get_input_handle('offset')
+            self.required_cache_size_handle = self.predictor.get_input_handle('required_cache_size')
+            self.cnn_cache_handle = self.predictor.get_input_handle('cnn_cache')
+            self.att_cache_handle = self.predictor.get_input_handle('att_cache')
 
         # 获取输出的名称
         self.output_names = self.predictor.get_output_names()
@@ -87,9 +96,10 @@ class InferencePredictor:
         """
         # 设置输入
         self.speech_data_handle.reshape([speech.shape[0], speech.shape[1], speech.shape[2]])
-        self.speech_lengths_handle.reshape([speech.shape[0]])
         self.speech_data_handle.copy_from_cpu(speech)
-        self.speech_lengths_handle.copy_from_cpu(speech_lengths)
+        if self.use_model != 'conformer_online':
+            self.speech_lengths_handle.reshape([speech.shape[0]])
+            self.speech_lengths_handle.copy_from_cpu(speech_lengths)
 
         # 对流式deepspeech2模型initial_states全零初始化
         if self.use_model == 'deepspeech2_online':
@@ -100,6 +110,18 @@ class InferencePredictor:
             self.init_state_h_box_handle.copy_from_cpu(init_state_h_box)
             self.init_state_c_box_handle.reshape(init_state_h_box.shape)
             self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
+        # 对流式conformer模型全零初始化
+        if self.use_model == 'conformer_online':
+            self.reset_stream()
+            self.offset_handle.reshape(self.offset.shape)
+            self.offset_handle.copy_from_cpu(self.offset)
+            required_cache_size = np.array([-1], dtype=np.int32)
+            self.required_cache_size_handle.reshape(required_cache_size.shape)
+            self.required_cache_size_handle.copy_from_cpu(required_cache_size)
+            self.cnn_cache_handle.reshape(self.cnn_cache.shape)
+            self.cnn_cache_handle.copy_from_cpu(self.cnn_cache)
+            self.att_cache_handle.reshape(self.att_cache.shape)
+            self.att_cache_handle.copy_from_cpu(self.att_cache)
 
         # 运行predictor
         self.predictor.run()
@@ -109,26 +131,28 @@ class InferencePredictor:
         output_data = output_handle.copy_to_cpu()
         return output_data
 
-    def predict_chunk(self, x_chunk, x_chunk_lens):
+    def predict_chunk_deepspeech(self, x_chunk):
+        if self.use_model != 'deepspeech2_online':
+            raise Exception(f'当前模型不支持该方法，当前模型为：{self.use_model}')
         # 设置输入
+        x_chunk_lens = np.array([x_chunk.shape[1]])
         self.speech_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])
         self.speech_lengths_handle.reshape([x_chunk.shape[0]])
         self.speech_data_handle.copy_from_cpu(x_chunk.astype(np.float32))
         self.speech_lengths_handle.copy_from_cpu(x_chunk_lens.astype(np.int64))
 
-        if self.use_model == 'deepspeech2_online' and self.output_state_h is None:
-            # 对RNN层的initial_states全零初始化
+        if self.output_state_h is None:
+            # 全零初始化
             self.output_state_h = np.zeros(shape=(self.configs.encoder_conf.num_rnn_layers,
                                                   x_chunk.shape[0],
                                                   self.configs.encoder_conf.rnn_size), dtype=np.float32)
             self.output_state_c = np.zeros(shape=(self.configs.encoder_conf.num_rnn_layers,
                                                   x_chunk.shape[0],
                                                   self.configs.encoder_conf.rnn_size), dtype=np.float32)
-        if self.use_model == 'deepspeech2_online':
-            self.init_state_h_box_handle.reshape(self.output_state_h.shape)
-            self.init_state_h_box_handle.copy_from_cpu(self.output_state_h)
-            self.init_state_c_box_handle.reshape(self.output_state_c.shape)
-            self.init_state_c_box_handle.copy_from_cpu(self.output_state_c)
+        self.init_state_h_box_handle.reshape(self.output_state_h.shape)
+        self.init_state_h_box_handle.copy_from_cpu(self.output_state_h)
+        self.init_state_c_box_handle.reshape(self.output_state_c.shape)
+        self.init_state_c_box_handle.copy_from_cpu(self.output_state_c)
 
         # 运行predictor
         self.predictor.run()
@@ -144,7 +168,40 @@ class InferencePredictor:
         self.output_state_c = output_state_c_handle.copy_to_cpu()
         return output_chunk_probs, output_lens
 
+    def predict_chunk_conformer(self, x_chunk, required_cache_size):
+        if self.use_model != 'conformer_online':
+            raise Exception(f'当前模型不支持该方法，当前模型为：{self.use_model}')
+        # 设置输入
+        self.speech_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])
+        self.speech_data_handle.copy_from_cpu(x_chunk.astype(np.float32))
+
+        self.offset_handle.reshape(self.offset.shape)
+        self.offset_handle.copy_from_cpu(self.offset)
+        required_cache_size = np.array([required_cache_size], dtype=np.int32)
+        self.required_cache_size_handle.reshape(required_cache_size.shape)
+        self.required_cache_size_handle.copy_from_cpu(required_cache_size)
+        self.cnn_cache_handle.reshape(self.cnn_cache.shape)
+        self.cnn_cache_handle.copy_from_cpu(self.cnn_cache)
+        self.att_cache_handle.reshape(self.att_cache.shape)
+        self.att_cache_handle.copy_from_cpu(self.att_cache)
+
+        # 运行predictor
+        self.predictor.run()
+
+        # 获取输出
+        output_handle = self.predictor.get_output_handle(self.output_names[0])
+        output_chunk_probs = output_handle.copy_to_cpu()
+        att_cache_handle = self.predictor.get_output_handle(self.output_names[1])
+        self.att_cache = att_cache_handle.copy_to_cpu()
+        cnn_cache_handle = self.predictor.get_output_handle(self.output_names[2])
+        self.cnn_cache = cnn_cache_handle.copy_to_cpu()
+        self.offset += output_chunk_probs.shape[1]
+        return output_chunk_probs
+
     # 重置流式识别，每次流式识别完成之后都要执行
     def reset_stream(self):
         self.output_state_h = None
         self.output_state_c = None
+        self.att_cache = np.zeros([0, 0, 0, 0], dtype=np.float32)
+        self.cnn_cache = np.zeros([0, 0, 0, 0], dtype=np.float32)
+        self.offset = np.array([0], dtype=np.int32)

@@ -1,8 +1,6 @@
 import os
 
-import numpy as np
 import paddle
-import paddle.inference as paddle_infer
 
 from ppasr.model_utils.conformer.model import ConformerModelOnline, ConformerModelOffline
 from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
@@ -17,7 +15,7 @@ class PythonPredictor:
                  use_model,
                  input_dim,
                  vocab_size,
-                 model_dir='models/deepspeech2_online_fbank/infer/',
+                 model_dir='models/conformer_online_fbank/best_model/',
                  use_gpu=True):
         """
         语音识别预测工具
@@ -38,6 +36,9 @@ class PythonPredictor:
         # 流式解码参数
         self.output_state_h = None
         self.output_state_c = None
+        self.offset = 0
+        self.att_cache = paddle.zeros([0, 0, 0, 0])
+        self.cnn_cache = paddle.zeros([0, 0, 0, 0])
         # 创建 predictor
         if self.configs.use_model == 'conformer_online':
             self.predictor = ConformerModelOnline(configs=self.configs,
@@ -101,7 +102,20 @@ class PythonPredictor:
         output_lens = output_lens.numpy()
         return output_chunk_probs, output_lens
 
+    def predict_chunk_conformer(self, x_chunk, required_cache_size: int):
+
+        x_chunk = paddle.to_tensor(x_chunk, dtype=paddle.float32)
+
+        output_chunk_probs, self.att_cache, self.cnn_cache = \
+            self.predictor.get_encoder_out_chunk(x_chunk, self.offset, required_cache_size, self.att_cache, self.cnn_cache)
+
+        self.offset += output_chunk_probs.shape[1]
+        return output_chunk_probs
+
     # 重置流式识别，每次流式识别完成之后都要执行
     def reset_stream(self):
         self.output_state_h = None
         self.output_state_c = None
+        self.offset = paddle.zeros([1], dtype=paddle.int32)
+        self.att_cache = paddle.zeros([0, 0, 0, 0])
+        self.cnn_cache = paddle.zeros([0, 0, 0, 0])

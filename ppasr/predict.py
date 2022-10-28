@@ -145,7 +145,8 @@ class PPASRPredictor:
 
         # 解码
         score, text = self.decode(output_data=output_data, use_pun=use_pun, is_itn=is_itn)
-        return score, text
+        result = {'text': text, 'score': score}
+        return result
 
     # 预测音频
     def predict_stream(self,
@@ -163,8 +164,6 @@ class PPASRPredictor:
         :param is_itn: 是否对文本进行反标准化
         :return: 识别的文本结果和解码的得分数
         """
-        if self.configs.use_model != 'deepspeech2_online':
-            raise Exception("目前只支持deepspeech2_online流式识别")
         if 'online' not in self.configs.use_model:
             raise Exception(f"不支持改该模型流式识别，当前模型：{self.configs.use_model}")
         assert audio_bytes is not None or audio_ndarray is not None, \
@@ -191,7 +190,7 @@ class PPASRPredictor:
         self.remained_wav._samples = self.remained_wav.samples[160 * x_chunk.shape[1]:]
 
         # 识别的数据块大小
-        decoding_chunk_size = 1
+        decoding_chunk_size = 16
         context = 7
         subsampling = 4
 
@@ -201,8 +200,8 @@ class PPASRPredictor:
 
         # 保证每帧数据长度都有效
         num_frames = self.cached_feat.shape[1]
-        if num_frames < decoding_window and not is_end: return 0, ''
-        if num_frames < context: return 0, ''
+        if num_frames < decoding_window and not is_end: return None
+        if num_frames < context: return None
 
         # 如果识别结果，要使用最后一帧
         if is_end:
@@ -215,9 +214,18 @@ class PPASRPredictor:
             end = min(cur + decoding_window, num_frames)
             # 获取数据块
             x_chunk = self.cached_feat[:, cur:end, :]
-            x_chunk_lens = np.array([x_chunk.shape[1]])
+
             # 执行识别
-            output_chunk_probs, output_lens = self.predictor.predict_chunk(x_chunk=x_chunk, x_chunk_lens=x_chunk_lens)
+            if self.configs.use_model == 'deepspeech2_online':
+                output_chunk_probs, output_lens = self.predictor.predict_chunk_deepspeech(x_chunk=x_chunk)
+            elif self.configs.use_model == 'conformer_online':
+                num_decoding_left_chunks = -1
+                required_cache_size = decoding_chunk_size * num_decoding_left_chunks
+                output_chunk_probs = self.predictor.predict_chunk_conformer(x_chunk=x_chunk,
+                                                                            required_cache_size=required_cache_size)
+                output_lens = np.array([output_chunk_probs.shape[1]])
+            else:
+                raise Exception(f'当前模型不支持该方法，当前模型为：{self.configs.use_model}')
             # 执行解码
             if self.configs.decoder == 'ctc_beam_search':
                 # 集束搜索解码策略
@@ -241,7 +249,8 @@ class PPASRPredictor:
         if is_itn:
             text = self.inverse_text_normalization(text)
 
-        return score, text
+        result = {'text': text, 'score': score}
+        return result
 
     # 重置流式识别，每次流式识别完成之后都要执行
     def reset_stream(self):

@@ -69,7 +69,8 @@ def recognition():
         try:
             start = time.time()
             # 执行识别
-            score, text = predictors[0].predict(audio_path=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
+            result = predictors[0].predict(audio_path=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
+            score, text = result['score'], result['text']
             end = time.time()
             print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
             result = str({"code": 0, "msg": "success", "result": text, "score": round(score, 3)}).replace("'", '"')
@@ -96,7 +97,8 @@ def recognition_long_audio():
             scores = []
             # 执行识别
             for i, audio_bytes in enumerate(audios_bytes):
-                score, text = predictors[0].predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=args.is_itn)
+                result = predictors[0].predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=args.is_itn)
+                score, text = result['score'], result['text']
                 texts = texts + text if args.use_pun else texts + '，' + text
                 scores.append(score)
             end = time.time()
@@ -136,8 +138,10 @@ async def stream_server_run(websocket, path):
                     is_end = True
                     data = data[:-3]
                 # 开始预测
-                score, text = use_predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=args.is_itn,
-                                                           is_end=is_end)
+                result = use_predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=args.is_itn,
+                                                      is_end=is_end)
+                if result is None: continue
+                score, text = result['score'], result['text']
                 send_data = str({"code": 0, "result": text}).replace("'", '"')
                 logger.info(f'向客户端发生消息：{send_data}')
                 await websocket.send(send_data)

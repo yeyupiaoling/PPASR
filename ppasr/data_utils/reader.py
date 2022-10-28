@@ -44,7 +44,9 @@ class PPASRDataset(Dataset):
                 self.data_list.append(dict(line))
         else:
             # 获取二进制的数据列表
-            self.dataset_reader = DatasetReader(data_path=data_manifest)
+            self.dataset_reader = DatasetReader(data_path=data_manifest,
+                                                min_duration=min_duration,
+                                                max_duration=max_duration)
             self.data_list = self.dataset_reader.get_keys()
 
     def __getitem__(self, idx):

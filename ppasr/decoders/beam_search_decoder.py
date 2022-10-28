@@ -77,15 +77,13 @@ class BeamSearchDecoder:
             logits_lens (list(int)): 一个batch模型输出的长度
         """
         has_value = (logits_lens > 0).tolist()
-        has_value = ["true" if has_value[i] is True else "false"
-                     for i in range(len(has_value))]
+        has_value = ["true" if has_value[i] is True else "false" for i in range(len(has_value))]
         probs_split = [probs[i, :l, :].tolist() if has_value[i] else probs[i].tolist()
                        for i, l in enumerate(logits_lens)]
         self.beam_search_decoder.next(probs_split, has_value)
 
         batch_beam_results = self.beam_search_decoder.decode()
-        batch_beam_results = [[(res[0], res[1]) for res in beam_results]
-                              for beam_results in batch_beam_results]
+        batch_beam_results = [[(res[0], res[1]) for res in beam_results] for beam_results in batch_beam_results]
         results_best = [result for result in batch_beam_results]
         return results_best[0][0]
 

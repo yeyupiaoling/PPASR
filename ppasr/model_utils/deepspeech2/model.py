@@ -69,17 +69,17 @@ class DeepSpeech2Model(nn.Layer):
                 self.get_encoder_out_chunk,
                 input_spec=[
                     paddle.static.InputSpec(shape=[None, None, self.encoder.input_dim],
-                                            dtype='float32'),  # [B, chunk_size, feat_dim]
-                    paddle.static.InputSpec(shape=[None], dtype='int64'),  # audio_length, [B]
-                    paddle.static.InputSpec(shape=[None, None, None], dtype='float32'),
-                    paddle.static.InputSpec(shape=[None, None, None], dtype='float32')
+                                            dtype=paddle.float32),  # [B, chunk_size, feat_dim]
+                    paddle.static.InputSpec(shape=[None], dtype=paddle.int64),  # audio_length, [B]
+                    paddle.static.InputSpec(shape=[None, None, None], dtype=paddle.float32),
+                    paddle.static.InputSpec(shape=[None, None, None], dtype=paddle.float32)
                 ])
         elif self.encoder.rnn_direction == "bidirect":
             static_model = paddle.jit.to_static(
                 self.get_encoder_out,
                 input_spec=[
-                    paddle.static.InputSpec(shape=[None, None, self.encoder.input_dim], dtype='float32'),  # [B, T, D]
-                    paddle.static.InputSpec(shape=[None], dtype='int64'),  # audio_length, [B]
+                    paddle.static.InputSpec(shape=[None, None, self.encoder.input_dim], dtype=paddle.float32),  # [B, T, D]
+                    paddle.static.InputSpec(shape=[None], dtype=paddle.int64),  # audio_length, [B]
                 ])
         else:
             raise Exception(f"模型错误，没有：{self.encoder.rnn_direction}")

@@ -360,6 +360,7 @@ class ConformerEncoder(nn.Layer):
             required_cache_size: int,
             att_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
             cnn_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
+            att_mask: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool)
     ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """ Forward just one chunk
         Args:
@@ -383,12 +384,12 @@ class ConformerEncoder(nn.Layer):
                 same shape as the original cnn_cache
         """
         assert xs.shape[0] == 1  # batch size must be one
-        # tmp_masks is just for interface compatibility, [B=1, C=1, T]
-        tmp_masks = paddle.ones([1, 1, xs.shape[1]], dtype=paddle.bool)
 
         if self.global_cmvn is not None:
             xs = self.global_cmvn(xs)
 
+        # tmp_masks is just for interface compatibility, [B=1, C=1, T]
+        tmp_masks = paddle.ones([1, 1, xs.shape[1]], dtype=paddle.bool)
         # before embed, xs=(B, T, D1), pos_emb=(B=1, T, D)
         xs, pos_emb, _ = self.embed(xs, tmp_masks, offset=offset)
         # after embed, xs=(B=1, chunk_size, hidden-dim)
@@ -409,7 +410,6 @@ class ConformerEncoder(nn.Layer):
 
         r_att_cache = []
         r_cnn_cache = []
-        att_mask = paddle.ones([0, 0, 0], dtype=paddle.bool)
         for i, layer in enumerate(self.encoders):
             xs, _, new_att_cache, new_cnn_cache = layer(
                 xs,

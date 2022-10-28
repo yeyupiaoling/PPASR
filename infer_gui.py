@@ -124,7 +124,8 @@ class SpeechRecognitionApp:
             start = time.time()
             # 判断使用本地识别还是调用服务接口
             if not self.use_server:
-                score, text = self.predictor.predict(audio_path=wav_file, use_pun=args.use_pun, is_itn=self.is_itn)
+                result = self.predictor.predict(audio_path=wav_file, use_pun=args.use_pun, is_itn=self.is_itn)
+                score, text = result['score'], result['text']
             else:
                 # 调用用服务接口识别
                 url = f"http://{args.host}:{args.port_server}/recognition"
@@ -166,7 +167,8 @@ class SpeechRecognitionApp:
                 scores = []
                 # 执行识别
                 for i, audio_bytes in enumerate(audios_bytes):
-                    score, text = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=self.is_itn)
+                    result = self.predictor.predict(audio_bytes=audio_bytes, use_pun=args.use_pun, is_itn=self.is_itn)
+                    score, text = result['score'], result['text']
                     texts = texts + text if args.use_pun else texts + '，' + text
                     scores.append(score)
                     self.result_text.insert(END, "第%d个分割音频, 得分: %d, 识别结果: %s\n" % (i, score, text))
@@ -239,7 +241,9 @@ class SpeechRecognitionApp:
             while True:
                 data = self.stream.read(self.CHUNK)
                 self.frames.append(data)
-                score, text = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=self.is_itn, is_end=not self.recording)
+                result = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=self.is_itn, is_end=not self.recording)
+                if result is None:continue
+                score, text = result['score'], result['text']
                 self.result_text.delete('1.0', 'end')
                 self.result_text.insert(END, f"{text}\n")
                 if not self.recording:break

@@ -34,15 +34,21 @@ class DatasetWriter(object):
 
 
 class DatasetReader(object):
-    def __init__(self, data_path):
+    def __init__(self, data_path, min_duration=0, max_duration=20):
         self.keys = []
         self.offset_dict = {}
-        for line in open(data_path + '.header', 'rb'):
-            key, val_pos, val_len = line.split('\t'.encode('ascii'))
-            self.keys.append(key)
-            self.offset_dict[key] = (int(val_pos), int(val_len))
         self.fp = open(data_path + '.data', 'rb')
         self.m = mmap.mmap(self.fp.fileno(), 0, access=mmap.ACCESS_READ)
+        for line in open(data_path + '.header', 'rb'):
+            key, val_pos, val_len = line.split('\t'.encode('ascii'))
+            data = self.get_data(key)
+            # 跳过超出长度限制的音频
+            if data["duration"] < min_duration:
+                continue
+            if max_duration != -1 and data["duration"] > max_duration:
+                continue
+            self.keys.append(key)
+            self.offset_dict[key] = (int(val_pos), int(val_len))
 
     # 获取一行列表数据
     def get_data(self, key):

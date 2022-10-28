@@ -181,29 +181,21 @@ class ConformerModel(paddle.nn.Layer):
     @paddle.no_grad()
     def export(self):
         if self.encoder.use_dynamic_chunk:
-            # static_model = paddle.jit.to_static(
-            #     self.get_encoder_out_chunk,
-            #     input_spec=[
-            #         paddle.static.InputSpec(shape=[None, None, self.input_dim], dtype='float32'),  # [B, T, D]
-            #         paddle.static.InputSpec(shape=[1], dtype='int32'),  # audio_length, int
-            #         paddle.static.InputSpec(shape=[1], dtype='int32'),  # required_cache_size, int
-            #         paddle.static.InputSpec(shape=[None, None, None, None], dtype='float32'),  # att_cache
-            #         paddle.static.InputSpec(shape=[None, None, None, None], dtype='float32')  # cnn_cache
-            #     ])
-
             static_model = paddle.jit.to_static(
-                self.get_encoder_out,
+                self.get_encoder_out_chunk,
                 input_spec=[
-                    paddle.static.InputSpec(shape=[None, None, self.input_dim], dtype='float32'),  # [B, T, D]
-                    paddle.static.InputSpec(shape=[None], dtype='int64'),  # audio_length, [B]
+                    paddle.static.InputSpec(shape=[1, None, self.input_dim], dtype=paddle.float32),  # [B, T, D]
+                    paddle.static.InputSpec(shape=[1], dtype=paddle.int32),  # offset, int, but need be tensor
+                    paddle.static.InputSpec(shape=[1], dtype=paddle.int32),  # required_cache_size, int
+                    paddle.static.InputSpec(shape=[None, None, None, None], dtype=paddle.float32),  # att_cache
+                    paddle.static.InputSpec(shape=[None, None, None, None], dtype=paddle.float32)  # cnn_cache
                 ])
-
         else:
             static_model = paddle.jit.to_static(
                 self.get_encoder_out,
                 input_spec=[
-                    paddle.static.InputSpec(shape=[None, None, self.input_dim], dtype='float32'),  # [B, T, D]
-                    paddle.static.InputSpec(shape=[None], dtype='int64'),  # audio_length, [B]
+                    paddle.static.InputSpec(shape=[None, None, self.input_dim], dtype=paddle.float32),  # [B, T, D]
+                    paddle.static.InputSpec(shape=[None], dtype=paddle.int64),  # audio_length, [B]
                 ])
 
         return static_model
