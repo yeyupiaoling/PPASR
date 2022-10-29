@@ -2,7 +2,6 @@ import json
 import mmap
 
 import struct
-import uuid
 
 
 class DatasetWriter(object):
@@ -22,6 +21,7 @@ class DatasetWriter(object):
         self.data_file.write(key.encode('ascii'))
         self.data_file.write(struct.pack('I', len(data)))
         self.data_file.write(data)
+        # 写入索引
         self.offset += 4 + len(key) + 4
         self.header = key + '\t' + str(self.offset) + '\t' + str(len(data)) + '\n'
         self.header_file.write(self.header.encode('ascii'))

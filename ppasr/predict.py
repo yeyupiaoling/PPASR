@@ -25,6 +25,7 @@ class PPASRPredictor:
                  use_gpu=True):
         """
         语音识别预测工具
+        :param configs: 配置参数
         :param model_path: 导出的预测模型文件夹路径
         :param use_pun: 是否使用加标点符号的模型
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
@@ -195,6 +196,7 @@ class PPASRPredictor:
             score, text = result['score'], result['text']
             texts = texts + text if use_pun else texts + '，' + text
             scores.append(score)
+            logger.info(f'长语音识别片段结果：{text}')
         result = {'text': texts, 'score': round(sum(scores) / len(scores), 2)}
         return result
 

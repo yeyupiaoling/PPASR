@@ -25,7 +25,7 @@
 **本项目使用的环境：**
  - Anaconda 3
  - Python 3.8
- - PaddlePaddle 2.3.2
+ - PaddlePaddle 2.4.0
  - Windows 10 or Ubuntu 18.04
 
 
@@ -33,6 +33,7 @@
 
  1. 本项目支持流式识别模型`deepspeech2`、`conformer`，每个模型又分online(在线)和offline(离线)，对应的是流式识别和非流式识别。
  2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高，但不支持Windows。
+ 3. 下面提供了一系列预训练模型的下载，下载预训练模型之后，需要把全部文件复制到项目根目录，并执行导出模型才可以使用语音识别。
 
 ## 更新记录
 
@@ -88,6 +89,7 @@
 - [执行评估](./docs/eval.md)
 - [导出模型](./docs/export_model.md)
 - [使用标点符号模型](./docs/punctuation.md)
+- [使用语音活动检测（VAD）](./docs/vad.md)
 - 预测
    - [本地预测](./docs/infer.md)
    - [长语音预测](./docs/infer.md)

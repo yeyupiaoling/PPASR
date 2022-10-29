@@ -11,7 +11,6 @@ zhconv>=1.4.2
 ijson~=3.1.4
 webrtcvad~=2.0.10
 pydub~=0.25.1
-audioread~=2.1.9
 pyyaml~=5.4.1
 flask~=2.1.2
 flask-cors~=3.0.10

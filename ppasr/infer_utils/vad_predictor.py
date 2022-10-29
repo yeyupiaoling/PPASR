@@ -81,39 +81,18 @@ class VADPredictor(object):
                               min_silence_duration_ms: int = 100,
                               window_size_samples: int = 512,
                               speech_pad_ms: int = 30):
-
         """
-        使用VAD将长音频分割为语音块
 
-        Parameters
-        ----------
-        audio: 一维音频数据，
+        Args:
+            audio: 一维的音频数据，数据类型为：np.float32
+            sampling_rate: 音频采样率，只支持8K或者16K
+            threshold: 语音活动检测的阈值
+            min_speech_duration_ms: 检测的最短语音
+            min_silence_duration_ms: 最小检测音频静音的长度
+            window_size_samples: VAD模型训练使用采样率是16000，该参数是512、1024、1536，采样率是8000，该参数是256,512、768
+            speech_pad_ms: 语音填充的长度
 
-        threshold: float (default - 0.5)
-            Speech threshold. Silero VAD outputs speech probabilities for each audio chunk, probabilities ABOVE this value are considered as SPEECH.
-            It is better to tune this parameter for each dataset separately, but "lazy" 0.5 is pretty good for most datasets.
-
-        sampling_rate: int (default - 16000)
-            Currently silero VAD models support 8000 and 16000 sample rates
-
-        min_speech_duration_ms: int (default - 250 milliseconds)
-            Final speech chunks shorter min_speech_duration_ms are thrown out
-
-        min_silence_duration_ms: int (default - 100 milliseconds)
-            In the end of each speech chunk wait for min_silence_duration_ms before separating it
-
-        window_size_samples: int (default - 1536 samples)
-            Audio chunks of window_size_samples size are fed to the silero VAD model.
-            WARNING! Silero VAD models were trained using 512, 1024, 1536 samples for 16000 sample rate and 256, 512, 768 samples for 8000 sample rate.
-            Values other than these may affect model perfomance!!
-
-        speech_pad_ms: int (default - 30 milliseconds)
-            Final speech chunks are padded by speech_pad_ms each side
-
-        Returns
-        ----------
-        speeches: list of dicts
-            list containing ends and beginnings of speech chunks (samples or seconds based on return_seconds)
+        Returns: 每一个活动的音语音片段的列表
         """
         self.reset_states()
         min_speech_samples = sampling_rate * min_speech_duration_ms / 1000

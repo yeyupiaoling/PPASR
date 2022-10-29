@@ -20,3 +20,20 @@ python -m pip install paddlenlp -i https://mirrors.aliyun.com/pypi/simple/ -U
 ```
 消耗时间：101, 识别结果: 近几年，不但我用输给女儿压岁，也劝说亲朋，不要给女儿压岁钱，而改送压岁书。, 得分: 94
 ```
+
+# 单独使用标点符号模型
+
+如果只是使用标点符号模型的话，可以参考一下代码。
+```python
+from ppasr.infer_utils.pun_predictor import PunctuationPredictor
+
+pun_predictor = PunctuationPredictor(model_dir='models/pun_models')
+result = pun_predictor('近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书')
+print(result)
+```
+
+输出结果：
+```
+[2022-01-13 15:27:11,194] [    INFO] - Found C:\Users\test\.paddlenlp\models\ernie-1.0\vocab.txt
+近几年，不但我用书给女儿儿压岁，也劝说亲朋，不要给女儿压岁钱，而改送压岁书。
+```

@@ -19,6 +19,7 @@ class InferencePredictor:
                  num_threads=10):
         """
         语音识别预测工具
+        :param configs: 配置参数
         :param use_model: 使用模型的名称
         :param model_dir: 导出的预测模型文件夹路径
         :param use_gpu: 是否使用GPU预测
@@ -43,6 +44,7 @@ class InferencePredictor:
 
         if self.use_gpu:
             config.enable_use_gpu(gpu_mem, 0)
+            # 是否使用TensorRT
             if use_tensorrt:
                 config.enable_tensorrt_engine(workspace_size=1 << 28,
                                               max_batch_size=1,

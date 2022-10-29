@@ -50,6 +50,7 @@ class PPASRDataset(Dataset):
             self.data_list = self.dataset_reader.get_keys()
 
     def __getitem__(self, idx):
+        # 获取数据列表
         if self.manifest_type == 'txt':
             data_list = self.data_list[idx]
         elif self.manifest_type == 'binary':
@@ -65,7 +66,7 @@ class PPASRDataset(Dataset):
             # 分割音频路径和标签
             audio_file, transcript = data_list["audio_filepath"], data_list["text"]
             start_time, end_time = data_list["start_time"], data_list["end_time"]
-            # 读取音频
+            # 分割读取音频
             audio_segment = AudioSegment.slice_from_file(audio_file, start=start_time, end=end_time)
         # 音频增强
         self._augmentation_pipeline.transform_audio(audio_segment)
