@@ -83,7 +83,7 @@
     function uploadLongAudioFile(){
         var input = document.createElement("input");
         input.type = "file";
-        input.accept = "audio/wav";
+        input.accept = "audio/*";
         input.click();
         input.onchange = function(){
             var file = input.files[0];

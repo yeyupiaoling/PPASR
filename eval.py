@@ -26,6 +26,7 @@ trainer = PPASRTrainer(configs=configs, use_gpu=args.use_gpu)
 # 开始评估
 start = time.time()
 loss, error_result = trainer.evaluate(resume_model=args.resume_model.format(configs['use_model'],
-                                                                            configs['preprocess_conf']['feature_method']))
+                                                                            configs['preprocess_conf']['feature_method']),
+                                      display_result=True)
 end = time.time()
 print('评估消耗时间：{}s，{}：{:.5f}'.format(int(end - start), configs['metrics_type'], error_result))

@@ -442,10 +442,11 @@ class PPASRTrainer(object):
                 self.__save_checkpoint(save_model_path=save_model_path, epoch_id=epoch_id, error_rate=error_result,
                                        test_loss=loss)
 
-    def evaluate(self, resume_model='models/conformer_online_fbank/best_model/'):
+    def evaluate(self, resume_model='models/conformer_online_fbank/best_model/', display_result=False):
         """
         评估模型
         :param resume_model: 所使用的模型
+        :param display_result: 是否打印识别结果
         :return: 评估结果
         """
         if self.test_loader is None:
@@ -483,6 +484,11 @@ class PPASRTrainer(object):
                         error_results.append(wer(out_string, label))
                     else:
                         error_results.append(cer(out_string, label))
+                    if display_result:
+                        logger.info(f'预测结果为：{out_string}')
+                        logger.info(f'实际标签为：{label}')
+                        logger.info(f'当前{self.configs.metrics_type}：{sum(error_results) / len(error_results)}')
+                        logger.info('-'*70)
         loss = float(sum(losses) / len(losses))
         error_result = float(sum(error_results) / len(error_results))
         self.model.train()

@@ -92,7 +92,7 @@ class AudioSegment(object):
         start = 0. if start is None else round(start, 3)
         end = duration if end is None else round(end, 3)
         # 从末尾开始计
-        if start < 0.0:  start += duration
+        if start < 0.0: start += duration
         if end < 0.0: end += duration
         # 保证数据不越界
         if start < 0.0: start = 0.0

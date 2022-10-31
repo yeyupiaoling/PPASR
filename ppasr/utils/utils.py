@@ -4,7 +4,6 @@ import os
 import time
 import wave
 
-import librosa
 import numpy as np
 import resampy
 import soundfile
@@ -78,8 +77,8 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     test_list = []
     durations = []
     # 需要安装WeTextProcessing>=0.0.4
-    from tn.chinese.normalizer import Normalizer
-    normalizer = Normalizer()
+    # from tn.chinese.normalizer import Normalizer
+    # normalizer = Normalizer()
     for annotation_text in os.listdir(annotation_path):
         annotation_text_path = os.path.join(annotation_path, annotation_text)
         if os.path.splitext(annotation_text_path)[-1] == '.json':
@@ -99,7 +98,8 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 # 获取音频长度
                 durations.append(duration)
                 # 对文本进行标准化
-                text = normalizer.normalize(text).upper()
+                # text = normalizer.normalize(text)
+                text = text.lower()
                 # 过滤非法的字符
                 text = is_ustr(text)
                 if len(text) == 0: continue
@@ -132,7 +132,8 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 duration = float(len(audio_data)) / samplerate
                 durations.append(duration)
                 # 对文本进行标准化
-                text = normalizer.normalize(text).upper()
+                # text = normalizer.normalize(text)
+                text = text.lower()
                 # 过滤非法的字符
                 text = is_ustr(text)
                 if len(text) == 0:continue
@@ -155,18 +156,20 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     f_train = open(train_manifest_path, 'w', encoding='utf-8')
     f_test = open(test_manifest_path, 'w', encoding='utf-8')
     for line in test_list:
-        f_test.write('{}\n'.format(json.dumps(line)))
+        line = json.dumps(line, ensure_ascii=False)
+        f_test.write('{}\n'.format(line))
     interval = 500
     if len(data_list) / 500 > max_test_manifest:
         interval = len(data_list) // max_test_manifest
     for i, line in enumerate(data_list):
+        line = json.dumps(line, ensure_ascii=False)
         if i % interval == 0:
             if len(test_list) == 0:
-                f_test.write('{}\n'.format(json.dumps(line)))
+                f_test.write('{}\n'.format(line))
             else:
-                f_train.write('{}\n'.format(json.dumps(line)))
+                f_train.write('{}\n'.format(line))
         else:
-            f_train.write('{}\n'.format(json.dumps(line)))
+            f_train.write('{}\n'.format(line))
     f_train.close()
     f_test.close()
     logger.info("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
@@ -195,7 +198,7 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16
             duration = float(len(audio_data)) / samplerate
             # 重新调整音频格式并保存
             if samplerate != target_sr:
-                audio_data = librosa.resample(audio_data, samplerate, target_sr=target_sr)
+                audio_data = resampy.resample(audio_data, sr_orig=samplerate, sr_new=target_sr)
                 soundfile.write(audio_path, audio_data, samplerate=target_sr)
                 audio_data, _ = soundfile.read(audio_path)
             # 合并数据

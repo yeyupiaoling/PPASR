@@ -31,10 +31,12 @@ class WarmupLR(LRScheduler):
         return f"{self.__class__.__name__}(warmup_steps={self.warmup_steps}, lr={self.base_lr}, last_epoch={self.last_epoch})"
 
     def get_lr(self):
-        # self.last_epoch start from zero
         step_num = self.last_epoch + 1
-        return self.base_lr * self.warmup_steps ** 0.5 * min(
-            step_num ** -0.5, step_num * self.warmup_steps ** -1.5)
+        if self.warmup_steps == 0:
+            return self.base_lr * step_num ** -0.5
+        else:
+            return self.base_lr * self.warmup_steps ** 0.5 * min(
+                step_num ** -0.5, step_num * self.warmup_steps ** -1.5)
 
     def set_step(self, step: int = None):
         '''

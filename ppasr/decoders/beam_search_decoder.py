@@ -28,10 +28,11 @@ class BeamSearchDecoder:
         lm_char_based = self._ext_scorer.is_character_based()
         lm_max_order = self._ext_scorer.get_max_order()
         lm_dict_size = self._ext_scorer.get_dict_size()
-        print("language model: "
-              "is_character_based = %d," % lm_char_based +
-              " max_order = %d," % lm_max_order +
-              " dict_size = %d" % lm_dict_size)
+        print(f"language model: "
+              f"model path = {language_model_path}, "
+              f"is_character_based = {lm_char_based}, "
+              f"max_order = {lm_max_order}, "
+              f"dict_size = {lm_dict_size}")
         batch_size = 1
         self.beam_search_decoder = CTCBeamSearchDecoder(vocab_list, batch_size, beam_size, num_processes, cutoff_prob,
                                                         cutoff_top_n, self._ext_scorer, self.blank_id)

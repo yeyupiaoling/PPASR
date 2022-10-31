@@ -1,12 +1,10 @@
 numpy>=1.19.2
 scipy>=1.6.3
 tqdm>=4.59.0
-librosa~=0.9.1
 python-Levenshtein==0.12.2
 visualdl>=2.1.1
-SoundFile~=0.10
+SoundFile>=0.11.0
 resampy==0.2.2
-numba>=0.53.0
 zhconv>=1.4.2
 ijson~=3.1.4
 webrtcvad~=2.0.10
