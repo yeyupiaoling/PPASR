@@ -4,7 +4,7 @@ import paddle
 from paddle import Tensor
 
 from ppasr.data_utils.normalizer import FeatureNormalizer
-from ppasr.model_utils.conformer.decoder import TransformerDecoder
+from ppasr.model_utils.conformer.decoder import BiTransformerDecoder
 from ppasr.model_utils.conformer.encoder import ConformerEncoder
 from ppasr.model_utils.conformer.loss import LabelSmoothingLoss, CTCLoss
 from ppasr.model_utils.utils.cmvn import GlobalCMVN
@@ -37,7 +37,7 @@ class ConformerModel(paddle.nn.Layer):
                                         use_dynamic_left_chunk=use_dynamic_left_chunk,
                                         causal=causal,
                                         **configs.encoder_conf)
-        self.decoder = TransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
+        self.decoder = BiTransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
 
         self.ctc = CTCLoss(vocab_size, self.encoder.output_size())
         # note that eos is the same as sos (equivalent ID)
@@ -218,7 +218,7 @@ def ConformerModelOnline(configs,
                            lsm_weight=lsm_weight,
                            length_normalized_loss=length_normalized_loss,
                            use_dynamic_chunk=True,
-                           use_dynamic_left_chunk=True,
+                           use_dynamic_left_chunk=False,
                            causal=True)
     return model
 

@@ -59,5 +59,14 @@
       "replace_with_zero": false
     },
     "prob": 1.0
+  },
+  {
+    "type": "specsub",
+    "aug_type": "feature",
+    "params": {
+      "max_t": 30,
+      "num_t_sub": 3
+    },
+    "prob": 1.0
   }
 ]
