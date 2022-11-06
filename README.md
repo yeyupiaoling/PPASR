@@ -37,6 +37,7 @@
 
 ## 更新记录
 
+ - 2022.11.01: 修改Conformer模型的解码器为BiTransformerDecoder，增加SpecSubAugmentor数据增强器。
  - 2022.10.29: 正式发布最终级的V2版本。
 
 ## 视频讲解
@@ -51,7 +52,7 @@
 
 |       使用模型        |                                  数据集                                  | 预处理方式 | 语言  |     测试集字错率（词错率）      |                               下载地址                               |
 |:-----------------:|:---------------------------------------------------------------------:|:-----:|:---:|:--------------------:|:----------------------------------------------------------------:|
-| conformer_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.03944(AIShell的测试集) | [点击下载](https://pan.baidu.com/s/1V2U1Q_xBWJX22zDxt7-GPg?pwd=a1te) |
+| conformer_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.03579(AIShell的测试集) | [点击下载](https://pan.baidu.com/s/1V2U1Q_xBWJX22zDxt7-GPg?pwd=a1te) |
 | conformer_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |       0.04793        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 | conformer_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |       0.06824        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 | conformer_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                      | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 

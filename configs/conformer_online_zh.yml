@@ -6,7 +6,7 @@ encoder_conf:
     num_blocks: 12      # the number of encoder blocks
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
-    attention_dropout_rate: 0.0
+    attention_dropout_rate: 0.1
     input_layer: 'conv2d' # encoder input type, you can chose conv2d, conv2d6 and conv2d8
     normalize_before: True
     cnn_module_kernel: 15
@@ -16,25 +16,26 @@ encoder_conf:
 
 # 解码器参数
 decoder_conf:
-    attention_heads: 4
+    attention_heads: 8
     linear_units: 2048
-    num_blocks: 6
+    num_blocks: 3
+    r_num_blocks: 3
     dropout_rate: 0.1
     positional_dropout_rate: 0.1
-    self_attention_dropout_rate: 0.0
-    src_attention_dropout_rate: 0.0
+    self_attention_dropout_rate: 0.1
+    src_attention_dropout_rate: 0.1
 
 # 模型其他参数配置
 model_conf:
     ctc_weight: 0.3
-    lsm_weight: 0.1     # label smoothing option
-    reverse_weight: 0.0
+    lsm_weight: 0.1
+    reverse_weight: 0.3
     length_normalized_loss: false
 
 # 数据集参数
 dataset_conf:
   # 训练的批量大小
-  batch_size: 32
+  batch_size: 16
   # 读取数据的线程数量
   num_workers: 4
   # 过滤最短的音频长度
@@ -97,7 +98,7 @@ train_conf:
   grad_clip: 5.0
   accum_grad: 4
   # 训练的轮数
-  max_epoch: 100
+  max_epoch: 200
   log_interval: 100
 
 # 所使用的模型
