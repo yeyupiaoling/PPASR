@@ -37,7 +37,7 @@ predictor = PPASRPredictor(configs=configs,
 # 长语音识别
 def predict_long_audio():
     start = time.time()
-    result = predictor.predict_long(audio_path=args.wav_path, use_pun=args.use_pun, is_itn=args.is_itn)
+    result = predictor.predict_long(audio_data=args.wav_path, use_pun=args.use_pun, is_itn=args.is_itn)
     score, text = result['score'], result['text']
     print(f"长语音识别结果，消耗时间：{int(round((time.time() - start) * 1000))}, 得分: {score}, 识别结果: {text}")
 
@@ -45,7 +45,7 @@ def predict_long_audio():
 # 短语音识别
 def predict_audio():
     start = time.time()
-    result = predictor.predict(audio_path=args.wav_path, use_pun=args.use_pun, is_itn=args.is_itn)
+    result = predictor.predict(audio_data=args.wav_path, use_pun=args.use_pun, is_itn=args.is_itn)
     score, text = result['score'], result['text']
     print(f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {int(score)}")
 
@@ -62,7 +62,7 @@ def real_time_predict_demo():
     while data != b'':
         start = time.time()
         d = wf.readframes(CHUNK)
-        result = predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=args.is_itn, is_end=d == b'')
+        result = predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=args.is_itn, is_end=d == b'')
         data = d
         if result is None:continue
         score, text = result['score'], result['text']

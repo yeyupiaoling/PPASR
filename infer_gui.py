@@ -123,7 +123,7 @@ class SpeechRecognitionApp:
             start = time.time()
             # 判断使用本地识别还是调用服务接口
             if not self.use_server:
-                result = self.predictor.predict(audio_path=wav_file, use_pun=args.use_pun, is_itn=self.is_itn)
+                result = self.predictor.predict(audio_data=wav_file, use_pun=args.use_pun, is_itn=self.is_itn)
                 score, text = result['score'], result['text']
             else:
                 # 调用用服务接口识别
@@ -160,7 +160,7 @@ class SpeechRecognitionApp:
             start = time.time()
             # 判断使用本地识别还是调用服务接口
             if not self.use_server:
-                result = self.predictor.predict_long(audio_path=wav_path, use_pun=args.use_pun, is_itn=self.is_itn)
+                result = self.predictor.predict_long(audio_data=wav_path, use_pun=args.use_pun, is_itn=self.is_itn)
                 score, text = result['score'], result['text']
             else:
                 # 调用用服务接口识别
@@ -230,7 +230,7 @@ class SpeechRecognitionApp:
             while True:
                 data = self.stream.read(self.CHUNK)
                 self.frames.append(data)
-                result = self.predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=self.is_itn, is_end=not self.recording)
+                result = self.predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=self.is_itn, is_end=not self.recording)
                 if result is None:continue
                 score, text = result['score'], result['text']
                 self.result_text.delete('1.0', 'end')

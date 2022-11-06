@@ -69,7 +69,7 @@ def recognition():
         try:
             start = time.time()
             # 执行识别
-            result = predictors[0].predict(audio_path=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
+            result = predictors[0].predict(audio_data=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
             score, text = result['score'], result['text']
             end = time.time()
             print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
@@ -91,7 +91,7 @@ def recognition_long_audio():
         f.save(file_path)
         try:
             start = time.time()
-            result = predictors[0].predict_long(audio_path=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
+            result = predictors[0].predict_long(audio_data=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
             score, text = result['score'], result['text']
             end = time.time()
             print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
@@ -130,7 +130,7 @@ async def stream_server_run(websocket, path):
                     is_end = True
                     data = data[:-3]
                 # 开始预测
-                result = use_predictor.predict_stream(audio_bytes=data, use_pun=args.use_pun, is_itn=args.is_itn,
+                result = use_predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=args.is_itn,
                                                       is_end=is_end)
                 if result is None: continue
                 score, text = result['score'], result['text']
