@@ -186,7 +186,7 @@ class SpeechRecognitionApp:
             _thread.start_new_thread(self.record_audio, ())
         else:
             if self.playing:
-                tkinter.messagebox.showwarning('警告', '正在录音，无法播放音频！')
+                tkinter.messagebox.showwarning('警告', '正在播放音频，无法录音！')
             else:
                 # 停止播放
                 self.recording = False
