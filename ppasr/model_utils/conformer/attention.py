@@ -169,11 +169,9 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         super().__init__(n_head, n_feat, dropout_rate)
         # linear transformation for positional encoding
         self.linear_pos = Linear(n_feat, n_feat, bias_attr=False)
-        pos_bias_u = self.create_parameter(
-            [self.h, self.d_k], default_initializer=I.XavierUniform())
+        pos_bias_u = self.create_parameter([self.h, self.d_k], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_u', pos_bias_u)
-        pos_bias_v = self.create_parameter(
-            (self.h, self.d_k), default_initializer=I.XavierUniform())
+        pos_bias_v = self.create_parameter([self.h, self.d_k], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_v', pos_bias_v)
 
     def rel_shift(self, x, zero_triu: bool = False):

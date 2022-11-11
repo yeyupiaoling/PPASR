@@ -57,7 +57,7 @@ def labels_to_string(label, vocabulary, eos, blank_index=0):
     labels = []
     for l in label:
         index_list = [index for index in l if index != blank_index and index != -1 and index != eos]
-        labels.append((''.join([vocabulary[index] for index in index_list])).replace('<space>', ' '))
+        labels.append((''.join([vocabulary[index] for index in index_list])).replace('<space>', ' ').replace('<unk>', ''))
     return labels
 
 
@@ -99,7 +99,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 durations.append(duration)
                 # 对文本进行标准化
                 # text = normalizer.normalize(text)
-                text = text.lower()
+                text = text.lower().strip()
                 # 过滤非法的字符
                 text = is_ustr(text)
                 if len(text) == 0: continue
@@ -133,10 +133,10 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 durations.append(duration)
                 # 对文本进行标准化
                 # text = normalizer.normalize(text)
-                text = text.lower()
+                text = text.lower().strip()
                 # 过滤非法的字符
                 text = is_ustr(text)
-                if len(text) == 0:continue
+                if len(text) == 0 or text == ' ':continue
                 # 保证全部都是简体
                 text = convert(text, 'zh-cn')
                 # 加入数据列表中

@@ -1,5 +1,6 @@
 import copy
 import io
+import os
 import random
 
 import ffmpeg
@@ -61,6 +62,7 @@ class AudioSegment(object):
         :return: 音频片段实例
         :rtype: AudioSegment
         """
+        assert os.path.exists(file), f'文件不存在，请检查路径：{file}'
         try:
             samples, sample_rate = soundfile.read(file, dtype='float32')
         except:
@@ -86,6 +88,7 @@ class AudioSegment(object):
         :rtype: AudioSegment
         :raise ValueError: 如开始或结束的设定不正确，例如时间不允许。
         """
+        assert os.path.exists(file), f'文件不存在，请检查路径：{file}'
         sndfile = soundfile.SoundFile(file)
         sample_rate = sndfile.samplerate
         duration = round(float(len(sndfile)) / sample_rate, 3)

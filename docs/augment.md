@@ -9,7 +9,8 @@
 - 速度扰动
 - 移动扰动
 - 音量扰动
-- SpenAugment增强方式
+- SpecAugment增强方式
+- SpecSubAugment增强方式
 
 为了让训练模块知道需要哪些增强组件以及它们的处理顺序，需要事先准备一个JSON格式的*扩展配置文件*。例如：
 
@@ -73,6 +74,15 @@
       "max_f_ratio": 0.15,
       "n_time_masks": 2,
       "replace_with_zero": false
+    },
+    "prob": 1.0
+  },
+  {
+    "type": "specsub",
+    "aug_type": "feature",
+    "params": {
+      "max_t": 30,
+      "num_t_sub": 3
     },
     "prob": 1.0
   }

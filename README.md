@@ -6,7 +6,7 @@
 
 # PPASR流式与非流式语音识别项目
 
-本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级的V2版本，如果想使用最终级的V版本，请在这个分支[r1.x](https://github.com/yeyupiaoling/PPASR/tree/r1.x)。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。**别忘了star**
+本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级的V2版本，如果想使用最终级的V1版本，请在这个分支[r1.x](https://github.com/yeyupiaoling/PPASR/tree/r1.x)。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。**别忘了star**
 
 **欢迎大家扫码入QQ群讨论**，或者直接搜索QQ群号`1169600237`，问题答案为博主Github的ID`yeyupiaoling`。
 
@@ -50,28 +50,29 @@
 
 1. `conformer`预训练模型列表：
 
-|       使用模型        |                                  数据集                                  | 预处理方式 | 语言  |     测试集字错率（词错率）      |                               下载地址                               |
-|:-----------------:|:---------------------------------------------------------------------:|:-----:|:---:|:--------------------:|:----------------------------------------------------------------:|
-| conformer_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.03579(AIShell的测试集) | [点击下载](https://download.csdn.net/download/qq_33200967/86932770) |
-| conformer_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |       0.04793        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| conformer_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |       0.06824        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| conformer_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                      | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| conformer_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                      | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+|       使用模型        |                                  数据集                                  | 预处理方式 | 语言  |                             测试集字错率（词错率）                             |                               下载地址                               |
+|:-----------------:|:---------------------------------------------------------------------:|:-----:|:---:|:-------------------------------------------------------------------:|:----------------------------------------------------------------:|
+| conformer_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.03579(aishell_test)<br>0.11081(test_net)<br>0.16031(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86932770)  |
+| conformer_online  |                           超大数据集 (13000+小时)                            | fbank | 中文  | 0.02923(aishell_test)<br>0.11876(test_net)<br>0.18346(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86951249)  |
+| conformer_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |                               0.04936                               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| conformer_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |                               0.04343                               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| conformer_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                                                                     | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| conformer_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                                                                     | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
 
 
 2. `deepspeech2`预训练模型列表：
 
-|        使用模型         |                                  数据集                                  | 预处理方式 | 语言  |     测试集字错率（词错率）      |                               下载地址                               |
-|:-------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:--------------------:|:----------------------------------------------------------------:|
-| deepspeech2_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.05379(AIShell的测试集) | [点击下载](https://download.csdn.net/download/qq_33200967/86932787) |
-| deepspeech2_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |       0.11367        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| deepspeech2_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |       0.09385        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| deepspeech2_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                      | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| deepspeech2_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |       0.11035        | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+|        使用模型         |                                  数据集                                  | 预处理方式 | 语言  |      测试集字错率（词错率）      |                               下载地址                               |
+|:-------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:---------------------:|:----------------------------------------------------------------:|
+| deepspeech2_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.05379(aishell_test) | [点击下载](https://download.csdn.net/download/qq_33200967/86932787)  |
+| deepspeech2_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |        0.11367        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| deepspeech2_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |        0.09385        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| deepspeech2_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |                       | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| deepspeech2_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |        0.11035        | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
 
 
 **说明：** 
-1. 这里字错率或者词错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
+1. 这里字错率或者词错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的，`min_duration`为1.0，`max_duration`为20.0。
 2. 没有提供预测模型，需要把全部文件复制到项目的根目录下，执行`export_model.py`导出预测模型。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
