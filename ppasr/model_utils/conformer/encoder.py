@@ -21,155 +21,6 @@ from ppasr.model_utils.utils.mask import add_optional_chunk_mask
 from ppasr.model_utils.utils.mask import make_non_pad_mask
 
 
-class ConformerEncoderLayer(nn.Layer):
-    """Encoder layer module."""
-
-    def __init__(
-            self,
-            size: int,
-            self_attn: nn.Layer,
-            feed_forward: Optional[nn.Layer] = None,
-            feed_forward_macaron: Optional[nn.Layer] = None,
-            conv_module: Optional[nn.Layer] = None,
-            dropout_rate: float = 0.1,
-            normalize_before: bool = True,
-            concat_after: bool = False, ):
-        """Construct an EncoderLayer object.
-
-        Args:
-            size (int): Input dimension.
-            self_attn (nn.Layer): Self-attention module instance.
-                `MultiHeadedAttention` or `RelPositionMultiHeadedAttention`
-                instance can be used as the argument.
-            feed_forward (nn.Layer): Feed-forward module instance.
-                `PositionwiseFeedForward` instance can be used as the argument.
-            feed_forward_macaron (nn.Layer): Additional feed-forward module
-                instance.
-                `PositionwiseFeedForward` instance can be used as the argument.
-            conv_module (nn.Layer): Convolution module instance.
-                `ConvlutionModule` instance can be used as the argument.
-            dropout_rate (float): Dropout rate.
-            normalize_before (bool):
-                True: use layer_norm before each sub-block.
-                False: use layer_norm after each sub-block.
-            concat_after (bool): Whether to concat attention layer's input and
-                output.
-                True: x -> x + linear(concat(x, att(x)))
-                False: x -> x + att(x)
-        """
-        super().__init__()
-        self.self_attn = self_attn
-        self.feed_forward = feed_forward
-        self.feed_forward_macaron = feed_forward_macaron
-        self.conv_module = conv_module
-        self.norm_ff = LayerNorm(size, epsilon=1e-5)  # for the FNN module
-        self.norm_mha = LayerNorm(size, epsilon=1e-5)  # for the MHA module
-        if feed_forward_macaron is not None:
-            self.norm_ff_macaron = LayerNorm(size, epsilon=1e-5)
-            self.ff_scale = 0.5
-        else:
-            self.ff_scale = 1.0
-        if self.conv_module is not None:
-            self.norm_conv = LayerNorm(size, epsilon=1e-5)  # for the CNN module
-            self.norm_final = LayerNorm(size, epsilon=1e-5)  # for the final output of the block
-        self.dropout = nn.Dropout(dropout_rate)
-        self.size = size
-        self.normalize_before = normalize_before
-        self.concat_after = concat_after
-        if self.concat_after:
-            self.concat_linear = Linear(size + size, size)
-        else:
-            self.concat_linear = nn.Identity()
-
-    def forward(
-            self,
-            x: paddle.Tensor,
-            mask: paddle.Tensor,
-            pos_emb: paddle.Tensor,
-            mask_pad: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool),
-            att_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
-            cnn_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0])
-    ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]:
-        """Compute encoded features.
-        Args:
-            x (paddle.Tensor): Input tensor (#batch, time, size).
-            mask (paddle.Tensor): Mask tensor for the input (#batch, time, time).
-                (0,0,0) means fake mask.
-            pos_emb (paddle.Tensor): postional encoding, must not be None
-                for ConformerEncoderLayer
-            mask_pad (paddle.Tensor): batch padding mask used for conv module.
-               (#batch, 1，time), (0, 0, 0) means fake mask.
-            att_cache (paddle.Tensor): Cache tensor of the KEY & VALUE
-                (#batch=1, head, cache_t1, d_k * 2), head * d_k == size.
-            cnn_cache (paddle.Tensor): Convolution cache in conformer layer
-                (1, #batch=1, size, cache_t2). First dim will not be used, just
-                for dy2st.
-        Returns:
-           paddle.Tensor: Output tensor (#batch, time, size).
-           paddle.Tensor: Mask tensor (#batch, time, time).
-           paddle.Tensor: att_cache tensor,
-                (#batch=1, head, cache_t1 + time, d_k * 2).
-           paddle.Tensor: cnn_cahce tensor (#batch, size, cache_t2).
-        """
-        # (1, #batch=1, size, cache_t2) -> (#batch=1, size, cache_t2)
-        cnn_cache = paddle.squeeze(cnn_cache, axis=0)
-
-        # whether to use macaron style FFN
-        if self.feed_forward_macaron is not None:
-            residual = x
-            if self.normalize_before:
-                x = self.norm_ff_macaron(x)
-            x = residual + self.ff_scale * self.dropout(
-                self.feed_forward_macaron(x))
-            if not self.normalize_before:
-                x = self.norm_ff_macaron(x)
-
-        # multi-headed self-attention module
-        residual = x
-        if self.normalize_before:
-            x = self.norm_mha(x)
-
-        x_att, new_att_cache = self.self_attn(x, x, x, mask, pos_emb, cache=att_cache)
-
-        if self.concat_after:
-            x_concat = paddle.concat((x, x_att), axis=-1)
-            x = residual + self.concat_linear(x_concat)
-        else:
-            x = residual + self.dropout(x_att)
-
-        if not self.normalize_before:
-            x = self.norm_mha(x)
-
-        # convolution module
-        # Fake new cnn cache here, and then change it in conv_module
-        new_cnn_cache = paddle.zeros([0, 0, 0], dtype=x.dtype)
-        if self.conv_module is not None:
-            residual = x
-            if self.normalize_before:
-                x = self.norm_conv(x)
-
-            x, new_cnn_cache = self.conv_module(x, mask_pad, cnn_cache)
-            x = residual + self.dropout(x)
-
-            if not self.normalize_before:
-                x = self.norm_conv(x)
-
-        # feed forward module
-        residual = x
-        if self.normalize_before:
-            x = self.norm_ff(x)
-
-        x = residual + self.ff_scale * self.dropout(self.feed_forward(x))
-
-        if not self.normalize_before:
-            x = self.norm_ff(x)
-
-        if self.conv_module is not None:
-            x = self.norm_final(x)
-
-        return x, mask, new_att_cache, new_cnn_cache
-
-
 class ConformerEncoder(nn.Layer):
     """Conformer encoder module."""
 
@@ -340,10 +191,12 @@ class ConformerEncoder(nn.Layer):
             xs = self.global_cmvn(xs)
         xs, pos_emb, masks = self.embed(xs, masks, offset=0)
         mask_pad = ~masks
-        chunk_masks = add_optional_chunk_mask(
-            xs, masks, self.use_dynamic_chunk, self.use_dynamic_left_chunk,
-            decoding_chunk_size, self.static_chunk_size,
-            num_decoding_left_chunks)
+        chunk_masks = add_optional_chunk_mask(xs, masks,
+                                              self.use_dynamic_chunk,
+                                              self.use_dynamic_left_chunk,
+                                              decoding_chunk_size,
+                                              self.static_chunk_size,
+                                              num_decoding_left_chunks)
         for layer in self.encoders:
             xs, chunk_masks, _, _ = layer(xs, chunk_masks, pos_emb, mask_pad)
         if self.normalize_before:
@@ -392,7 +245,6 @@ class ConformerEncoder(nn.Layer):
         tmp_masks = paddle.ones([1, 1, xs.shape[1]], dtype=paddle.bool)
         # before embed, xs=(B, T, D1), pos_emb=(B=1, T, D)
         xs, pos_emb, _ = self.embed(xs, tmp_masks, offset=offset)
-        # after embed, xs=(B=1, chunk_size, hidden-dim)
 
         _, _, cache_t1, _ = att_cache.shape
         chunk_size = xs.shape[1]
@@ -430,3 +282,151 @@ class ConformerEncoder(nn.Layer):
         r_att_cache = paddle.concat(r_att_cache, axis=0)
         r_cnn_cache = paddle.stack(r_cnn_cache, axis=0)
         return xs, r_att_cache, r_cnn_cache
+
+
+class ConformerEncoderLayer(nn.Layer):
+    """Encoder layer module."""
+
+    def __init__(
+            self,
+            size: int,
+            self_attn: nn.Layer,
+            feed_forward: Optional[nn.Layer] = None,
+            feed_forward_macaron: Optional[nn.Layer] = None,
+            conv_module: Optional[nn.Layer] = None,
+            dropout_rate: float = 0.1,
+            normalize_before: bool = True,
+            concat_after: bool = False, ):
+        """Construct an EncoderLayer object.
+
+        Args:
+            size (int): Input dimension.
+            self_attn (nn.Layer): Self-attention module instance.
+                `MultiHeadedAttention` or `RelPositionMultiHeadedAttention`
+                instance can be used as the argument.
+            feed_forward (nn.Layer): Feed-forward module instance.
+                `PositionwiseFeedForward` instance can be used as the argument.
+            feed_forward_macaron (nn.Layer): Additional feed-forward module
+                instance.
+                `PositionwiseFeedForward` instance can be used as the argument.
+            conv_module (nn.Layer): Convolution module instance.
+                `ConvlutionModule` instance can be used as the argument.
+            dropout_rate (float): Dropout rate.
+            normalize_before (bool):
+                True: use layer_norm before each sub-block.
+                False: use layer_norm after each sub-block.
+            concat_after (bool): Whether to concat attention layer's input and
+                output.
+                True: x -> x + linear(concat(x, att(x)))
+                False: x -> x + att(x)
+        """
+        super().__init__()
+        self.self_attn = self_attn
+        self.feed_forward = feed_forward
+        self.feed_forward_macaron = feed_forward_macaron
+        self.conv_module = conv_module
+        self.norm_ff = LayerNorm(size, epsilon=1e-5)  # for the FNN module
+        self.norm_mha = LayerNorm(size, epsilon=1e-5)  # for the MHA module
+        if feed_forward_macaron is not None:
+            self.norm_ff_macaron = LayerNorm(size, epsilon=1e-5)
+            self.ff_scale = 0.5
+        else:
+            self.ff_scale = 1.0
+        if self.conv_module is not None:
+            self.norm_conv = LayerNorm(size, epsilon=1e-5)  # for the CNN module
+            self.norm_final = LayerNorm(size, epsilon=1e-5)  # for the final output of the block
+        self.dropout = nn.Dropout(dropout_rate)
+        self.size = size
+        self.normalize_before = normalize_before
+        self.concat_after = concat_after
+        if self.concat_after:
+            self.concat_linear = Linear(size + size, size)
+        else:
+            self.concat_linear = nn.Identity()
+
+    def forward(
+            self,
+            x: paddle.Tensor,
+            mask: paddle.Tensor,
+            pos_emb: paddle.Tensor,
+            mask_pad: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool),
+            att_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0]),
+            cnn_cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0])
+    ) -> Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]:
+        """Compute encoded features.
+        Args:
+            x (paddle.Tensor): Input tensor (#batch, time, size).
+            mask (paddle.Tensor): Mask tensor for the input (#batch, time, time).
+                (0,0,0) means fake mask.
+            pos_emb (paddle.Tensor): postional encoding, must not be None
+                for ConformerEncoderLayer
+            mask_pad (paddle.Tensor): batch padding mask used for conv module.
+               (#batch, 1，time), (0, 0, 0) means fake mask.
+            att_cache (paddle.Tensor): Cache tensor of the KEY & VALUE
+                (#batch=1, head, cache_t1, d_k * 2), head * d_k == size.
+            cnn_cache (paddle.Tensor): Convolution cache in conformer layer
+                (1, #batch=1, size, cache_t2). First dim will not be used, just
+                for dy2st.
+        Returns:
+           paddle.Tensor: Output tensor (#batch, time, size).
+           paddle.Tensor: Mask tensor (#batch, time, time).
+           paddle.Tensor: att_cache tensor,
+                (#batch=1, head, cache_t1 + time, d_k * 2).
+           paddle.Tensor: cnn_cahce tensor (#batch, size, cache_t2).
+        """
+        # (1, #batch=1, size, cache_t2) -> (#batch=1, size, cache_t2)
+        cnn_cache = paddle.squeeze(cnn_cache, axis=0)
+
+        # whether to use macaron style FFN
+        if self.feed_forward_macaron is not None:
+            residual = x
+            if self.normalize_before:
+                x = self.norm_ff_macaron(x)
+            x = residual + self.ff_scale * self.dropout(self.feed_forward_macaron(x))
+            if not self.normalize_before:
+                x = self.norm_ff_macaron(x)
+
+        # multi-headed self-attention module
+        residual = x
+        if self.normalize_before:
+            x = self.norm_mha(x)
+
+        x_att, new_att_cache = self.self_attn(x, x, x, mask, pos_emb, cache=att_cache)
+
+        if self.concat_after:
+            x_concat = paddle.concat((x, x_att), axis=-1)
+            x = residual + self.concat_linear(x_concat)
+        else:
+            x = residual + self.dropout(x_att)
+
+        if not self.normalize_before:
+            x = self.norm_mha(x)
+
+        # convolution module
+        # Fake new cnn cache here, and then change it in conv_module
+        new_cnn_cache = paddle.zeros([0, 0, 0], dtype=x.dtype)
+        if self.conv_module is not None:
+            residual = x
+            if self.normalize_before:
+                x = self.norm_conv(x)
+
+            x, new_cnn_cache = self.conv_module(x, mask_pad, cnn_cache)
+            x = residual + self.dropout(x)
+
+            if not self.normalize_before:
+                x = self.norm_conv(x)
+
+        # feed forward module
+        residual = x
+        if self.normalize_before:
+            x = self.norm_ff(x)
+
+        x = residual + self.ff_scale * self.dropout(self.feed_forward(x))
+
+        if not self.normalize_before:
+            x = self.norm_ff(x)
+
+        if self.conv_module is not None:
+            x = self.norm_final(x)
+
+        return x, mask, new_att_cache, new_cnn_cache

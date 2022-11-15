@@ -2,8 +2,8 @@ import paddle
 from paddle import nn
 
 from ppasr.data_utils.normalizer import FeatureNormalizer
-from ppasr.model_utils.deepspeech2.decoder import CTCDecoder
 from ppasr.model_utils.deepspeech2.encoder import CRNNEncoder
+from ppasr.model_utils.loss.ctc import CTCLoss
 from ppasr.model_utils.utils.cmvn import GlobalCMVN
 
 
@@ -33,7 +33,7 @@ class DeepSpeech2Model(nn.Layer):
                                    global_cmvn=global_cmvn,
                                    rnn_direction=rnn_direction,
                                    **configs.encoder_conf)
-        self.decoder = CTCDecoder(vocab_size, self.encoder.output_size, **configs.decoder_conf)
+        self.decoder = CTCLoss(vocab_size, self.encoder.output_size, **configs.decoder_conf)
 
     def forward(self, speech, speech_lengths, text, text_lengths):
         """Compute Model loss

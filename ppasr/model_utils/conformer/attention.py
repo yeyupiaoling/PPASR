@@ -32,6 +32,27 @@ class MultiHeadedAttention(nn.Layer):
         self.linear_out = Linear(n_feat, n_feat)
         self.dropout = nn.Dropout(p=dropout_rate)
 
+    def rel_shift(self, x, zero_triu: bool = False):
+        """Compute relative positinal encoding.
+        Args:
+            x (paddle.Tensor): Input tensor (batch, head, time1, time1).
+            zero_triu (bool): If true, return the lower triangular part of
+                the matrix.
+        Returns:
+            paddle.Tensor: Output tensor. (batch, head, time1, time1)
+        """
+        zero_pad = paddle.zeros((x.shape[0], x.shape[1], x.shape[2], 1), dtype=x.dtype)
+        x_padded = paddle.concat([zero_pad, x], axis=-1)
+
+        x_padded = x_padded.reshape([x.shape[0], x.shape[1], x.shape[3] + 1, x.shape[2]])
+        x = x_padded[:, :, 1:].reshape(paddle.shape(x))  # [B, H, T1, T1]
+
+        if zero_triu:
+            ones = paddle.ones((x.shape[2], x.shape[3]))
+            x = x * paddle.tril(ones, x.shape[3] - x.shape[2])[None, None, :, :]
+
+        return x
+
     def forward_qkv(self,
                     query: paddle.Tensor,
                     key: paddle.Tensor,
@@ -173,28 +194,6 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         self.add_parameter('pos_bias_u', pos_bias_u)
         pos_bias_v = self.create_parameter([self.h, self.d_k], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_v', pos_bias_v)
-
-    def rel_shift(self, x, zero_triu: bool = False):
-        """Compute relative positinal encoding.
-        Args:
-            x (paddle.Tensor): Input tensor (batch, head, time1, time1).
-            zero_triu (bool): If true, return the lower triangular part of
-                the matrix.
-        Returns:
-            paddle.Tensor: Output tensor. (batch, head, time1, time1)
-        """
-        zero_pad = paddle.zeros(
-            (x.shape[0], x.shape[1], x.shape[2], 1), dtype=x.dtype)
-        x_padded = paddle.concat([zero_pad, x], axis=-1)
-
-        x_padded = x_padded.reshape([x.shape[0], x.shape[1], x.shape[3] + 1, x.shape[2]])
-        x = x_padded[:, :, 1:].reshape(paddle.shape(x))  # [B, H, T1, T1]
-
-        if zero_triu:
-            ones = paddle.ones((x.shape[2], x.shape[3]))
-            x = x * paddle.tril(ones, x.shape[3] - x.shape[2])[None, None, :, :]
-
-        return x
 
     def forward(self,
                 query: paddle.Tensor,

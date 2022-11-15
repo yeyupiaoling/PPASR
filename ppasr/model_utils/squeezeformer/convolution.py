@@ -2,10 +2,10 @@ from typing import Tuple
 
 import paddle
 from paddle import nn
+from paddle.nn import initializer as I
 from typeguard import check_argument_types
 
 from ppasr.model_utils.utils.common import masked_fill
-from ppasr.model_utils.conformer.base import Conv1D
 
 __all__ = ['ConvolutionModule']
 
@@ -19,19 +19,26 @@ class ConvolutionModule(nn.Layer):
                  activation: nn.Layer = nn.ReLU(),
                  norm: str = "batch_norm",
                  causal: bool = False,
-                 bias: bool = True):
+                 bias: bool = True,
+                 adaptive_scale: bool = False):
         """Construct an ConvolutionModule object.
         Args:
             channels (int): The number of channels of conv layers.
             kernel_size (int): Kernel size of conv layers.
-            activation (nn.Layer): Activation Layer.
-            norm (str): Normalization type, 'batch_norm' or 'layer_norm'
-            causal (bool): Whether use causal convolution or not
-            bias (bool): Whether Conv with bias or not
+            causal (int): Whether use causal convolution or not
         """
         assert check_argument_types()
         super().__init__()
-        self.pointwise_conv1 = Conv1D(
+        self.bias = bias
+        self.channels = channels
+        self.kernel_size = kernel_size
+        self.adaptive_scale = adaptive_scale
+        ada_scale = self.create_parameter([1, 1, channels], default_initializer=I.XavierUniform())
+        self.add_parameter('ada_scale', ada_scale)
+        ada_bias = self.create_parameter([1, 1, channels], default_initializer=I.XavierUniform())
+        self.add_parameter('ada_bias', ada_bias)
+
+        self.pointwise_conv1 = nn.Conv1D(
             channels,
             2 * channels,
             kernel_size=1,
@@ -42,9 +49,8 @@ class ConvolutionModule(nn.Layer):
         )
 
         # self.lorder is used to distinguish if it's a causal convolution,
-        # if self.lorder > 0:
-        #    it's a causal convolution, the input will be padded with
-        #    `self.lorder` frames on the left in forward (causal conv impl).
+        # if self.lorder > 0: it's a causal convolution, the input will be
+        #    padded with self.lorder frames on the left in forward.
         # else: it's a symmetrical convolution
         if causal:
             padding = 0
@@ -54,8 +60,7 @@ class ConvolutionModule(nn.Layer):
             assert (kernel_size - 1) % 2 == 0
             padding = (kernel_size - 1) // 2
             self.lorder = 0
-
-        self.depthwise_conv = Conv1D(
+        self.depthwise_conv = nn.Conv1D(
             channels,
             channels,
             kernel_size,
@@ -74,7 +79,7 @@ class ConvolutionModule(nn.Layer):
             self.use_layer_norm = True
             self.norm = nn.LayerNorm(channels)
 
-        self.pointwise_conv2 = Conv1D(
+        self.pointwise_conv2 = nn.Conv1D(
             channels,
             channels,
             kernel_size=1,
@@ -89,20 +94,22 @@ class ConvolutionModule(nn.Layer):
             self,
             x: paddle.Tensor,
             mask_pad: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool),
-            cache: paddle.Tensor = paddle.zeros([0, 0, 0, 0])
+            cache: paddle.Tensor = paddle.zeros([0, 0, 0]),
     ) -> Tuple[paddle.Tensor, paddle.Tensor]:
         """Compute convolution module.
         Args:
-            x (paddle.Tensor): Input tensor (#batch, time, channels).
-            mask_pad (paddle.Tensor): used for batch padding (#batch, 1, time),
+            x (torch.Tensor): Input tensor (#batch, time, channels).
+            mask_pad (torch.Tensor): used for batch padding (#batch, 1, time),
                 (0, 0, 0) means fake mask.
-            cache (paddle.Tensor): left context cache, it is only
+            cache (torch.Tensor): left context cache, it is only
                 used in causal convolution (#batch, channels, cache_t),
                 (0, 0, 0) meas fake cache.
         Returns:
-            paddle.Tensor: Output tensor (#batch, time, channels).
-            paddle.Tensor: Output cache tensor (#batch, channels, time')
+            torch.Tensor: Output tensor (#batch, time, channels).
         """
+        if self.adaptive_scale:
+            x = self.ada_scale * x + self.ada_bias
+
         # exchange the temporal dimension and the feature dimension
         x = x.transpose([0, 2, 1])  # [B, C, T]
 
@@ -121,7 +128,7 @@ class ConvolutionModule(nn.Layer):
             assert (x.shape[2] > self.lorder)
             new_cache = x[:, :, -self.lorder:]  # [B, C, T]
         else:
-            # It's better we just return None if no cache is requried,
+            # It's better we just return None if no cache is required,
             # However, for JIT export, here we just fake one tensor instead of
             # None.
             new_cache = paddle.zeros([0, 0, 0], dtype=x.dtype)

@@ -1,11 +1,9 @@
 import paddle
-
 import paddle.nn.functional as F
-
 from typeguard import check_argument_types
 
 
-class CTCDecoder(paddle.nn.Layer):
+class CTCLoss(paddle.nn.Layer):
     """CTC module"""
 
     def __init__(
@@ -57,7 +55,7 @@ class CTCDecoder(paddle.nn.Layer):
         Args:
             Tensor hs_pad: 3d tensor (B, Tmax, eprojs)
         Returns:
-            torch.Tensor: log softmax applied 3d tensor (B, Tmax, odim)
+            paddle.Tensor: log softmax applied 3d tensor (B, Tmax, odim)
         """
         return F.log_softmax(self.ctc_lo(hs_pad), axis=2)
 
@@ -67,7 +65,7 @@ class CTCDecoder(paddle.nn.Layer):
         Args:
             Tensor hs_pad: 3d tensor (B, Tmax, eprojs)
         Returns:
-            torch.Tensor: log softmax applied 3d tensor (B, Tmax, odim)
+            paddle.Tensor: log softmax applied 3d tensor (B, Tmax, odim)
         """
         return F.softmax(self.ctc_lo(hs_pad), axis=2)
 
@@ -75,8 +73,8 @@ class CTCDecoder(paddle.nn.Layer):
         """argmax of frame activations
 
         Args:
-            torch.Tensor hs_pad: 3d tensor (B, Tmax, eprojs)
+            paddle.Tensor hs_pad: 3d tensor (B, Tmax, eprojs)
         Returns:
-            torch.Tensor: argmax applied 2d tensor (B, Tmax)
+            paddle.Tensor: argmax applied 2d tensor (B, Tmax)
         """
         return paddle.argmax(self.ctc_lo(hs_pad), axis=2)

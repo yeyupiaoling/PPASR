@@ -101,10 +101,21 @@ class PPASRTrainer(object):
                                       num_workers=self.configs.dataset_conf.num_workers)
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
+        from ppasr.model_utils.squeezeformer.model import SqueezeformerModelOnline, SqueezeformerModelOffline
         from ppasr.model_utils.conformer.model import ConformerModelOnline, ConformerModelOffline
         from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
         # 获取模型
-        if self.configs.use_model == 'conformer_online':
+        if self.configs.use_model == 'squeezeformer_online':
+            self.model = SqueezeformerModelOnline(configs=self.configs,
+                                                  input_dim=input_dim,
+                                                  vocab_size=vocab_size,
+                                                  **self.configs.model_conf)
+        elif self.configs.use_model == 'squeezeformer_offline':
+            self.model = SqueezeformerModelOffline(configs=self.configs,
+                                                   input_dim=input_dim,
+                                                   vocab_size=vocab_size,
+                                                   **self.configs.model_conf)
+        elif self.configs.use_model == 'conformer_online':
             self.model = ConformerModelOnline(configs=self.configs,
                                               input_dim=input_dim,
                                               vocab_size=vocab_size,
@@ -488,7 +499,7 @@ class PPASRTrainer(object):
                         logger.info(f'预测结果为：{out_string}')
                         logger.info(f'实际标签为：{label}')
                         logger.info(f'当前{self.configs.metrics_type}：{sum(error_results) / len(error_results)}')
-                        logger.info('-'*70)
+                        logger.info('-' * 70)
         loss = float(sum(losses) / len(losses))
         error_result = float(sum(error_results) / len(error_results))
         self.model.train()
