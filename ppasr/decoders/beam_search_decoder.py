@@ -15,7 +15,7 @@ class BeamSearchDecoder:
         self.vocab_list = vocab_list
         self.num_processes = num_processes
         self.blank_id = blank_id
-        if not os.path.exists(language_model_path):
+        if not os.path.exists(language_model_path) and language_model_path == 'lm/zh_giga.no_cna_cmn.prune01244.klm':
             print('=' * 70)
             language_model_url = 'https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm'
             print("语言模型不存在，正在下载，下载地址： %s ..." % language_model_url)
@@ -24,6 +24,7 @@ class BeamSearchDecoder:
             print('=' * 70)
         print('=' * 70)
         print("初始化解码器...")
+        assert os.path.exists(language_model_path), f'语言模型不存在：{language_model_path}'
         self._ext_scorer = Scorer(alpha, beta, language_model_path, vocab_list)
         lm_char_based = self._ext_scorer.is_character_based()
         lm_max_order = self._ext_scorer.get_max_order()
