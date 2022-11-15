@@ -128,7 +128,7 @@ class TimeReductionLayer1D(nn.Layer):
         if L - T < 0:
             xs = xs[:, :L - T, :]
         else:
-            dummy_pad = paddle.zeros(B, L - T, D)
+            dummy_pad = paddle.zeros([B, L - T, D])
             xs = paddle.concat([xs, dummy_pad], axis=1)
 
         xs_lens = (xs_lens + 1) // 2

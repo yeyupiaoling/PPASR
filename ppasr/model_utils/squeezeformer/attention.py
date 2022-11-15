@@ -68,7 +68,7 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
 
         q, k, v = self.forward_qkv(query, key, value)
         if cache.shape[0] > 0:
-            key_cache, value_cache = paddle.split(cache, cache.shape[-1] // 2, axis=-1)
+            key_cache, value_cache = paddle.split(cache, 2, axis=-1)
             k = paddle.concat([key_cache, k], axis=2)
             v = paddle.concat([value_cache, v], axis=2)
         # NOTE(xcsong): We do cache slicing in encoder.forward_chunk, since it's

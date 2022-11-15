@@ -209,8 +209,7 @@ class SqueezeformerEncoder(nn.Layer):
             if self.reduce_idx is not None:
                 if self.time_reduce is not None and i in self.reduce_idx:
                     recover_activations.append((xs, chunk_masks, pos_emb, mask_pad))
-                    xs, xs_lens, chunk_masks, mask_pad = \
-                        self.time_reduction_layer(xs, xs_lens, chunk_masks, mask_pad)
+                    xs, xs_lens, chunk_masks, mask_pad = self.time_reduction_layer(xs, xs_lens, chunk_masks, mask_pad)
                     pos_emb = pos_emb[:, ::2, :]
                     index += 1
 
@@ -324,7 +323,7 @@ class SqueezeformerEncoder(nn.Layer):
         recover_activations: \
             List[Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor, paddle.Tensor]] = []
         index = 0
-        xs_lens = paddle.Tensor([xs.shape[1]], dtype=paddle.int32)
+        xs_lens = paddle.to_tensor([xs.shape[1]], dtype=paddle.int32)
         xs = self.preln(xs)
         for i, layer in enumerate(self.encoders):
             # NOTE(xcsong): Before layer.forward
@@ -345,7 +344,7 @@ class SqueezeformerEncoder(nn.Layer):
                     xs = paddle.repeat_interleave(xs, repeats=2, axis=1)
                     xs = self.time_recover_layer(xs)
                     recoverd_t = recover_tensor.shape[1]
-                    xs = recover_tensor + xs[:, :recoverd_t, :].contiguous()
+                    xs = recover_tensor + xs[:, :recoverd_t, :]
                     att_mask = recover_att_mask
                     pos_emb = recover_pos_emb
                     mask_pad = recover_mask_pad
