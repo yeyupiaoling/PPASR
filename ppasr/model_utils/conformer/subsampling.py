@@ -2,13 +2,12 @@ from typing import Tuple
 
 import paddle
 from paddle import nn
+from ppasr.model_utils.utils.base import Conv2D, Linear
 
 __all__ = [
     "LinearNoSubsampling", "Conv2dSubsampling4", "Conv2dSubsampling6",
     "Conv2dSubsampling8"
 ]
-
-from ppasr.model_utils.conformer.base import Conv2D, Linear
 
 
 class BaseSubsampling(nn.Layer):

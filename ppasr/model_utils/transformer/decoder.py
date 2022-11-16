@@ -6,7 +6,7 @@ from paddle import nn
 from typeguard import check_argument_types
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
-from ppasr.model_utils.conformer.base import Embedding, LayerNorm, Linear
+from ppasr.model_utils.utils.base import Embedding, LayerNorm, Linear
 from ppasr.model_utils.conformer.embedding import PositionalEncoding
 from ppasr.model_utils.conformer.positionwise import PositionwiseFeedForward
 from ppasr.model_utils.utils.mask import (subsequent_mask, make_non_pad_mask)

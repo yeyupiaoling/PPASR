@@ -20,7 +20,8 @@ class ConvolutionModule(nn.Layer):
                  norm: str = "batch_norm",
                  causal: bool = False,
                  bias: bool = True,
-                 adaptive_scale: bool = False):
+                 adaptive_scale: bool = False,
+                 init_weights: bool = False):
         """Construct an ConvolutionModule object.
         Args:
             channels (int): The number of channels of conv layers.
@@ -33,9 +34,9 @@ class ConvolutionModule(nn.Layer):
         self.channels = channels
         self.kernel_size = kernel_size
         self.adaptive_scale = adaptive_scale
-        ada_scale = self.create_parameter([1, 1, channels], default_initializer=I.XavierUniform())
+        ada_scale = self.create_parameter([1, 1, channels], default_initializer=I.Constant(1.0))
         self.add_parameter('ada_scale', ada_scale)
-        ada_bias = self.create_parameter([1, 1, channels], default_initializer=I.XavierUniform())
+        ada_bias = self.create_parameter([1, 1, channels], default_initializer=I.Constant(0.0))
         self.add_parameter('ada_bias', ada_bias)
 
         self.pointwise_conv1 = nn.Conv1D(
@@ -89,6 +90,22 @@ class ConvolutionModule(nn.Layer):
             if bias else False,  # None for True, using bias as default config
         )
         self.activation = activation
+
+        if init_weights:
+            self.init_weights()
+
+    def init_weights(self):
+        pw_max = self.channels ** -0.5
+        dw_max = self.kernel_size ** -0.5
+        self.pointwise_conv1._param_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+        if self.bias:
+            self.pointwise_conv1._bias_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+        self.depthwise_conv._param_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        if self.bias:
+            self.depthwise_conv._bias_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.pointwise_conv2._param_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+        if self.bias:
+            self.pointwise_conv2._bias_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
 
     def forward(
             self,

@@ -5,7 +5,7 @@ import paddle
 from paddle import nn
 from paddle.nn import initializer as I
 from ppasr.model_utils.utils.common import masked_fill
-from ppasr.model_utils.conformer.base import Linear
+from ppasr.model_utils.utils.base import Linear
 
 __all__ = ["MultiHeadedAttention", "RelPositionMultiHeadedAttention"]
 
@@ -41,7 +41,7 @@ class MultiHeadedAttention(nn.Layer):
         Returns:
             paddle.Tensor: Output tensor. (batch, head, time1, time1)
         """
-        zero_pad = paddle.zeros((x.shape[0], x.shape[1], x.shape[2], 1), dtype=x.dtype)
+        zero_pad = paddle.zeros([x.shape[0], x.shape[1], x.shape[2], 1], dtype=x.dtype)
         x_padded = paddle.concat([zero_pad, x], axis=-1)
 
         x_padded = x_padded.reshape([x.shape[0], x.shape[1], x.shape[3] + 1, x.shape[2]])

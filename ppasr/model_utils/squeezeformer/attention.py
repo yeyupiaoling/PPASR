@@ -19,7 +19,7 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         dropout_rate (float): Dropout rate.
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, do_rel_shift=False, adaptive_scale=False):
+    def __init__(self, n_head, n_feat, dropout_rate, do_rel_shift=False, adaptive_scale=False, init_weights=False):
         """Construct an RelPositionMultiHeadedAttention object."""
         super().__init__(n_head, n_feat, dropout_rate)
         # linear transformation for positional encoding
@@ -32,10 +32,25 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         pos_bias_v = self.create_parameter([self.h, self.d_k], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_v', pos_bias_v)
         self.adaptive_scale = adaptive_scale
-        ada_scale = self.create_parameter([1, 1, n_feat], default_initializer=I.XavierUniform())
+        ada_scale = self.create_parameter([1, 1, n_feat], default_initializer=I.Constant(1.0))
         self.add_parameter('ada_scale', ada_scale)
-        ada_bias = self.create_parameter([1, 1, n_feat], default_initializer=I.XavierUniform())
+        ada_bias = self.create_parameter([1, 1, n_feat], default_initializer=I.Constant(0.0))
         self.add_parameter('ada_bias', ada_bias)
+        if init_weights:
+            self.init_weights()
+
+    def init_weights(self):
+        input_max = (self.h * self.d_k) ** -0.5
+        self.linear_q._param_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_q._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_k._param_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_k._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_v._param_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_v._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_pos._param_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_pos._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_out._param_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+        self.linear_out._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
 
     def forward(self, query: paddle.Tensor,
                 key: paddle.Tensor, value: paddle.Tensor,

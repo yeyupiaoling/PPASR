@@ -1,7 +1,7 @@
 # 编码器参数
 encoder_conf:
-    encoder_dim: 256
-    output_size: 256    # dimension of attention
+    encoder_dim: 512
+    output_size: 512    # dimension of attention
     attention_heads: 4
     num_blocks: 12      # the number of encoder blocks
     reduce_idx: 5
@@ -10,9 +10,12 @@ encoder_conf:
     input_dropout_rate: 0.1
     feed_forward_dropout_rate: 0.1
     attention_dropout_rate: 0.1
-    cnn_module_kernel: 31
     adaptive_scale: true
+    cnn_module_kernel: 31
     normalize_before: false
+    activation_type: 'swish'
+    pos_enc_layer_type: 'rel_pos'
+    time_reduction_layer_type: 'conv1d' # conv1d or conv2d reduction layer.
 
 # 解码器参数
 decoder_conf:
@@ -88,11 +91,16 @@ ctc_beam_search_decoder_conf:
   language_model_path: 'lm/zh_giga.no_cna_cmn.prune01244.klm'
 
 optimizer_conf:
+  # 优化方法
+  optimizer: 'AdamW'
+  # 权重衰减系数
+  weight_decay: 4e-5
   # 初始学习率的大小
   learning_rate: 0.001
   # 学习率预热步数
   warmup_steps: 25000
-  weight_decay: 1e-6
+  # 最小学习率
+  min_lr: 1e-5
 
 train_conf:
   grad_clip: 5.0

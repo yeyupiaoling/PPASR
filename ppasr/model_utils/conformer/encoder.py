@@ -6,7 +6,7 @@ from typeguard import check_argument_types
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 from ppasr.model_utils.conformer.attention import RelPositionMultiHeadedAttention
-from ppasr.model_utils.conformer.base import LayerNorm, Linear
+from ppasr.model_utils.utils.base import LayerNorm, Linear
 from ppasr.model_utils.conformer.convolution import ConvolutionModule
 from ppasr.model_utils.conformer.embedding import NoPositionalEncoding
 from ppasr.model_utils.conformer.embedding import PositionalEncoding

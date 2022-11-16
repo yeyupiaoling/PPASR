@@ -5,7 +5,7 @@ from paddle import nn
 from typeguard import check_argument_types
 
 from ppasr.model_utils.utils.common import masked_fill
-from ppasr.model_utils.conformer.base import Conv1D
+from ppasr.model_utils.utils.base import Conv1D
 
 __all__ = ['ConvolutionModule']
 

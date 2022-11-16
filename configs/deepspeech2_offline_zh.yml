@@ -64,11 +64,16 @@ ctc_beam_search_decoder_conf:
   language_model_path: 'lm/zh_giga.no_cna_cmn.prune01244.klm'
 
 optimizer_conf:
+  # 优化方法
+  optimizer: 'Adam'
+  # 权重衰减系数
+  weight_decay: 1e-6
   # 初始学习率的大小
   learning_rate: 0.0005
   # 学习率预热步数
   warmup_steps: 25000
-  weight_decay: 1e-6
+  # 最小学习率
+  min_lr: 1e-5
 
 train_conf:
   grad_clip: 5.0

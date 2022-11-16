@@ -1,7 +1,7 @@
 import paddle
 from paddle import nn
 
-from ppasr.model_utils.conformer.base import Linear
+from ppasr.model_utils.utils.base import Linear
 
 
 class PositionwiseFeedForward(nn.Layer):

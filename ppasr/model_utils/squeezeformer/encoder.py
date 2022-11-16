@@ -34,11 +34,12 @@ class SqueezeformerEncoder(nn.Layer):
             feed_forward_dropout_rate: float = 0.1,
             attention_dropout_rate: float = 0.1,
             cnn_module_kernel: int = 31,
-            cnn_norm_type: str = "batch_norm",
+            cnn_norm_type: str = "layer_norm",
             dropout: float = 0.1,
             causal: bool = False,
             adaptive_scale: bool = True,
             activation_type: str = "swish",
+            init_weights: bool = True,
             global_cmvn: paddle.nn.Layer = None,
             normalize_before: bool = False,
             use_dynamic_chunk: bool = False,
@@ -68,9 +69,9 @@ class SqueezeformerEncoder(nn.Layer):
                                  operation on rel-attention module.
             cnn_module_kernel (int): Kernel size of CNN module.
             activation_type (str): Encoder activation function type.
-            use_cnn_module (bool): Whether to use convolution module.
             cnn_module_kernel (int): Kernel size of convolution module.
             adaptive_scale (bool): Whether to use adaptive scale.
+            init_weights (bool): Whether to initialize weights.
             causal (bool): whether to use causal convolution or not.
         """
         assert check_argument_types()
@@ -109,7 +110,8 @@ class SqueezeformerEncoder(nn.Layer):
                                            encoder_dim,
                                            attention_dropout_rate,
                                            do_rel_shift,
-                                           adaptive_scale)
+                                           adaptive_scale,
+                                           init_weights)
 
         # feed-forward module definition
         positionwise_layer = PositionwiseFeedForward
@@ -117,18 +119,20 @@ class SqueezeformerEncoder(nn.Layer):
                                    encoder_dim * feed_forward_expansion_factor,
                                    feed_forward_dropout_rate,
                                    activation,
-                                   adaptive_scale)
+                                   adaptive_scale,
+                                   init_weights)
 
         # convolution module definition
         convolution_layer = ConvolutionModule
         convolution_layer_args = (encoder_dim, cnn_module_kernel, activation,
-                                  cnn_norm_type, causal, True, adaptive_scale)
+                                  cnn_norm_type, causal, True, adaptive_scale, init_weights)
 
         self.embed = DepthwiseConv2DSubsampling4(1, encoder_dim,
                                                  RelPositionalEncoding(encoder_dim, dropout_rate=0.1),
                                                  dw_stride,
                                                  input_size,
-                                                 input_dropout_rate)
+                                                 input_dropout_rate,
+                                                 init_weights)
 
         self.preln = nn.LayerNorm(encoder_dim)
         self.encoders = paddle.nn.LayerList([SqueezeformerEncoderLayer(

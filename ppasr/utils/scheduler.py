@@ -20,11 +20,13 @@ class WarmupLR(LRScheduler):
     def __init__(self,
                  warmup_steps: Union[int, float] = 25000,
                  learning_rate=1.0,
+                 min_lr=1e-5,
                  last_epoch=-1,
                  verbose=False,
                  **kwargs):
         assert check_argument_types()
         self.warmup_steps = warmup_steps
+        self.min_lr = min_lr
         super().__init__(learning_rate, last_epoch, verbose)
 
     def __repr__(self):
@@ -33,10 +35,12 @@ class WarmupLR(LRScheduler):
     def get_lr(self):
         step_num = self.last_epoch + 1
         if self.warmup_steps == 0:
-            return self.base_lr * step_num ** -0.5
+            lr = self.base_lr * step_num ** -0.5
+            return lr if lr > self.min_lr else self.min_lr
         else:
-            return self.base_lr * self.warmup_steps ** 0.5 * min(
+            lr = self.base_lr * self.warmup_steps ** 0.5 * min(
                 step_num ** -0.5, step_num * self.warmup_steps ** -1.5)
+            return lr if lr > self.min_lr or step_num < self.warmup_steps else self.min_lr
 
     def set_step(self, step: int = None):
         '''

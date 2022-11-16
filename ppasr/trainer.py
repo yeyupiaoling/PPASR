@@ -137,14 +137,25 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         # print(self.model)
         if is_train:
-            # 设置优化方法
-            grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)
+            # 获取学习率衰减
             self.scheduler = WarmupLR(warmup_steps=self.configs.optimizer_conf.warmup_steps,
-                                      learning_rate=float(self.configs.optimizer_conf.learning_rate))
-            self.optimizer = paddle.optimizer.Adam(parameters=self.model.parameters(),
-                                                   learning_rate=self.scheduler,
-                                                   weight_decay=float(self.configs.optimizer_conf.weight_decay),
-                                                   grad_clip=grad_clip)
+                                      learning_rate=float(self.configs.optimizer_conf.learning_rate),
+                                      min_lr=float(self.configs.optimizer_conf.get('min_lr', 1e-5)))
+            # 获取优化方法
+            optimizer = self.configs.optimizer_conf.get('optimizer', 'Adam')
+            grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)
+            if optimizer == 'Adam':
+                self.optimizer = paddle.optimizer.Adam(parameters=self.model.parameters(),
+                                                       learning_rate=self.scheduler,
+                                                       weight_decay=float(self.configs.optimizer_conf.weight_decay),
+                                                       grad_clip=grad_clip)
+            elif optimizer == 'AdamW':
+                self.optimizer = paddle.optimizer.AdamW(parameters=self.model.parameters(),
+                                                        learning_rate=self.scheduler,
+                                                        weight_decay=float(self.configs.optimizer_conf.weight_decay),
+                                                        grad_clip=grad_clip)
+            else:
+                raise Exception(f'不支持优化方法：{optimizer}')
 
     def __load_pretrained(self, pretrained_model):
         # 加载预训练模型

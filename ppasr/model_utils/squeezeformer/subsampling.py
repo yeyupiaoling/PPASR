@@ -36,7 +36,8 @@ class DepthwiseConv2DSubsampling4(BaseSubsampling):
             pos_enc_class: nn.Layer,
             dw_stride: bool = False,
             input_size: int = 80,
-            input_dropout_rate: float = 0.1):
+            input_dropout_rate: float = 0.1,
+            init_weights: bool = True):
         super(DepthwiseConv2DSubsampling4, self).__init__()
         self.idim = idim
         self.odim = odim
@@ -49,6 +50,11 @@ class DepthwiseConv2DSubsampling4(BaseSubsampling):
         self.input_proj = nn.Sequential(
             nn.Linear(odim * (((input_size - 1) // 2 - 1) // 2), odim),
             nn.Dropout(p=input_dropout_rate))
+        if init_weights:
+            linear_max = (odim * input_size / 4) ** -0.5
+            self.input_proj.state_dict()['0.weight'] = paddle.nn.initializer.Uniform(low=-linear_max, high=linear_max)
+            self.input_proj.state_dict()['0.bias'] = paddle.nn.initializer.Uniform(low=-linear_max, high=linear_max)
+
         self.subsampling_rate = 4
         # 6 = (3 - 1) * 1 + (3 - 1) * 2
         self.right_context = 6
@@ -108,6 +114,16 @@ class TimeReductionLayer1D(nn.Layer):
             kernel_size=1, stride=1, padding=0, groups=1,
         )
 
+        self.init_weights()
+
+    def init_weights(self):
+        dw_max = self.kernel_size ** -0.5
+        pw_max = self.channel ** -0.5
+        self.dw_conv._param_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.dw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.pw_conv._param_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+        self.pw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+
     def forward(self, xs, xs_lens: paddle.Tensor,
                 mask: paddle.Tensor = paddle.ones((0, 0, 0), dtype=paddle.bool),
                 mask_pad: paddle.Tensor = paddle.ones((0, 0, 0), dtype=paddle.bool),
@@ -155,6 +171,15 @@ class TimeReductionLayer2D(nn.Layer):
 
         self.kernel_size = kernel_size
         self.stride = stride
+        self.init_weights()
+
+    def init_weights(self):
+        dw_max = self.kernel_size ** -0.5
+        pw_max = self.encoder_dim ** -0.5
+        self.dw_conv._param_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.dw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.pw_conv._param_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+        self.pw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
 
     def forward(
             self, xs: paddle.Tensor, xs_lens: paddle.Tensor,
@@ -166,11 +191,11 @@ class TimeReductionLayer2D(nn.Layer):
         padding1 = self.kernel_size - self.stride
         xs = F.pad(xs, (0, 0, 0, 0, 0, padding1, 0, 0), mode='constant', value=0.)
         xs = self.dw_conv(xs.transpose([0, 3, 1, 2]))
-        xs = self.pw_conv(xs).transpose([0, 3, 1, 2]).squeeze(1).contiguous()
-        tmp_length = xs.size(1)
+        xs = self.pw_conv(xs).transpose([0, 3, 1, 2]).squeeze(1)
+        tmp_length = xs.shape[1]
         xs_lens = (xs_lens + 1) // 2
         padding2 = max(0, (xs_lens.max() - tmp_length).data.item())
-        batch_size, hidden = xs.size(0), xs.size(-1)
+        batch_size, hidden = xs.shape[0], xs.shape[-1]
         dummy_pad = paddle.zeros(batch_size, padding2, hidden)
         xs = paddle.concat([xs, dummy_pad], axis=1)
         mask = mask[:, ::2, ::2]
@@ -213,10 +238,19 @@ class TimeReductionLayerStream(nn.Layer):
                                  stride=1,
                                  padding=0,
                                  groups=1)
+        self.init_weights()
+
+    def init_weights(self):
+        dw_max = self.kernel_size ** -0.5
+        pw_max = self.encoder_dim ** -0.5
+        self.dw_conv._param_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.dw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-dw_max, high=dw_max)
+        self.pw_conv._param_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
+        self.pw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
 
     def forward(self, xs, xs_lens: paddle.Tensor,
-                mask: paddle.Tensor = paddle.ones((0, 0, 0), dtype=paddle.bool),
-                mask_pad: paddle.Tensor = paddle.ones((0, 0, 0), dtype=paddle.bool),
+                mask: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool),
+                mask_pad: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool),
                 ):
         xs = xs.transpose([0, 2, 1])  # [B, C, T]
         xs = masked_fill(xs, mask_pad.equal(0), 0.0)
@@ -226,10 +260,10 @@ class TimeReductionLayerStream(nn.Layer):
 
         xs = xs.transpose(1, 2)  # [B, T, C]
 
-        B, T, D = xs.size()
+        B, T, D = xs.shape
         mask = mask[:, ::self.stride, ::self.stride]
         mask_pad = mask_pad[:, :, ::self.stride]
-        L = mask_pad.size(-1)
+        L = mask_pad.shape[-1]
         # For JIT exporting, we remove F.pad operator.
         if L - T < 0:
             xs = xs[:, :L - T, :].contiguous()
