@@ -1,8 +1,8 @@
 # 编码器参数
 encoder_conf:
-    encoder_dim: 512
-    output_size: 512    # dimension of attention
-    attention_heads: 4
+    encoder_dim: 256    # 编码器的隐层大小，对于大数据可以设置设置大一些，如：512
+    output_size: 256    # Attention的维度，对于大数据可以设置设置大一些，如：512
+    attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
     num_blocks: 12      # the number of encoder blocks
     reduce_idx: 5
     recover_idx: 11

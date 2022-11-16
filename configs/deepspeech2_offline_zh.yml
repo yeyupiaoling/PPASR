@@ -1,7 +1,7 @@
 # encoder参数
 encoder_conf:
     num_rnn_layers: 5
-    rnn_size: 1024
+    rnn_size: 1024  # RNN的隐层大小，对于大数据可以设置设置大一些，如：2048
     use_gru: False
 
 # decoder参数
