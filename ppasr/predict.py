@@ -259,7 +259,7 @@ class PPASRPredictor:
             # 执行识别
             if self.configs.use_model == 'deepspeech2_online':
                 output_chunk_probs, output_lens = self.predictor.predict_chunk_deepspeech(x_chunk=x_chunk)
-            elif self.configs.use_model == 'conformer_online':
+            elif self.configs.use_model == 'conformer_online' or self.configs.use_model == 'squeezeformer_online':
                 num_decoding_left_chunks = -1
                 required_cache_size = decoding_chunk_size * num_decoding_left_chunks
                 output_chunk_probs = self.predictor.predict_chunk_conformer(x_chunk=x_chunk,

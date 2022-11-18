@@ -86,6 +86,7 @@ class PPASRTrainer(object):
                                                                  shuffle=True)
             self.train_loader = DataLoader(dataset=self.train_dataset,
                                            collate_fn=collate_fn,
+                                           prefetch_factor=self.configs.dataset_conf.get('prefetch_factor', 2),
                                            batch_sampler=self.train_batch_sampler,
                                            num_workers=self.configs.dataset_conf.num_workers)
         # 获取测试数据
@@ -98,6 +99,7 @@ class PPASRTrainer(object):
         self.test_loader = DataLoader(dataset=self.test_dataset,
                                       batch_size=self.configs.dataset_conf.batch_size,
                                       collate_fn=collate_fn,
+                                      prefetch_factor=self.configs.dataset_conf.get('prefetch_factor', 2),
                                       num_workers=self.configs.dataset_conf.num_workers)
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
