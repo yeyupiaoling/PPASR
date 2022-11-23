@@ -19,8 +19,8 @@ encoder_conf:
 
 # 解码器参数
 decoder_conf:
-    attention_heads: 8
-    linear_units: 2048
+    attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
+    linear_units: 1024  # the number of units of position-wise feed forward，or: 2048
     num_blocks: 3
     r_num_blocks: 3
     dropout_rate: 0.1
