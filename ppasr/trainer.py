@@ -87,6 +87,7 @@ class PPASRTrainer(object):
             self.train_loader = DataLoader(dataset=self.train_dataset,
                                            collate_fn=collate_fn,
                                            prefetch_factor=self.configs.dataset_conf.get('prefetch_factor', 2),
+                                           use_shared_memory=self.configs.dataset_conf.get('use_shared_memory', True),
                                            batch_sampler=self.train_batch_sampler,
                                            num_workers=self.configs.dataset_conf.num_workers)
         # 获取测试数据
@@ -100,6 +101,7 @@ class PPASRTrainer(object):
                                       batch_size=self.configs.dataset_conf.batch_size,
                                       collate_fn=collate_fn,
                                       prefetch_factor=self.configs.dataset_conf.get('prefetch_factor', 2),
+                                      use_shared_memory=self.configs.dataset_conf.get('use_shared_memory', True),
                                       num_workers=self.configs.dataset_conf.num_workers)
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
