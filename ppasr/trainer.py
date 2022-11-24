@@ -269,11 +269,13 @@ class PPASRTrainer(object):
         return result
 
     def __train_epoch(self, epoch_id, save_model_path, local_rank, writer, nranks):
-        train_times = []
+        train_times, reader_times, batch_times = [], [], []
         start = time.time()
         sum_batch = len(self.train_loader) * self.configs.train_conf.max_epoch
         for batch_id, batch in enumerate(self.train_loader()):
             inputs, labels, input_lens, label_lens = batch
+            reader_times.append((time.time() - start) * 1000)
+            start_step = time.time()
             num_utts = label_lens.shape[0]
             if num_utts == 0:
                 continue
@@ -293,6 +295,7 @@ class PPASRTrainer(object):
                 self.optimizer.clear_grad()
                 self.scheduler.step()
                 self.train_step += 1
+            batch_times.append((time.time() - start_step) * 1000)
 
             # 多卡训练只使用一个进程打印
             train_times.append((time.time() - start) * 1000)
@@ -304,9 +307,13 @@ class PPASRTrainer(object):
                         sum_batch - (epoch_id - 1) * len(self.train_loader) - batch_id)
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                 logger.info(f'Train epoch: [{epoch_id}/{self.configs.train_conf.max_epoch}], '
-                            f'batch: [{batch_id}/{len(self.train_loader)}], loss: {loss.numpy()[0]:.5f},'
-                            f' learning rate: {self.scheduler.get_lr():>.8f}, '
-                            f'speed: {train_speed:.2f} data/sec, eta: {eta_str}')
+                            f'batch: [{batch_id}/{len(self.train_loader)}], '
+                            f'loss: {loss.numpy()[0]:.5f}, '
+                            f'learning_rate: {self.scheduler.get_lr():>.8f}, '
+                            f'reader_cost: {(sum(reader_times) / len(reader_times) / 1000):.2f}, '
+                            f'batch_cost: {(sum(batch_times) / len(batch_times) / 1000):.2f}, '
+                            f'ips: {train_speed:.2f} speech/sec, '
+                            f'eta: {eta_str}')
                 writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
                 train_times = []
             # 固定步数也要保存一次模型
