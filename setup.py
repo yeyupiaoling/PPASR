@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-PPASR_VERSION = "2.0.1"
+PPASR_VERSION = "2.0.2"
 
 
 def readme():
@@ -19,6 +19,7 @@ if __name__ == "__main__":
     setup(
         name='ppasr',
         packages=find_packages(exclude='download_data/'),
+        package_data={'': ['infer_utils/silero_vad.onnx']},
         author='yeyupiaoling',
         version=PPASR_VERSION,
         install_requires=parse_requirements(),
