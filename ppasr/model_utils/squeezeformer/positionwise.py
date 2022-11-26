@@ -2,6 +2,8 @@ import paddle
 
 from paddle.nn import initializer as I
 
+from ppasr.model_utils.utils.base import Linear
+
 
 class PositionwiseFeedForward(paddle.nn.Layer):
     """Positionwise feed forward layer.
@@ -27,10 +29,10 @@ class PositionwiseFeedForward(paddle.nn.Layer):
         super(PositionwiseFeedForward, self).__init__()
         self.idim = idim
         self.hidden_units = hidden_units
-        self.w_1 = paddle.nn.Linear(idim, hidden_units)
+        self.w_1 = Linear(idim, hidden_units)
         self.activation = activation
         self.dropout = paddle.nn.Dropout(dropout_rate)
-        self.w_2 = paddle.nn.Linear(hidden_units, idim)
+        self.w_2 = Linear(hidden_units, idim)
         self.adaptive_scale = adaptive_scale
         ada_scale = self.create_parameter([1, 1, idim], default_initializer=I.XavierUniform())
         self.add_parameter('ada_scale', ada_scale)

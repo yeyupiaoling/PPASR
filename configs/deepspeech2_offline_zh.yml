@@ -80,10 +80,13 @@ optimizer_conf:
   min_lr: 1e-5
 
 train_conf:
+  # 梯度裁剪
   grad_clip: 5.0
-  accum_grad: 1
+  # 梯度累加，变相扩大batch_size的作用
+  accum_grad: 4
   # 训练的轮数
-  max_epoch: 65
+  max_epoch: 200
+  # 多少batch打印一次日志
   log_interval: 100
 
 # 所使用的模型

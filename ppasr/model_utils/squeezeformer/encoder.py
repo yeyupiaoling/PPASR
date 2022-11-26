@@ -11,6 +11,7 @@ from ppasr.model_utils.squeezeformer.convolution import ConvolutionModule
 from ppasr.model_utils.squeezeformer.positionwise import PositionwiseFeedForward
 from ppasr.model_utils.squeezeformer.subsampling import TimeReductionLayer1D, TimeReductionLayerStream, \
     TimeReductionLayer2D, DepthwiseConv2DSubsampling4
+from ppasr.model_utils.utils.base import LayerNorm, Linear
 from ppasr.model_utils.utils.common import get_activation
 from ppasr.model_utils.utils.mask import make_non_pad_mask, add_optional_chunk_mask
 
@@ -134,7 +135,7 @@ class SqueezeformerEncoder(nn.Layer):
                                                  input_dropout_rate,
                                                  init_weights)
 
-        self.preln = nn.LayerNorm(encoder_dim)
+        self.preln = LayerNorm(encoder_dim)
         self.encoders = paddle.nn.LayerList([SqueezeformerEncoderLayer(
             encoder_dim,
             encoder_selfattn_layer(*encoder_selfattn_layer_args),
@@ -162,10 +163,10 @@ class SqueezeformerEncoder(nn.Layer):
             time_reduction_layer_args = {'encoder_dim': encoder_dim}
 
         self.time_reduction_layer = time_reduction_layer(**time_reduction_layer_args)
-        self.time_recover_layer = nn.Linear(encoder_dim, encoder_dim)
+        self.time_recover_layer = Linear(encoder_dim, encoder_dim)
         self.final_proj = None
         if output_size != encoder_dim:
-            self.final_proj = nn.Linear(encoder_dim, output_size)
+            self.final_proj = Linear(encoder_dim, output_size)
 
     def output_size(self) -> int:
         return self._output_size
@@ -354,13 +355,14 @@ class SqueezeformerEncoder(nn.Layer):
                     mask_pad = recover_mask_pad
 
             factor = self.calculate_downsampling_factor(i)
-
+            att_cache1 = att_cache[i:i + 1][:, :, ::factor, :][:, :, :pos_emb.shape[1] - xs.shape[1], :]
+            cnn_cache1 = cnn_cache[i] if cnn_cache.shape[0] > 0 else cnn_cache
             xs, _, new_att_cache, new_cnn_cache = layer(
-                xs, att_mask, pos_emb,
-                att_cache=att_cache[i:i + 1][:, :, ::factor, :]
-                [:, :, :pos_emb.shape[1] - xs.shape[1], :] if
-                elayers > 0 else att_cache[:, :, ::factor, :],
-                cnn_cache=cnn_cache[i] if cnn_cache.shape[0] > 0 else cnn_cache)
+                xs,
+                att_mask,
+                pos_emb,
+                att_cache=att_cache1,
+                cnn_cache=cnn_cache1)
             # NOTE(xcsong): After layer.forward
             #   shape(new_att_cache) is (1, head, attention_key_size, d_k * 2),
             #   shape(new_cnn_cache) is (b=1, hidden-dim, cache_t2)
@@ -417,18 +419,18 @@ class SqueezeformerEncoderLayer(nn.Layer):
         super().__init__()
         self.size = size
         self.self_attn = self_attn
-        self.layer_norm1 = nn.LayerNorm(size)
+        self.layer_norm1 = LayerNorm(size)
         self.ffn1 = feed_forward1
-        self.layer_norm2 = nn.LayerNorm(size)
+        self.layer_norm2 = LayerNorm(size)
         self.conv_module = conv_module
-        self.layer_norm3 = nn.LayerNorm(size)
+        self.layer_norm3 = LayerNorm(size)
         self.ffn2 = feed_forward2
-        self.layer_norm4 = nn.LayerNorm(size)
+        self.layer_norm4 = LayerNorm(size)
         self.normalize_before = normalize_before
         self.dropout = nn.Dropout(dropout_rate)
         self.concat_after = concat_after
         if concat_after:
-            self.concat_linear = nn.Linear(size + size, size)
+            self.concat_linear = Linear(size + size, size)
         else:
             self.concat_linear = nn.Identity()
 

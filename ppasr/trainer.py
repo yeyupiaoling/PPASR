@@ -279,12 +279,13 @@ class PPASRTrainer(object):
             num_utts = label_lens.shape[0]
             if num_utts == 0:
                 continue
+            loss_dict = self.model(inputs, input_lens, labels, label_lens)
+            # loss backward
             if nranks > 1 and batch_id % self.configs.train_conf.accum_grad != 0:
                 context = self.model.no_sync
             else:
                 context = nullcontext
             with context():
-                loss_dict = self.model(inputs, input_lens, labels, label_lens)
                 loss = loss_dict['loss'] / self.configs.train_conf.accum_grad
                 loss.backward()
             # 执行一次梯度计算
@@ -310,9 +311,9 @@ class PPASRTrainer(object):
                             f'batch: [{batch_id}/{len(self.train_loader)}], '
                             f'loss: {loss.numpy()[0]:.5f}, '
                             f'learning_rate: {self.scheduler.get_lr():>.8f}, '
-                            f'reader_cost: {(sum(reader_times) / len(reader_times) / 1000):.2f}, '
-                            f'batch_cost: {(sum(batch_times) / len(batch_times) / 1000):.2f}, '
-                            f'ips: {train_speed:.2f} speech/sec, '
+                            f'reader_cost: {(sum(reader_times) / len(reader_times) / 1000):.4f}, '
+                            f'batch_cost: {(sum(batch_times) / len(batch_times) / 1000):.4f}, '
+                            f'ips: {train_speed:.4f} speech/sec, '
                             f'eta: {eta_str}')
                 writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
                 train_times = []

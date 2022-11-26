@@ -80,8 +80,7 @@ class ConformerEncoder(nn.Layer):
                 training or not, You can only use fixed chunk(chunk_size > 0)
                 or dyanmic chunk size(use_dynamic_chunk = True)
             global_cmvn (Optional[paddle.nn.Layer]): Optional GlobalCMVN module
-            use_dynamic_left_chunk (bool): whether use dynamic left chunk in
-                dynamic chunk training
+            use_dynamic_left_chunk (bool): whether you use dynamic left chunk in dynamic chunk training
 
             input_size to use_dynamic_chunk, see in BaseEncoder
             macaron_style (bool): Whether to use macaron style for positionwise layer.

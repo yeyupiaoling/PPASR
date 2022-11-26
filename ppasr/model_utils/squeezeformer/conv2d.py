@@ -47,10 +47,10 @@ class Conv2DValid(_ConvNd):
     def _conv_forward(self, input: paddle.Tensor, weight: paddle.Tensor, bias: Optional[paddle.Tensor]):
         validx, validy = 0, 0
         if self.valid_trigx:
-            validx = (input.size(-2) * (self.stride[-2] - 1) - 1 + self.kernel_size[-2]) // 2
+            validx = (input.shape[-2] * (self._stride[-2] - 1) - 1 + self._kernel_size[-2]) // 2
         if self.valid_trigy:
-            validy = (input.size(-1) * (self.stride[-1] - 1) - 1 + self.kernel_size[-1]) // 2
-        return F.conv2d(input, weight, bias, self.stride, (validx, validy), self.dilation, self.groups)
+            validy = (input.shape[-1] * (self._stride[-1] - 1) - 1 + self._kernel_size[-1]) // 2
+        return F.conv2d(input, weight, bias, self._stride, (validx, validy), self._dilation, self._groups)
 
     def forward(self, input: paddle.Tensor) -> paddle.Tensor:
         return self._conv_forward(input, self.weight, self.bias)

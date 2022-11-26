@@ -5,6 +5,7 @@ from paddle import nn
 from paddle.nn import initializer as I
 from typeguard import check_argument_types
 
+from ppasr.model_utils.utils.base import Conv1D, BatchNorm1D, LayerNorm
 from ppasr.model_utils.utils.common import masked_fill
 
 __all__ = ['ConvolutionModule']
@@ -39,7 +40,7 @@ class ConvolutionModule(nn.Layer):
         ada_bias = self.create_parameter([1, 1, channels], default_initializer=I.Constant(0.0))
         self.add_parameter('ada_bias', ada_bias)
 
-        self.pointwise_conv1 = nn.Conv1D(
+        self.pointwise_conv1 = Conv1D(
             channels,
             2 * channels,
             kernel_size=1,
@@ -61,7 +62,7 @@ class ConvolutionModule(nn.Layer):
             assert (kernel_size - 1) % 2 == 0
             padding = (kernel_size - 1) // 2
             self.lorder = 0
-        self.depthwise_conv = nn.Conv1D(
+        self.depthwise_conv = Conv1D(
             channels,
             channels,
             kernel_size,
@@ -75,12 +76,12 @@ class ConvolutionModule(nn.Layer):
         assert norm in ['batch_norm', 'layer_norm']
         if norm == "batch_norm":
             self.use_layer_norm = False
-            self.norm = nn.BatchNorm1D(channels)
+            self.norm = BatchNorm1D(channels)
         else:
             self.use_layer_norm = True
-            self.norm = nn.LayerNorm(channels)
+            self.norm = LayerNorm(channels)
 
-        self.pointwise_conv2 = nn.Conv1D(
+        self.pointwise_conv2 = Conv1D(
             channels,
             channels,
             kernel_size=1,

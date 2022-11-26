@@ -35,7 +35,7 @@ model_conf:
 # 数据集参数
 dataset_conf:
   # 训练的批量大小
-  batch_size: 16
+  batch_size: 32
   # 读取数据的线程数量
   num_workers: 4
   # 缓存的 mini-batch 的个数
@@ -104,10 +104,13 @@ optimizer_conf:
   min_lr: 1e-5
 
 train_conf:
+  # 梯度裁剪
   grad_clip: 5.0
+  # 梯度累加，变相扩大batch_size的作用
   accum_grad: 4
   # 训练的轮数
   max_epoch: 200
+  # 多少batch打印一次日志
   log_interval: 100
 
 # 所使用的模型

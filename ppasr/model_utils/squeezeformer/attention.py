@@ -2,12 +2,13 @@ import math
 from typing import Tuple
 
 import paddle
-import paddle.nn as nn
 from paddle.nn import initializer as I
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 
 __all__ = ['RelPositionMultiHeadedAttention']
+
+from ppasr.model_utils.utils.base import Linear
 
 
 class RelPositionMultiHeadedAttention(MultiHeadedAttention):
@@ -23,7 +24,7 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         """Construct an RelPositionMultiHeadedAttention object."""
         super().__init__(n_head, n_feat, dropout_rate)
         # linear transformation for positional encoding
-        self.linear_pos = nn.Linear(n_feat, n_feat)
+        self.linear_pos = Linear(n_feat, n_feat)
         # these two learnable bias are used in matrix c and matrix d
         # as described in https://arxiv.org/abs/1901.02860 Section 3.3
         self.do_rel_shift = do_rel_shift
