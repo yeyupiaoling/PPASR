@@ -31,7 +31,7 @@
 
 ## 项目快速了解
 
- 1. 本项目支持流式识别模型`deepspeech2`、`conformer`，每个模型又分online(在线)和offline(离线)，对应的是流式识别和非流式识别。
+ 1. 本项目支持流式识别模型`deepspeech2`、`conformer`、`squeezeformer`，每个模型又分online(在线)和offline(离线)，对应的是流式识别和非流式识别。
  2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高，但不支持Windows。
  3. 下面提供了一系列预训练模型的下载，下载预训练模型之后，需要把全部文件复制到项目根目录，并执行导出模型才可以使用语音识别。
 
@@ -60,7 +60,18 @@
 | conformer_offline |                            [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)                            | fbank | 英文  |                                                                     | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
 
 
-2. `deepspeech2`预训练模型列表：
+2. `squeezeformer`预训练模型列表：
+
+|         使用模型          |                                  数据集                                  | 预处理方式 | 语言  | 测试集字错率（词错率） |                               下载地址                               |
+|:---------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
+| squeezeformer_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |   0.04927   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| squeezeformer_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |             | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| squeezeformer_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| squeezeformer_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+
+
+
+3. `deepspeech2`预训练模型列表：
 
 |        使用模型         |                                  数据集                                  | 预处理方式 | 语言  |      测试集字错率（词错率）      |                               下载地址                               |
 |:-------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:---------------------:|:----------------------------------------------------------------:|

@@ -15,6 +15,7 @@ encoder_conf:
     normalize_before: false
     activation_type: 'swish'
     pos_enc_layer_type: 'rel_pos'
+    time_reduction_layer_type: 'conv2d'
 
 # 解码器参数
 decoder_conf:
