@@ -4,7 +4,7 @@
 
  - 首先安装的是PaddlePaddle 2.4.0的GPU版本，如果已经安装过了，请跳过。
 ```shell
-conda install paddlepaddle-gpu==2.4.0 cudatoolkit=11.6 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge 
+conda install paddlepaddle-gpu==2.4.0 cudatoolkit=11.7 -c https://mirrors.tuna.tsinghua.edu.cn/anaconda/cloud/Paddle/ -c conda-forge
 ```
 
 **注意：** Windows要安装这个版本，以上版本在Windows是有问题的。
