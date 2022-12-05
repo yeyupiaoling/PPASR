@@ -34,7 +34,6 @@ class PPASRPredictor:
         self.configs = dict_to_object(configs)
         assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
         self.running = False
-        self.use_gpu = use_gpu
         self.inv_normalizer = None
         self.pun_predictor = None
         self.vad_predictor = None
@@ -57,7 +56,7 @@ class PPASRPredictor:
         self.predictor = InferencePredictor(configs=self.configs,
                                             use_model=self.configs.use_model,
                                             model_dir=model_path,
-                                            use_gpu=self.use_gpu)
+                                            use_gpu=use_gpu)
         # 预热
         warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
         self.predict(audio_data=warmup_audio, is_itn=False)

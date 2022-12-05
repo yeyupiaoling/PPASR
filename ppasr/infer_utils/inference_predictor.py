@@ -27,7 +27,6 @@ class InferencePredictor:
         :param num_threads: 只用CPU预测的线程数量
         """
         self.configs = configs
-        self.use_gpu = use_gpu
         self.use_model = use_model
         # 流式参数
         self.output_state_h = None
@@ -42,7 +41,7 @@ class InferencePredictor:
             raise Exception("模型文件不存在，请检查%s和%s是否存在！" % (model_path, params_path))
         config = paddle_infer.Config(model_path, params_path)
 
-        if self.use_gpu:
+        if use_gpu:
             config.enable_use_gpu(gpu_mem, 0)
             # 是否使用TensorRT
             if use_tensorrt:
@@ -56,8 +55,9 @@ class InferencePredictor:
 
         else:
             config.disable_gpu()
-            config.enable_mkldnn()
-            config.set_mkldnn_cache_capacity(1)
+            # 存在精度损失问题
+            # config.enable_mkldnn()
+            # config.set_mkldnn_cache_capacity(1)
             config.set_cpu_math_library_num_threads(num_threads)
         config.disable_glog_info()
         # enable memory optim
