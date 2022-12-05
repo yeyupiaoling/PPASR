@@ -107,6 +107,8 @@ optimizer_conf:
   min_lr: 1e-5
 
 train_conf:
+  # 是否开启自动混合精度
+  enable_amp: False
   # 梯度裁剪
   grad_clip: 5.0
   # 梯度累加，变相扩大batch_size的作用

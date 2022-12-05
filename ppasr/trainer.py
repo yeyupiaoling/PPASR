@@ -141,6 +141,8 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         # print(self.model)
         if is_train:
+            # 自动混合精度训练，逻辑2，定义GradScaler
+            self.amp_scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             # 获取学习率衰减
             self.scheduler = WarmupLR(warmup_steps=self.configs.optimizer_conf.warmup_steps,
                                       learning_rate=float(self.configs.optimizer_conf.learning_rate),
@@ -279,7 +281,9 @@ class PPASRTrainer(object):
             num_utts = label_lens.shape[0]
             if num_utts == 0:
                 continue
-            loss_dict = self.model(inputs, input_lens, labels, label_lens)
+            # 执行模型计算，是否开启自动混合精度
+            with paddle.amp.auto_cast(enable=self.configs.train_conf.get('enable_amp', False), level='O1'):
+                loss_dict = self.model(inputs, input_lens, labels, label_lens)
             # loss backward
             if nranks > 1 and batch_id % self.configs.train_conf.accum_grad != 0:
                 context = self.model.no_sync
@@ -287,12 +291,26 @@ class PPASRTrainer(object):
                 context = nullcontext
             with context():
                 loss = loss_dict['loss'] / self.configs.train_conf.accum_grad
-                loss.backward()
+                # 是否开启自动混合精度
+                if self.configs.train_conf.get('enable_amp', False):
+                    # loss缩放，乘以系数loss_scaling
+                    scaled = self.amp_scaler.scale(loss)
+                    scaled.backward()
+                else:
+                    loss.backward()
+
             # 执行一次梯度计算
             if batch_id % self.configs.train_conf.accum_grad == 0:
                 if local_rank == 0 and writer is not None:
                     writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
-                self.optimizer.step()
+                # 是否开启自动混合精度
+                if self.configs.train_conf.get('enable_amp', False):
+                    # 更新参数（参数梯度先除系数loss_scaling再更新参数）
+                    self.amp_scaler.step(self.optimizer)
+                    # 基于动态loss_scaling策略更新loss_scaling系数
+                    self.amp_scaler.update()
+                else:
+                    self.optimizer.step()
                 self.optimizer.clear_grad()
                 self.scheduler.step()
                 self.train_step += 1
@@ -528,11 +546,12 @@ class PPASRTrainer(object):
         self.model.train()
         return loss, error_result
 
-    def export(self, save_model_path='models/', resume_model='models/conformer_online_fbank/best_model/'):
+    def export(self, save_model_path='models/', resume_model='models/conformer_online_fbank/best_model/', save_quant=True):
         """
         导出预测模型
         :param save_model_path: 模型保存的路径
         :param resume_model: 准备转换的模型路径
+        :param save_quant: 是否保存量化模型
         :return:
         """
         # 获取训练数据
@@ -560,3 +579,15 @@ class PPASRTrainer(object):
         infer_model_path = os.path.join(infer_model_dir, 'model')
         paddle.jit.save(infer_model, infer_model_path)
         logger.info("预测模型已保存：{}".format(infer_model_path))
+        # 保存量化模型
+        if save_quant:
+            import paddleslim
+            paddle.enable_static()
+            paddleslim.quant.quant_post_dynamic(
+                model_dir=infer_model_dir,
+                save_model_dir=os.path.dirname(infer_model_dir),
+                model_filename='model.pdmodel',
+                params_filename='model.pdiparams',
+                save_model_filename='model.pdmodel',
+                save_params_filename='model.pdiparams')
+            logger.info("量化模型已保存：{}".format(os.path.join(os.path.dirname(infer_model_dir), 'quantized_model')))

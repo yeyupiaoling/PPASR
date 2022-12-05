@@ -4,11 +4,10 @@ from typing import Tuple
 import paddle
 from paddle.nn import initializer as I
 
+from ppasr.model_utils.utils.base import Linear
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 
 __all__ = ['RelPositionMultiHeadedAttention']
-
-from ppasr.model_utils.utils.base import Linear
 
 
 class RelPositionMultiHeadedAttention(MultiHeadedAttention):

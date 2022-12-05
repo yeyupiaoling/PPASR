@@ -80,10 +80,12 @@ optimizer_conf:
   min_lr: 1e-5
 
 train_conf:
+  # 是否开启自动混合精度
+  enable_amp: False
   # 梯度裁剪
   grad_clip: 5.0
   # 梯度累加，变相扩大batch_size的作用
-  accum_grad: 4
+  accum_grad: 1
   # 训练的轮数
   max_epoch: 200
   # 多少batch打印一次日志

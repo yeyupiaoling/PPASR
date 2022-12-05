@@ -30,7 +30,7 @@ class WarmupLR(LRScheduler):
         super().__init__(learning_rate, last_epoch, verbose)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(warmup_steps={self.warmup_steps}, lr={self.base_lr}, last_epoch={self.last_epoch})"
+        return f"{self.__class__.__name__}(warmup_steps={self.warmup_steps}, lr={self.base_lr}, min_lr={self.min_lr}, last_epoch={self.last_epoch})"
 
     def get_lr(self):
         step_num = self.last_epoch + 1
