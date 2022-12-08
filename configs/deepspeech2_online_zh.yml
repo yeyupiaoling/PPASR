@@ -15,7 +15,7 @@ dataset_conf:
   # 读取数据的线程数量
   num_workers: 4
   # 缓存的 mini-batch 的个数
-  prefetch_factor: 100
+  prefetch_factor: 2
   # 是否使用共享内存
   use_shared_memory: True
   # 过滤最短的音频长度
