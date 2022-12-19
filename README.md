@@ -25,7 +25,7 @@
 **本项目使用的环境：**
  - Anaconda 3
  - Python 3.8
- - PaddlePaddle 2.4.0
+ - PaddlePaddle 2.4.1
  - Windows 10 or Ubuntu 18.04
 
 
@@ -37,6 +37,8 @@
 
 ## 更新记录
 
+ - 2022.12.05: 支持自动混合精度训练和导出量化模型。
+ - 2022.11.26: 支持Squeezeformer模型。
  - 2022.11.01: 修改Conformer模型的解码器为BiTransformerDecoder，增加SpecSubAugmentor数据增强器。
  - 2022.10.29: 正式发布最终级的V2版本。
 
