@@ -534,20 +534,25 @@ class PPASRTrainer(object):
                 for out_string, label in zip(*(out_strings, labels_str)):
                     # 计算字错率或者词错率
                     if self.configs.metrics_type == 'wer':
-                        error_results.append(wer(out_string, label))
+                        error_rate = wer(out_string, label)
                     else:
-                        error_results.append(cer(out_string, label))
+                        error_rate = cer(out_string, label)
+                    error_results.append(error_rate)
                     if display_result:
                         logger.info(f'预测结果为：{out_string}')
                         logger.info(f'实际标签为：{label}')
-                        logger.info(f'当前{self.configs.metrics_type}：{sum(error_results) / len(error_results)}')
+                        logger.info(f'这条数据的{self.configs.metrics_type}：{round(error_rate, 6)}，'
+                                    f'当前{self.configs.metrics_type}：{round(sum(error_results) / len(error_results), 6)}')
                         logger.info('-' * 70)
         loss = float(sum(losses) / len(losses))
         error_result = float(sum(error_results) / len(error_results))
         self.model.train()
         return loss, error_result
 
-    def export(self, save_model_path='models/', resume_model='models/conformer_online_fbank/best_model/', save_quant=True):
+    def export(self,
+               save_model_path='models/',
+               resume_model='models/conformer_online_fbank/best_model/',
+               save_quant=False):
         """
         导出预测模型
         :param save_model_path: 模型保存的路径

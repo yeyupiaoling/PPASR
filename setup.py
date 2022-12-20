@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-PPASR_VERSION = "2.1.1"
+PPASR_VERSION = "2.1.2"
 
 
 def readme():
