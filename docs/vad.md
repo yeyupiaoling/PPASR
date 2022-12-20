@@ -24,3 +24,27 @@ for t in speech_timestamps:
     crop_wav = wav[t['start']: t['end']]
     print(crop_wav.shape)
 ```
+
+# 流式实时语音活动检测（VAD）
+最新版本可以支持流式检测语音活动，在录音的时候可以试试检测是否停止说话，从而完成一些业务，如停止录音开始识别等。
+```python
+import numpy as np
+import soundfile
+
+from ppasr.infer_utils.vad_predictor import VADPredictor
+
+vad = VADPredictor()
+
+wav, sr = soundfile.read('dataset/test.wav', dtype=np.float32)
+
+for i in range(0, len(wav), vad.window_size_samples):
+    chunk_wav = wav[i: i + vad.window_size_samples]
+    speech_dict = vad.stream_vad(chunk_wav, sampling_rate=sr)
+    if speech_dict:
+        print(speech_dict, end=' ')
+```
+
+实时输出检测结果：
+```
+{'start': 11296} {'end': 21984} {'start': 25632} {'end': 54752} {'start': 57376} {'end': 97760} {'start': 103456} {'end': 124896} 
+```
