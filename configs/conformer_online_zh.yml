@@ -1,7 +1,7 @@
 # 编码器参数
 encoder_conf:
-    output_size: 512    # dimension of attention
-    attention_heads: 8
+    output_size: 256    # Attention的维度，对于大数据可以设置设置大一些，如：512
+    attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
     linear_units: 2048  # the number of units of position-wise feed forward
     num_blocks: 12      # the number of encoder blocks
     dropout_rate: 0.1
@@ -16,8 +16,8 @@ encoder_conf:
 
 # 解码器参数
 decoder_conf:
-    attention_heads: 8
-    linear_units: 2048
+    attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
+    linear_units: 1024  # the number of units of position-wise feed forward，or: 2048
     num_blocks: 3
     r_num_blocks: 3
     dropout_rate: 0.1
@@ -35,9 +35,13 @@ model_conf:
 # 数据集参数
 dataset_conf:
   # 训练的批量大小
-  batch_size: 32
+  batch_size: 16
   # 读取数据的线程数量
   num_workers: 4
+  # 缓存的 mini-batch 的个数
+  prefetch_factor: 2
+  # 是否使用共享内存
+  use_shared_memory: True
   # 过滤最短的音频长度
   min_duration: 0.5
   # 过滤最长的音频长度，当为-1的时候不限制长度
@@ -88,17 +92,27 @@ ctc_beam_search_decoder_conf:
   language_model_path: 'lm/zh_giga.no_cna_cmn.prune01244.klm'
 
 optimizer_conf:
+  # 优化方法
+  optimizer: 'Adam'
+  # 权重衰减系数
+  weight_decay: 1e-6
   # 初始学习率的大小
   learning_rate: 0.001
   # 学习率预热步数
   warmup_steps: 25000
-  weight_decay: 1e-6
+  # 最小学习率
+  min_lr: 1e-5
 
 train_conf:
+  # 是否开启自动混合精度
+  enable_amp: False
+  # 梯度裁剪
   grad_clip: 5.0
-  accum_grad: 4
+  # 梯度累加，变相扩大batch_size的作用
+  accum_grad: 8
   # 训练的轮数
-  max_epoch: 100
+  max_epoch: 200
+  # 多少batch打印一次日志
   log_interval: 100
 
 # 所使用的模型
