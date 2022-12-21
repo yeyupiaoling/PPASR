@@ -63,8 +63,10 @@ for _ in range(args.num_predictor):
 def recognition():
     f = request.files['audio']
     if f:
-        # 临时保存路径
-        file_path = os.path.join(args.save_path, f.filename)
+        # 保存路径
+        save_dir = os.path.join(args.save_path, datetime.now().strftime('%Y-%m-%d'))
+        os.makedirs(save_dir, exist_ok=True)
+        file_path = os.path.join(save_dir, f'{int(time.time()*1000)}{os.path.splitext(f.filename)[-1]}')
         f.save(file_path)
         try:
             start = time.time()
@@ -86,8 +88,10 @@ def recognition():
 def recognition_long_audio():
     f = request.files['audio']
     if f:
-        # 临时保存路径
-        file_path = os.path.join(args.save_path, f.filename)
+        # 保存路径
+        save_dir = os.path.join(args.save_path, datetime.now().strftime('%Y-%m-%d'))
+        os.makedirs(save_dir, exist_ok=True)
+        file_path = os.path.join(save_dir, f'{int(time.time()*1000)}{os.path.splitext(f.filename)[-1]}')
         f.save(file_path)
         try:
             start = time.time()
