@@ -59,7 +59,7 @@
 | conformer_online  |                              [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)                              | fbank | 中文  |                               0.04936                               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 | conformer_offline |                              [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)                              | fbank | 中文  |                               0.04343                               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 | conformer_online  |                            [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)                            | fbank | 英文  |                               0.08109                               | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| conformer_offline |                            [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)                            | fbank | 英文  |                                                                     | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| conformer_offline |                            [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)                            | fbank | 英文  |                               0.08036                               | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
 
 
 2. `squeezeformer`预训练模型列表：
