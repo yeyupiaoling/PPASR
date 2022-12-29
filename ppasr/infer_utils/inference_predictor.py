@@ -45,14 +45,18 @@ class InferencePredictor:
             config.enable_use_gpu(gpu_mem, 0)
             # 是否使用TensorRT
             if use_tensorrt:
-                config.enable_tensorrt_engine(workspace_size=1 << 28,
+                shape_file = f"{model_dir}/shape_range_info.pbtxt"
+                if not os.path.exists(shape_file):
+                    config.collect_shape_range_info(shape_file)
+                config.enable_tensorrt_engine(workspace_size=1 << 30,
                                               max_batch_size=1,
                                               min_subgraph_size=3,
-                                              precision_mode=paddle_infer.PrecisionType.Float32)
-                config.set_trt_dynamic_shape_info(min_input_shape={"speech": [1, 10, 80]},
-                                                  max_input_shape={"speech": [1, 900, 161]},
-                                                  optim_input_shape={"speech": [1, 500, 80]})
-
+                                              precision_mode=paddle_infer.PrecisionType.Float32,
+                                              use_static=False,
+                                              use_calib_mode=False)
+                if os.path.exists(shape_file):
+                    config.enable_tuned_tensorrt_dynamic_shape(shape_file, True)
+                config.exp_disable_tensorrt_ops(["Concat", "reshape2"])
         else:
             config.disable_gpu()
             # 存在精度损失问题

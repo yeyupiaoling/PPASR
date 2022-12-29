@@ -19,4 +19,4 @@ ctc_beam_search_decoder_conf:
   language_model_path: 'lm/common_crawl_00.prune01111.trie.klm'
 
 # 计算错误率方法，支持：cer、wer
-metrics_type: 'cer'
+metrics_type: 'wer'

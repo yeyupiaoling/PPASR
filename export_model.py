@@ -1,8 +1,6 @@
 import argparse
 import functools
 
-import yaml
-
 from ppasr.trainer import PPASRTrainer
 from ppasr.utils.utils import add_arguments, print_arguments
 
@@ -12,19 +10,15 @@ add_arg('configs',          str,   'configs/conformer_online_zh.yml',    '配置
 add_arg("use_gpu",          bool,  True,                       '是否使用GPU评估模型')
 add_arg("save_quant",       bool,  False,                      '是否保存量化模型')
 add_arg('save_model',       str,   'models/',                  '模型保存的路径')
-add_arg('resume_model',     str,   'models/{}_{}/best_model/', '准备转换的模型路径')
+add_arg('resume_model',     str,   'models/conformer_online_fbank/best_model/', '准备导出的模型路径')
 args = parser.parse_args()
+print_arguments(args=args)
 
-
-# 读取配置文件
-with open(args.configs, 'r', encoding='utf-8') as f:
-    configs = yaml.load(f.read(), Loader=yaml.FullLoader)
-print_arguments(args, configs)
 
 # 获取训练器
-trainer = PPASRTrainer(configs=configs, use_gpu=args.use_gpu)
+trainer = PPASRTrainer(configs=args.configs, use_gpu=args.use_gpu)
 
 # 导出预测模型
 trainer.export(save_model_path=args.save_model,
-               resume_model=args.resume_model.format(configs['use_model'], configs['preprocess_conf']['feature_method']),
+               resume_model=args.resume_model,
                save_quant=args.save_quant)

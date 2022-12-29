@@ -2,7 +2,9 @@ import distutils.util
 import json
 import os
 import time
+import urllib
 import wave
+import zipfile
 
 import numpy as np
 import resampy
@@ -14,20 +16,22 @@ from ppasr.utils.logger import setup_logger
 logger = setup_logger(__name__)
 
 
-def print_arguments(args, configs):
-    logger.info("----------- 额外配置参数 -----------")
-    for arg, value in sorted(vars(args).items()):
-        logger.info("%s: %s" % (arg, value))
-    logger.info("------------------------------------------------")
-    logger.info("----------- 配置文件参数 -----------")
-    for arg, value in sorted(configs.items()):
-        if isinstance(value, dict):
-            logger.info(f"{arg}:")
-            for a, v in sorted(value.items()):
-                logger.info("\t%s: %s" % (a, v))
-        else:
+def print_arguments(args=None, configs=None):
+    if args:
+        logger.info("----------- 额外配置参数 -----------")
+        for arg, value in sorted(vars(args).items()):
             logger.info("%s: %s" % (arg, value))
-    logger.info("------------------------------------------------")
+        logger.info("------------------------------------------------")
+    if configs:
+        logger.info("----------- 配置文件参数 -----------")
+        for arg, value in sorted(configs.items()):
+            if isinstance(value, dict):
+                logger.info(f"{arg}:")
+                for a, v in sorted(value.items()):
+                    logger.info("\t%s: %s" % (a, v))
+            else:
+                logger.info("%s: %s" % (arg, value))
+        logger.info("------------------------------------------------")
 
 
 def add_arguments(argname, type, default, help, argparser, **kwargs):
@@ -57,7 +61,8 @@ def labels_to_string(label, vocabulary, eos, blank_index=0):
     labels = []
     for l in label:
         index_list = [index for index in l if index != blank_index and index != -1 and index != eos]
-        labels.append((''.join([vocabulary[index] for index in index_list])).replace('<space>', ' ').replace('<unk>', ''))
+        labels.append(
+            (''.join([vocabulary[index] for index in index_list])).replace('<space>', ' ').replace('<unk>', ''))
     return labels
 
 
@@ -136,7 +141,7 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 text = text.lower().strip()
                 # 过滤非法的字符
                 text = is_ustr(text)
-                if len(text) == 0 or text == ' ':continue
+                if len(text) == 0 or text == ' ': continue
                 # 保证全部都是简体
                 text = convert(text, 'zh-cn')
                 # 加入数据列表中
@@ -186,13 +191,13 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16
     wav, duration_sum, list_data = [], [], []
     for annotation_text in os.listdir(annotation_path):
         annotation_text_path = os.path.join(annotation_path, annotation_text)
-        if os.path.splitext(annotation_text_path)[-1] != '.txt':continue
-        if os.path.splitext(annotation_text_path)[-1] == 'test.txt':continue
+        if os.path.splitext(annotation_text_path)[-1] != '.txt': continue
+        if os.path.splitext(annotation_text_path)[-1] == 'test.txt': continue
         with open(annotation_text_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
         for line in tqdm(lines):
             audio_path, text = line.replace('\n', '').replace('\r', '').split('\t')
-            if not os.path.exists(audio_path):continue
+            if not os.path.exists(audio_path): continue
             audio_data, samplerate = soundfile.read(audio_path)
             # 获取音频长度
             duration = float(len(audio_data)) / samplerate
@@ -215,7 +220,7 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16
             # 保存合并音频文件
             if sum(duration_sum) >= max_duration:
                 # 保存路径
-                dir_num = len(os.listdir(save_audio_path)) -1 if os.path.exists(save_audio_path) else 0
+                dir_num = len(os.listdir(save_audio_path)) - 1 if os.path.exists(save_audio_path) else 0
                 save_dir = os.path.join(save_audio_path, str(dir_num))
                 os.makedirs(save_dir, exist_ok=True)
                 if len(os.listdir(save_dir)) >= 1000:
@@ -263,7 +268,7 @@ def is_ustr(in_str):
 
 # 判断是否为中文字符或者英文字符
 def is_uchar(uchar):
-    if uchar == ' ':return True
+    if uchar == ' ': return True
     if u'\u4e00' <= uchar <= u'\u9fa5':
         return True
     if u'\u0030' <= uchar <= u'\u0039':
@@ -322,3 +327,42 @@ def count_manifest(counter, manifest_path):
                 line = json.loads(line)
                 for char in line["text"].replace('\n', ''):
                     counter.update(char)
+
+
+# 解压ZIP文件
+def unzip_file(zip_src, dst_dir):
+    r = zipfile.is_zipfile(zip_src)
+    if r:
+        fz = zipfile.ZipFile(zip_src, 'r')
+        for file in fz.namelist():
+            fz.extract(file, dst_dir)
+    else:
+        logger.error('This is not zip')
+
+
+# 下载模型文件
+def download(url: str, root: str):
+    os.makedirs(root, exist_ok=True)
+    filename = os.path.basename(url)
+
+    download_target = os.path.join(root, filename)
+    unzip_path = download_target[:-4]
+
+    if os.path.exists(unzip_path) and not os.path.isdir(unzip_path):
+        raise RuntimeError(f"{unzip_path} exists and is not a regular dir")
+
+    if os.path.isdir(unzip_path):
+        return unzip_path
+
+    with urllib.request.urlopen(url) as source, open(download_target, "wb") as output:
+        with tqdm(total=int(source.info().get("Content-Length")), ncols=80, unit='iB', unit_scale=True,
+                  unit_divisor=1024) as loop:
+            while True:
+                buffer = source.read(8192)
+                if not buffer:
+                    break
+
+                output.write(buffer)
+                loop.update(len(buffer))
+    unzip_file(download_target, os.path.dirname(download_target))
+    return unzip_path

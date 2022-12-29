@@ -9,6 +9,7 @@ from contextlib import nullcontext
 from datetime import timedelta
 
 import paddle
+import yaml
 from paddle.distributed import fleet
 from paddle.io import DataLoader
 from tqdm import tqdm
@@ -26,7 +27,8 @@ from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
 from ppasr.utils.scheduler import WarmupLR
-from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object, merge_audio
+from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object, merge_audio, \
+    print_arguments
 from ppasr.utils.utils import labels_to_string
 
 logger = setup_logger(__name__)
@@ -36,7 +38,7 @@ class PPASRTrainer(object):
     def __init__(self, configs, use_gpu=True):
         """ PPASR集成工具类
 
-        :param configs: 配置字典
+        :param configs: 配置文件路径或者是yaml读取到的配置参数
         :param use_gpu: 是否使用GPU训练模型
         """
         if use_gpu:
@@ -45,9 +47,14 @@ class PPASRTrainer(object):
         else:
             os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
             paddle.device.set_device("cpu")
+        # 读取配置文件
+        if isinstance(configs, str):
+            with open(configs, 'r', encoding='utf-8') as f:
+                configs = yaml.load(f.read(), Loader=yaml.FullLoader)
+            print_arguments(configs=configs)
+        self.configs = dict_to_object(configs)
         self.local_rank = 0
         self.use_gpu = use_gpu
-        self.configs = dict_to_object(configs)
         assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
         self.model = None
         self.test_loader = None

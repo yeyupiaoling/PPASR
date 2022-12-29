@@ -3,8 +3,6 @@ import functools
 import time
 import wave
 
-import yaml
-
 from ppasr.predict import PPASRPredictor
 from ppasr.utils.utils import add_arguments, print_arguments
 
@@ -17,18 +15,14 @@ add_arg('real_time_demo',   bool,   False,                       "是否使用�
 add_arg('use_gpu',          bool,   True,                        "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,                       "是否给识别结果加标点符号")
 add_arg('is_itn',           bool,   False,                       "是否对文本进行反标准化")
-add_arg('model_path',       str,    'models/{}_{}/infer/',       "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',        "加标点符号的模型文件夹路径")
+add_arg('model_path',       str,    'models/conformer_online_fbank/infer',       "导出的预测模型文件路径")
 args = parser.parse_args()
-
-# 读取配置文件
-with open(args.configs, 'r', encoding='utf-8') as f:
-    configs = yaml.load(f.read(), Loader=yaml.FullLoader)
-print_arguments(args, configs)
+print_arguments(args=args)
 
 # 获取识别器
-predictor = PPASRPredictor(configs=configs,
-                           model_path=args.model_path.format(configs['use_model'], configs['preprocess_conf']['feature_method']),
+predictor = PPASRPredictor(configs=args.configs,
+                           model_path=args.model_path,
                            use_gpu=args.use_gpu,
                            use_pun=args.use_pun,
                            pun_model_dir=args.pun_model_dir)
@@ -39,7 +33,7 @@ def predict_long_audio():
     start = time.time()
     result = predictor.predict_long(audio_data=args.wav_path, use_pun=args.use_pun, is_itn=args.is_itn)
     score, text = result['score'], result['text']
-    print(f"长语音识别结果，消耗时间：{int(round((time.time() - start) * 1000))}, 得分: {score}, 识别结果: {text}")
+    print(f"长语音识别结果，消耗时间：{int(round((time.time() - start) * 1000))}, 识别结果: {text}, 得分: {score}")
 
 
 # 短语音识别

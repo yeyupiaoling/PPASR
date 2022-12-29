@@ -10,13 +10,12 @@ from datetime import datetime
 from typing import List
 
 import websockets
-import yaml
 from flask import request, Flask, render_template
 from flask_cors import CORS
 
 from ppasr.predict import PPASRPredictor
-from ppasr.utils.utils import add_arguments, print_arguments
 from ppasr.utils.logger import setup_logger
+from ppasr.utils.utils import add_arguments, print_arguments
 
 logger = setup_logger(__name__)
 
@@ -31,14 +30,10 @@ add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('is_itn',           bool,   False,  "是否对文本进行反标准化")
 add_arg('num_predictor',    int,    1,      "多少个预测器，也是就可以同时有多少个用户同时识别")
-add_arg('model_path',       str,    'models/{}_{}/infer/',   "导出的预测模型文件路径")
+add_arg('model_path',       str,    'models/conformer_online_fbank/infer',   "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',    "加标点符号的模型文件夹路径")
 args = parser.parse_args()
-
-# 读取配置文件
-with open(args.configs, 'r', encoding='utf-8') as f:
-    configs = yaml.load(f.read(), Loader=yaml.FullLoader)
-print_arguments(args, configs)
+print_arguments(args=args)
 
 
 app = Flask(__name__, template_folder="templates", static_folder="static", static_url_path="/")
@@ -49,9 +44,8 @@ CORS(app)
 # 创建多个预测器，实时语音识别所以要这样处理
 predictors: List[PPASRPredictor] = []
 for _ in range(args.num_predictor):
-    predictor1 = PPASRPredictor(configs=configs,
-                                model_path=args.model_path.format(configs['use_model'],
-                                                                  configs['preprocess_conf']['feature_method']),
+    predictor1 = PPASRPredictor(configs=args.configs,
+                                model_path=args.model_path,
                                 use_gpu=args.use_gpu,
                                 use_pun=args.use_pun,
                                 pun_model_dir=args.pun_model_dir)

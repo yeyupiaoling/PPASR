@@ -100,6 +100,64 @@
 | [中文语言模型（剪枝）](https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm) |                                                     百度内部语料库                                                     | 1.3亿  | 2.8 GB  | 训练参数`-o 5`，剪枝参数`'--prune 0 1 1 1 1` |                                     |
 |            [中文语言模型](https://deepspeech.bj.bcebos.com/zh_lm/zhidao_giga.klm)            |                                                     百度内部语料库                                                     |  37亿  | 70.4 GB |           训练参数`-o 5`，无剪枝            |                                     
 
+
+# 快速使用
+
+1. 短语音识别
+```python
+from ppasr.predict import PPASRPredictor
+
+predictor = PPASRPredictor(model_tag='conformer_online_fbank_wenetspeech')
+
+wav_path = 'dataset/test.wav'
+result = predictor.predict(audio_data=wav_path, use_pun=False)
+score, text = result['score'], result['text']
+print(f"识别结果: {text}, 得分: {int(score)}")
+```
+
+2. 长语音识别
+```python
+from ppasr.predict import PPASRPredictor
+
+predictor = PPASRPredictor(model_tag='conformer_online_fbank_wenetspeech')
+
+wav_path = 'dataset/test_long.wav'
+result = predictor.predict_long(audio_data=wav_path, use_pun=False)
+score, text = result['score'], result['text']
+print(f"识别结果: {text}, 得分: {score}")
+```
+
+3. 模拟流式识别
+```python
+import time
+import wave
+
+from ppasr.predict import PPASRPredictor
+
+predictor = PPASRPredictor(model_tag='conformer_online_fbank_wenetspeech')
+
+# 识别间隔时间
+interval_time = 0.5
+CHUNK = int(16000 * interval_time)
+# 读取数据
+wav_path = 'dataset/test.wav'
+wf = wave.open(wav_path, 'rb')
+data = wf.readframes(CHUNK)
+# 播放
+while data != b'':
+    start = time.time()
+    d = wf.readframes(CHUNK)
+    result = predictor.predict_stream(audio_data=data, use_pun=False, is_end=d == b'')
+    data = d
+    if result is None: continue
+    score, text = result['score'], result['text']
+    print(f"【实时结果】：消耗时间：{int((time.time() - start) * 1000)}ms, 识别结果: {text}, 得分: {int(score)}")
+# 重置流式识别
+predictor.reset_stream()
+```
+
+
+
 ## 文档教程
 
 - [快速安装](./docs/install.md)
@@ -120,37 +178,6 @@
    - [Web部署模型](./docs/infer.md)
    - [GUI界面预测](./docs/infer.md)
    - [Nvidia Jetson部署](./docs/nvidia-jetson.md)
-
-
-## 快速预测
-
- - 下载作者提供的模型或者训练模型，并[导出模型](./docs/export_model.md)，使用`infer_path.py`预测音频，通过参数`--wav_path`指定需要预测的音频路径，完成语音识别，详情请查看[模型部署](./docs/infer.md)。
-```shell script
-python infer_path.py --wav_path=./dataset/test.wav
-```
-
-输出结果：
-```
-消耗时间：132, 识别结果: 近几年不但我用书给女儿儿压岁也劝说亲朋不要给女儿压岁钱而改送压岁书, 得分: 94
-```
-
-
- - 长语音预测
-
-```shell script
-python infer_path.py --wav_path=./dataset/test_vad.wav --is_long_audio=True
-```
-
-
- - Web部署
-
-![录音测试页面](./docs/images/infer_server.jpg)
-
-
- - GUI界面部署
-
-![GUI界面](./docs/images/infer_gui.jpg)
-
 
 ## 相关项目
  - 基于PaddlePaddle实现的声纹识别：[VoiceprintRecognition-PaddlePaddle](https://github.com/yeyupiaoling/VoiceprintRecognition-PaddlePaddle)
