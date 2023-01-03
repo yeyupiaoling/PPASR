@@ -54,6 +54,8 @@ class PPASRPredictor:
             # 读取配置文件
             with open(configs, 'r', encoding='utf-8') as f:
                 configs = yaml.load(f.read(), Loader=yaml.FullLoader)
+            configs['dataset_conf']['dataset_vocab'] = os.path.join(cache_dir, model_tag,
+                                                                    configs['dataset_conf']['dataset_vocab'])
             print_arguments(configs=configs)
 
         self.configs = dict_to_object(configs)
