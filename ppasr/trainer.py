@@ -24,6 +24,7 @@ from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.data_utils.utils import create_manifest_binary
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
+from ppasr.model_utils.efficient_conformer.model import EfficientConformerModelOnline, EfficientConformerModelOffline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
 from ppasr.utils.scheduler import WarmupLR
@@ -127,6 +128,16 @@ class PPASRTrainer(object):
                                                    input_dim=input_dim,
                                                    vocab_size=vocab_size,
                                                    **self.configs.model_conf)
+        elif self.configs.use_model == 'efficient_conformer_online':
+            self.model = EfficientConformerModelOnline(configs=self.configs,
+                                                       input_dim=input_dim,
+                                                       vocab_size=vocab_size,
+                                                       **self.configs.model_conf)
+        elif self.configs.use_model == 'efficient_conformer_offline':
+            self.model = EfficientConformerModelOffline(configs=self.configs,
+                                                        input_dim=input_dim,
+                                                        vocab_size=vocab_size,
+                                                        **self.configs.model_conf)
         elif self.configs.use_model == 'conformer_online':
             self.model = ConformerModelOnline(configs=self.configs,
                                               input_dim=input_dim,

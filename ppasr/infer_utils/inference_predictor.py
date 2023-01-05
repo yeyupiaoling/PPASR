@@ -76,14 +76,16 @@ class InferencePredictor:
 
         # 获取输入层
         self.speech_data_handle = self.predictor.get_input_handle('speech')
-        if self.use_model != 'conformer_online' and self.use_model != 'squeezeformer_online':
+        if self.use_model != 'conformer_online' and self.use_model != 'squeezeformer_online'\
+                and self.use_model != 'efficient_conformer_online':
             self.speech_lengths_handle = self.predictor.get_input_handle('speech_lengths')
 
         # 流式模型需要输入的状态
         if self.use_model == 'deepspeech2_online':
             self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
             self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
-        if self.use_model == 'conformer_online' or self.use_model == 'squeezeformer_online':
+        if self.use_model == 'conformer_online' or self.use_model == 'squeezeformer_online' \
+                or self.use_model == 'efficient_conformer_online':
             self.offset_handle = self.predictor.get_input_handle('offset')
             self.required_cache_size_handle = self.predictor.get_input_handle('required_cache_size')
             self.cnn_cache_handle = self.predictor.get_input_handle('cnn_cache')
@@ -103,7 +105,8 @@ class InferencePredictor:
         # 设置输入
         self.speech_data_handle.reshape([speech.shape[0], speech.shape[1], speech.shape[2]])
         self.speech_data_handle.copy_from_cpu(speech)
-        if self.use_model != 'conformer_online' and self.use_model != 'squeezeformer_online':
+        if self.use_model != 'conformer_online' and self.use_model != 'squeezeformer_online' \
+                and self.use_model != 'efficient_conformer_online':
             self.speech_lengths_handle.reshape([speech.shape[0]])
             self.speech_lengths_handle.copy_from_cpu(speech_lengths)
 
@@ -117,7 +120,8 @@ class InferencePredictor:
             self.init_state_c_box_handle.reshape(init_state_h_box.shape)
             self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
         # 对流式conformer模型全零初始化
-        if self.use_model == 'conformer_online' or self.use_model == 'squeezeformer_online':
+        if self.use_model == 'conformer_online' or self.use_model == 'squeezeformer_online' \
+                or self.use_model == 'efficient_conformer_online':
             self.reset_stream()
             self.offset_handle.reshape(self.offset.shape)
             self.offset_handle.copy_from_cpu(self.offset)
@@ -175,7 +179,8 @@ class InferencePredictor:
         return output_chunk_probs, output_lens
 
     def predict_chunk_conformer(self, x_chunk, required_cache_size):
-        if not (self.use_model == 'conformer_online' or self.use_model == 'squeezeformer_online'):
+        if not (self.use_model == 'conformer_online' or self.use_model == 'squeezeformer_online'
+                or self.use_model == 'efficient_conformer_online'):
             raise Exception(f'当前模型不支持该方法，当前模型为：{self.use_model}')
         # 设置输入
         self.speech_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])
