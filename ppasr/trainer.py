@@ -311,6 +311,8 @@ class PPASRTrainer(object):
             if batch_id % self.configs.train_conf.accum_grad == 0:
                 if self.local_rank == 0 and writer is not None:
                     writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
+                    # 记录学习率
+                    writer.add_scalar('Train/lr', self.scheduler.get_lr(), self.train_step)
                 # 是否开启自动混合精度
                 if self.configs.train_conf.get('enable_amp', False):
                     # 更新参数（参数梯度先除系数loss_scaling再更新参数）
@@ -472,7 +474,7 @@ class PPASRTrainer(object):
         last_epoch += 1
         self.train_batch_sampler.epoch = last_epoch
         if self.local_rank == 0:
-            writer.add_scalar('Train/lr', self.scheduler.get_lr(), last_epoch)
+            writer.add_scalar('Train/lr', self.scheduler.get_lr(), self.train_step)
         # 开始训练
         for epoch_id in range(last_epoch, self.configs.train_conf.max_epoch):
             epoch_id += 1
@@ -491,8 +493,6 @@ class PPASRTrainer(object):
             if self.local_rank == 0:
                 writer.add_scalar('Test/{}'.format(self.configs.metrics_type), error_result, test_step)
                 writer.add_scalar('Test/Loss', loss, test_step)
-                # 记录学习率
-                writer.add_scalar('Train/lr', self.scheduler.last_lr, epoch_id)
                 # 保存最优模型
                 if error_result <= best_error_rate:
                     best_error_rate = error_result

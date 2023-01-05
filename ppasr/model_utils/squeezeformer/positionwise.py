@@ -4,6 +4,8 @@ from paddle.nn import initializer as I
 
 from ppasr.model_utils.utils.base import Linear
 
+__all__ = ["PositionwiseFeedForward"]
+
 
 class PositionwiseFeedForward(paddle.nn.Layer):
     """Positionwise feed forward layer.

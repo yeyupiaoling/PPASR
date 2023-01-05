@@ -7,6 +7,8 @@ from paddle.nn import initializer as I
 from ppasr.model_utils.utils.base import Linear
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 
+from ppasr.model_utils.utils.common import masked_fill
+
 __all__ = ['RelPositionMultiHeadedAttention']
 
 
@@ -51,6 +53,48 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         self.linear_pos._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
         self.linear_out._param_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
         self.linear_out._bias_attr = paddle.nn.initializer.Uniform(low=-input_max, high=input_max)
+
+    def forward_attention(
+            self,
+            value: paddle.Tensor,
+            scores: paddle.Tensor,
+            mask: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool)
+    ) -> paddle.Tensor:
+        """Compute attention context vector.
+        Args:
+            value (paddle.Tensor): Transformed value, size
+                (#batch, n_head, time2, d_k).
+            scores (paddle.Tensor): Attention score, size
+                (#batch, n_head, time1, time2).
+            mask (paddle.Tensor): Mask, size (#batch, 1, time2) or
+                (#batch, time1, time2), (0, 0, 0) means fake mask.
+        Returns:
+            paddle.Tensor: Transformed value (#batch, time1, d_model)
+                weighted by the attention score (#batch, time1, time2).
+        """
+        n_batch = value.shape[0]
+
+        # When `if mask.size(2) > 0` be True:
+        # 1. training.
+        # 2. oonx(16/4, chunk_size/history_size), feed real cache and real mask for the 1st chunk.
+        # When will `if mask.size(2) > 0` be False?
+        # 1. onnx(16/-1, -1/-1, 16/0)
+        # 2. jit (16/-1, -1/-1, 16/0, 16/4)
+        if mask.shape[2] > 0:  # time2 > 0
+            mask = mask.unsqueeze(1).equal(0)  # (batch, 1, *, time2)
+            # for last chunk, time2 might be larger than scores.size(-1)
+            mask = mask[:, :, :, :scores.shape[-1]]
+            scores = masked_fill(scores, mask, -float('inf'))
+            attn = paddle.nn.functional.softmax(scores, axis=-1)
+            attn = masked_fill(attn, mask, 0.0)  # (batch, head, time1, time2)
+        else:
+            attn = paddle.nn.functional.softmax(scores, axis=-1)  # (batch, head, time1, time2)
+
+        p_attn = self.dropout(attn)
+        x = paddle.matmul(p_attn, value)  # (batch, head, time1, d_k)
+        x = x.transpose([0, 2, 1, 3]).reshape([n_batch, -1, self.h * self.d_k])  # (batch, time1, d_model)
+
+        return self.linear_out(x)  # (batch, time1, d_model)
 
     def forward(self, query: paddle.Tensor,
                 key: paddle.Tensor, value: paddle.Tensor,

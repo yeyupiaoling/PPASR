@@ -10,6 +10,8 @@ from ppasr.model_utils.squeezeformer.encoder import SqueezeformerEncoder
 from ppasr.model_utils.utils.cmvn import GlobalCMVN
 from ppasr.model_utils.utils.common import (IGNORE_ID, add_sos_eos, th_accuracy, reverse_pad_list)
 
+__all__ = ["SqueezeformerModelOnline", "SqueezeformerModelOffline"]
+
 
 class SqueezeformerModel(paddle.nn.Layer):
     def __init__(
@@ -22,6 +24,8 @@ class SqueezeformerModel(paddle.nn.Layer):
             reverse_weight: float = 0.0,
             lsm_weight: float = 0.0,
             length_normalized_loss: bool = False,
+            time_reduction_layer_type: str = 'conv2d',
+            do_rel_shift: bool = True,
             use_dynamic_chunk: bool = False,
             use_dynamic_left_chunk: bool = False,
             causal: bool = False):
@@ -33,6 +37,8 @@ class SqueezeformerModel(paddle.nn.Layer):
                                  paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
         self.encoder = SqueezeformerEncoder(input_dim,
                                             global_cmvn=global_cmvn,
+                                            time_reduction_layer_type=time_reduction_layer_type,
+                                            do_rel_shift=do_rel_shift,
                                             use_dynamic_chunk=use_dynamic_chunk,
                                             use_dynamic_left_chunk=use_dynamic_left_chunk,
                                             causal=causal,
@@ -217,6 +223,8 @@ def SqueezeformerModelOnline(configs,
                                reverse_weight=reverse_weight,
                                lsm_weight=lsm_weight,
                                length_normalized_loss=length_normalized_loss,
+                               time_reduction_layer_type='stream',
+                               do_rel_shift=False,
                                use_dynamic_chunk=True,
                                use_dynamic_left_chunk=False,
                                causal=True)

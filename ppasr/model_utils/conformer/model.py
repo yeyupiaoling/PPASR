@@ -83,8 +83,7 @@ class ConformerModel(paddle.nn.Layer):
         loss_att = None
         if self.ctc_weight != 1.0:
             loss_att, acc_att = self._calc_att_loss(encoder_out, encoder_mask,
-                                                    text, text_lengths,
-                                                    self.reverse_weight)
+                                                    text, text_lengths, self.reverse_weight)
 
         # 2b. CTC branch
         loss_ctc = None
@@ -117,17 +116,14 @@ class ConformerModel(paddle.nn.Layer):
         Returns:
             Tuple[paddle.Tensor, float]: attention_loss, accuracy rate
         """
-        ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos,
-                                            self.ignore_id)
+        ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
         ys_in_lens = ys_pad_lens + 1
 
         r_ys_pad = reverse_pad_list(ys_pad, ys_pad_lens, float(self.ignore_id))
-        r_ys_in_pad, r_ys_out_pad = add_sos_eos(r_ys_pad, self.sos, self.eos,
-                                                self.ignore_id)
+        r_ys_in_pad, r_ys_out_pad = add_sos_eos(r_ys_pad, self.sos, self.eos, self.ignore_id)
         # 1. Forward decoder
         decoder_out, r_decoder_out, _ = self.decoder(
-            encoder_out, encoder_mask, ys_in_pad, ys_in_lens, r_ys_in_pad,
-            reverse_weight)
+            encoder_out, encoder_mask, ys_in_pad, ys_in_lens, r_ys_in_pad, reverse_weight)
 
         # 2. Compute attention loss
         loss_att = self.criterion_att(decoder_out, ys_out_pad)
@@ -136,8 +132,7 @@ class ConformerModel(paddle.nn.Layer):
             r_loss_att = self.criterion_att(r_decoder_out, r_ys_out_pad)
         loss_att = loss_att * (1 - reverse_weight) + r_loss_att * reverse_weight
         acc_att = th_accuracy(decoder_out.reshape([-1, self.vocab_size]),
-                              ys_out_pad,
-                              ignore_label=self.ignore_id, )
+                              ys_out_pad, ignore_label=self.ignore_id, )
         return loss_att, acc_att
 
     def get_encoder_out(self, speech: paddle.Tensor, speech_lengths: paddle.Tensor) -> paddle.Tensor:

@@ -189,6 +189,7 @@ class ConformerEncoder(nn.Layer):
         if self.global_cmvn is not None:
             xs = self.global_cmvn(xs)
         xs, pos_emb, masks = self.embed(xs, masks, offset=0)
+        # TODO 需要检查这个
         mask_pad = ~masks
         chunk_masks = add_optional_chunk_mask(xs, masks,
                                               self.use_dynamic_chunk,

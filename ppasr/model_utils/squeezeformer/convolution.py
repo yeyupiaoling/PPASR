@@ -40,15 +40,12 @@ class ConvolutionModule(nn.Layer):
         ada_bias = self.create_parameter([1, 1, channels], default_initializer=I.Constant(0.0))
         self.add_parameter('ada_bias', ada_bias)
 
-        self.pointwise_conv1 = Conv1D(
-            channels,
-            2 * channels,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias_attr=None
-            if bias else False,  # None for True, using bias as default config
-        )
+        self.pointwise_conv1 = Conv1D(channels,
+                                      2 * channels,
+                                      kernel_size=1,
+                                      stride=1,
+                                      padding=0,
+                                      bias_attr=None if bias else False)
 
         # self.lorder is used to distinguish if it's a causal convolution,
         # if self.lorder > 0: it's a causal convolution, the input will be
@@ -62,16 +59,13 @@ class ConvolutionModule(nn.Layer):
             assert (kernel_size - 1) % 2 == 0
             padding = (kernel_size - 1) // 2
             self.lorder = 0
-        self.depthwise_conv = Conv1D(
-            channels,
-            channels,
-            kernel_size,
-            stride=1,
-            padding=padding,
-            groups=channels,
-            bias_attr=None
-            if bias else False,  # None for True, using bias as default config
-        )
+        self.depthwise_conv = Conv1D(channels,
+                                     channels,
+                                     kernel_size,
+                                     stride=1,
+                                     padding=padding,
+                                     groups=channels,
+                                     bias_attr=None if bias else False)
 
         assert norm in ['batch_norm', 'layer_norm']
         if norm == "batch_norm":
@@ -81,15 +75,12 @@ class ConvolutionModule(nn.Layer):
             self.use_layer_norm = True
             self.norm = LayerNorm(channels)
 
-        self.pointwise_conv2 = Conv1D(
-            channels,
-            channels,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-            bias_attr=None
-            if bias else False,  # None for True, using bias as default config
-        )
+        self.pointwise_conv2 = Conv1D(channels,
+                                      channels,
+                                      kernel_size=1,
+                                      stride=1,
+                                      padding=0,
+                                      bias_attr=None if bias else False)
         self.activation = activation
 
         if init_weights:
@@ -116,14 +107,14 @@ class ConvolutionModule(nn.Layer):
     ) -> Tuple[paddle.Tensor, paddle.Tensor]:
         """Compute convolution module.
         Args:
-            x (torch.Tensor): Input tensor (#batch, time, channels).
-            mask_pad (torch.Tensor): used for batch padding (#batch, 1, time),
+            x (paddle.Tensor): Input tensor (#batch, time, channels).
+            mask_pad (paddle.Tensor): used for batch padding (#batch, 1, time),
                 (0, 0, 0) means fake mask.
-            cache (torch.Tensor): left context cache, it is only
+            cache (paddle.Tensor): left context cache, it is only
                 used in causal convolution (#batch, channels, cache_t),
                 (0, 0, 0) meas fake cache.
         Returns:
-            torch.Tensor: Output tensor (#batch, time, channels).
+            paddle.Tensor: Output tensor (#batch, time, channels).
         """
         if self.adaptive_scale:
             x = self.ada_scale * x + self.ada_bias
@@ -133,7 +124,7 @@ class ConvolutionModule(nn.Layer):
 
         # mask batch padding
         if mask_pad.shape[2] > 0:  # time > 0
-            x = masked_fill(x, mask_pad, 0.0)
+            x = masked_fill(x, ~mask_pad, 0.0)
 
         if self.lorder > 0:
             if cache.shape[2] == 0:  # cache_t == 0
@@ -166,7 +157,7 @@ class ConvolutionModule(nn.Layer):
 
         # mask batch padding
         if mask_pad.shape[2] > 0:  # time > 0
-            x = masked_fill(x, mask_pad, 0.0)
+            x = masked_fill(x, ~mask_pad, 0.0)
 
         x = x.transpose([0, 2, 1])  # [B, T, C]
         return x, new_cache

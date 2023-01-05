@@ -9,11 +9,14 @@ from ppasr.model_utils.conformer.embedding import RelPositionalEncoding
 from ppasr.model_utils.squeezeformer.attention import RelPositionMultiHeadedAttention
 from ppasr.model_utils.squeezeformer.convolution import ConvolutionModule
 from ppasr.model_utils.squeezeformer.positionwise import PositionwiseFeedForward
-from ppasr.model_utils.squeezeformer.subsampling import TimeReductionLayer1D, TimeReductionLayerStream, \
-    TimeReductionLayer2D, DepthwiseConv2DSubsampling4
+from ppasr.model_utils.squeezeformer.subsampling import DepthwiseConv2DSubsampling4
+from ppasr.model_utils.squeezeformer.time_reduction import TimeReductionLayer1D, TimeReductionLayerStream, \
+    TimeReductionLayer2D
 from ppasr.model_utils.utils.base import LayerNorm, Linear
 from ppasr.model_utils.utils.common import get_activation
 from ppasr.model_utils.utils.mask import make_non_pad_mask, add_optional_chunk_mask
+
+__all__ = ["SqueezeformerEncoder"]
 
 
 class SqueezeformerEncoder(nn.Layer):
@@ -26,7 +29,7 @@ class SqueezeformerEncoder(nn.Layer):
             num_blocks: int = 12,
             reduce_idx: Optional[Union[int, List[int]]] = 5,
             recover_idx: Optional[Union[int, List[int]]] = 11,
-            feed_forward_expansion_factor: int = 4,
+            feed_forward_expansion_factor: int = 8,
             dw_stride: bool = False,
             input_dropout_rate: float = 0.1,
             pos_enc_layer_type: str = "rel_pos",
@@ -198,7 +201,7 @@ class SqueezeformerEncoder(nn.Layer):
         if self.global_cmvn is not None:
             xs = self.global_cmvn(xs)
         xs, pos_emb, masks = self.embed(xs, masks)
-        mask_pad = ~masks
+        mask_pad = masks
         chunk_masks = add_optional_chunk_mask(xs, masks,
                                               self.use_dynamic_chunk,
                                               self.use_dynamic_left_chunk,
