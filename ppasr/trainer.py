@@ -27,7 +27,7 @@ from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.model_utils.efficient_conformer.model import EfficientConformerModelOnline, EfficientConformerModelOffline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
-from ppasr.utils.scheduler import WarmupLR
+from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing
 from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object, merge_audio, \
     print_arguments
 from ppasr.utils.utils import labels_to_string
@@ -162,10 +162,23 @@ class PPASRTrainer(object):
         if is_train:
             # 自动混合精度训练，逻辑2，定义GradScaler
             self.amp_scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            # 获取学习率衰减
-            self.scheduler = WarmupLR(warmup_steps=self.configs.optimizer_conf.warmup_steps,
-                                      learning_rate=float(self.configs.optimizer_conf.learning_rate),
-                                      min_lr=float(self.configs.optimizer_conf.get('min_lr', 1e-5)))
+            # 兼容旧的配置文件
+            scheduler_conf = self.configs.optimizer_conf.get('scheduler_conf', None)
+            if scheduler_conf:
+                scheduler = self.configs.optimizer_conf.get('scheduler', 'WarmupLR')
+            else:
+                scheduler = 'WarmupLR'
+                scheduler_conf = dict_to_object({'warmup_steps': self.configs.optimizer_conf.warmup_steps,
+                                                 'min_lr': float(self.configs.optimizer_conf.get('min_lr', 1.e-5))})
+            # 学习率衰减
+            if scheduler == 'WarmupLR':
+                self.scheduler = WarmupLR(learning_rate=float(self.configs.optimizer_conf.learning_rate),
+                                          **scheduler_conf)
+            elif scheduler == 'NoamHoldAnnealing':
+                self.scheduler = NoamHoldAnnealing(learning_rate=float(self.configs.optimizer_conf.learning_rate),
+                                                   **scheduler_conf)
+            else:
+                raise Exception(f'不支持学习率衰减方法：{scheduler}')
             # 获取优化方法
             optimizer = self.configs.optimizer_conf.get('optimizer', 'Adam')
             grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)

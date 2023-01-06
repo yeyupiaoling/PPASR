@@ -1,42 +1,42 @@
 # 编码器参数
 encoder_conf:
-    output_size: 256    # Attention的维度，对于大数据可以设置设置大一些，如：512
-    attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
-    linear_units: 2048  # the number of units of position-wise feed forward
-    num_blocks: 12      # the number of encoder blocks
-    activation_type: 'swish'
-    cnn_module_kernel: 15
-    cnn_module_norm: 'layer_norm'
-    dropout_rate: 0.1
-    input_layer: conv2d
-    normalize_before: true
-    pos_enc_layer_type: 'rel_pos'
-    attention_dropout_rate: 0.1
-    positional_dropout_rate: 0.1
-    efficient_conf:
-        stride_layer_idx: [3]           # layer id with StrideConv
-        stride: [2]                     # stride size of each StrideConv
-        group_layer_idx: [0, 1, 2, 3]   # layer id with GroupedAttention
-        group_size: 3                   # group size of every GroupedAttention layer
-        stride_kernel: true             # true: recompute cnn kernels with stride
+  output_size: 256    # Attention的维度，对于大数据可以设置设置大一些，如：512
+  attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
+  linear_units: 2048  # the number of units of position-wise feed forward
+  num_blocks: 12      # the number of encoder blocks
+  activation_type: 'swish'
+  cnn_module_kernel: 15
+  cnn_module_norm: 'layer_norm'
+  dropout_rate: 0.1
+  input_layer: conv2d
+  normalize_before: true
+  pos_enc_layer_type: 'rel_pos'
+  attention_dropout_rate: 0.1
+  positional_dropout_rate: 0.1
+  efficient_conf:
+    stride_layer_idx: [ 3 ]           # layer id with StrideConv
+    stride: [ 2 ]                     # stride size of each StrideConv
+    group_layer_idx: [ 0, 1, 2, 3 ]   # layer id with GroupedAttention
+    group_size: 3                   # group size of every GroupedAttention layer
+    stride_kernel: true             # true: recompute cnn kernels with stride
 
 # 解码器参数
 decoder_conf:
-    attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
-    linear_units: 1024  # the number of units of position-wise feed forward，or: 2048
-    num_blocks: 3
-    r_num_blocks: 3
-    dropout_rate: 0.1
-    positional_dropout_rate: 0.1
-    self_attention_dropout_rate: 0.1
-    src_attention_dropout_rate: 0.1
+  attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
+  linear_units: 1024  # the number of units of position-wise feed forward，or: 2048
+  num_blocks: 3
+  r_num_blocks: 3
+  dropout_rate: 0.1
+  positional_dropout_rate: 0.1
+  self_attention_dropout_rate: 0.1
+  src_attention_dropout_rate: 0.1
 
 # 模型其他参数配置
 model_conf:
-    ctc_weight: 0.3
-    lsm_weight: 0.1
-    reverse_weight: 0.3
-    length_normalized_loss: false
+  ctc_weight: 0.3
+  lsm_weight: 0.1
+  reverse_weight: 0.3
+  length_normalized_loss: false
 
 # 数据集参数
 dataset_conf:
@@ -97,18 +97,24 @@ ctc_beam_search_decoder_conf:
   # 语言模型文件路径
   language_model_path: 'lm/zh_giga.no_cna_cmn.prune01244.klm'
 
+# 优化方法参数配置
 optimizer_conf:
-  # 优化方法
+  # 优化方法，支持Adam、AdamW
   optimizer: 'Adam'
   # 权重衰减系数
-  weight_decay: 1e-6
+  weight_decay: 1.e-6
   # 初始学习率的大小
   learning_rate: 0.001
-  # 学习率预热步数
-  warmup_steps: 25000
-  # 最小学习率
-  min_lr: 1e-5
+  # 学习率衰减方法，支持WarmupLR、NoamHoldAnnealing
+  scheduler: 'WarmupLR'
+  # 学习率衰减方法参数配置
+  scheduler_conf:
+    # 学习率预热步数
+    warmup_steps: 25000
+    # 最小学习率
+    min_lr: 1.e-5
 
+# 训练参数配置
 train_conf:
   # 是否开启自动混合精度
   enable_amp: False
