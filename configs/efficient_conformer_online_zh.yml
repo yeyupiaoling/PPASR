@@ -109,7 +109,7 @@ optimizer_conf:
   scheduler: 'WarmupLR'
   # 学习率衰减方法参数配置
   scheduler_conf:
-    # 学习率预热步数
+    # 学习率预热步数，对应的是step/accum_grad
     warmup_steps: 25000
     # 最小学习率
     min_lr: 1.e-5

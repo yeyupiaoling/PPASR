@@ -96,9 +96,9 @@ ctc_beam_search_decoder_conf:
 # 优化方法参数配置
 optimizer_conf:
   # 优化方法，支持Adam、AdamW
-  optimizer: 'Adam'
+  optimizer: 'AdamW'
   # 权重衰减系数
-  weight_decay: 1.e-6
+  weight_decay: 4.e-5
   # 初始学习率的大小
   learning_rate: 0.001
   # 学习率衰减方法，支持WarmupLR、NoamHoldAnnealing
@@ -111,8 +111,8 @@ optimizer_conf:
     hold_ratio: 0.3
     # 前面两个的再次比例
     decay_rate: 1.0
-    # 最大的衰减步数
-    max_steps: 175680
+    # 最大的衰减步数，对应的是step/accum_grad
+    max_steps: 87840
     # 最小学习率
     min_lr: 1.e-5
 
