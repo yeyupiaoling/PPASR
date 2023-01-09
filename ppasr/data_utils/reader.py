@@ -83,7 +83,7 @@ class PPASRDataset(Dataset):
 
     @property
     def feature_dim(self):
-        """返回词汇表大小
+        """返回音频特征大小
 
         :return: 词汇表大小
         :rtype: int
