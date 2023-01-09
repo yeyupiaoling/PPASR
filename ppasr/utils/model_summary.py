@@ -1,17 +1,3 @@
-# Copyright (c) 2020 PaddlePaddle Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import warnings
 import numpy as np
 import numbers
@@ -25,7 +11,7 @@ from collections import OrderedDict
 __all__ = []
 
 
-def summary(net, input_size=None, dtypes=None, input=None):
+def summary(net, input_size=None, dtypes=None, inputs=None):
     """Prints a string summary of the network.
 
     Args:
@@ -37,118 +23,27 @@ def summary(net, input_size=None, dtypes=None, input=None):
                     batch_size can be None or -1. Default: None. Note that
                     input_size and input cannot be None at the same time.
         dtypes (str, optional): if dtypes is None, 'float32' will be used, Default: None.
-        input: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
+        inputs: the input tensor. if input is given, input_size and dtype will be ignored, Default: None.
 
     Returns:
         Dict: a summary of the network including total params and total trainable params.
-
-    Examples:
-        .. code-block:: python
-
-            import paddle
-            import paddle.nn as nn
-
-            class LeNet(nn.Layer):
-                def __init__(self, num_classes=10):
-                    super(LeNet, self).__init__()
-                    self.num_classes = num_classes
-                    self.features = nn.Sequential(
-                        nn.Conv2D(
-                            1, 6, 3, stride=1, padding=1),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2),
-                        nn.Conv2D(
-                            6, 16, 5, stride=1, padding=0),
-                        nn.ReLU(),
-                        nn.MaxPool2D(2, 2))
-
-                    if num_classes > 0:
-                        self.fc = nn.Sequential(
-                            nn.Linear(400, 120),
-                            nn.Linear(120, 84),
-                            nn.Linear(
-                                84, 10))
-
-                def forward(self, inputs):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x)
-                    return x
-
-            lenet = LeNet()
-
-            params_info = paddle.summary(lenet, (1, 1, 28, 28))
-            print(params_info)
-
-            # multi input demo
-            class LeNetMultiInput(LeNet):
-
-                def forward(self, inputs, y):
-                    x = self.features(inputs)
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + y)
-                    return x
-
-            lenet_multi_input = LeNetMultiInput()
-
-            params_info = paddle.summary(lenet_multi_input, [(1, 1, 28, 28), (1, 400)],
-                                        dtypes=['float32', 'float32'])
-            print(params_info)
-
-            # list input demo
-            class LeNetListInput(LeNet):
-
-                def forward(self, inputs):
-                    x = self.features(inputs[0])
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + inputs[1])
-                    return x
-
-            lenet_list_input = LeNetListInput()
-            input_data = [paddle.rand([1, 1, 28, 28]), paddle.rand([1, 400])]
-            params_info = paddle.summary(lenet_list_input, input=input_data)
-            print(params_info)
-
-            # dict input demo
-            class LeNetDictInput(LeNet):
-
-                def forward(self, inputs):
-                    x = self.features(inputs['x1'])
-
-                    if self.num_classes > 0:
-                        x = paddle.flatten(x, 1)
-                        x = self.fc(x + inputs['x2'])
-                    return x
-
-            lenet_dict_input = LeNetDictInput()
-            input_data = {'x1': paddle.rand([1, 1, 28, 28]),
-                          'x2': paddle.rand([1, 400])}
-            params_info = paddle.summary(lenet_dict_input, input=input_data)
-            print(params_info)
-
     """
-    if input_size is None and input is None:
+    if input_size is None and inputs is None:
         raise ValueError("input_size and input cannot be None at the same time")
 
-    if input_size is None and input is not None:
-        if paddle.is_tensor(input):
-            input_size = tuple(input.shape)
-        elif isinstance(input, (list, tuple)):
+    if input_size is None and inputs is not None:
+        if paddle.is_tensor(inputs):
+            input_size = tuple(inputs.shape)
+        elif isinstance(inputs, (list, tuple)):
             input_size = []
-            for x in input:
+            for x in inputs:
                 input_size.append(tuple(x.shape))
-        elif isinstance(input, dict):
+        elif isinstance(inputs, dict):
             input_size = []
-            for key in input.keys():
-                input_size.append(tuple(input[key].shape))
-        elif isinstance(input, paddle.fluid.framework.Variable):
-            input_size = tuple(input.shape)
+            for key in inputs.keys():
+                input_size.append(tuple(inputs[key].shape))
+        elif isinstance(inputs, paddle.fluid.framework.Variable):
+            input_size = tuple(inputs.shape)
         else:
             raise ValueError(
                 "Input is not tensor, list, tuple and dict, unable to determine input_size, please input input_size."
@@ -220,7 +115,7 @@ def summary(net, input_size=None, dtypes=None, input=None):
 
     _input_size = _check_input(_input_size)
 
-    result, params_info = summary_string(net, _input_size, dtypes, input)
+    result, params_info = summary_string(net, _input_size, dtypes, inputs)
     print(result)
 
     if in_train_mode:

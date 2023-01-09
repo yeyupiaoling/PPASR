@@ -161,10 +161,10 @@ class PPASRTrainer(object):
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         # print(self.model)
         if is_train:
-            summary(self.model, input=[paddle.rand([1, 260, self.train_dataset.feature_dim]),
-                                       paddle.to_tensor([260], dtype=paddle.int64),
-                                       paddle.randint(low=0, high=100, shape=[1, 10], dtype=paddle.int32),
-                                       paddle.to_tensor([10], dtype=paddle.int64)])
+            summary(self.model, inputs=[paddle.rand([1, 260, self.train_dataset.feature_dim]),
+                                        paddle.to_tensor([260], dtype=paddle.int64),
+                                        paddle.randint(low=0, high=100, shape=[1, 10], dtype=paddle.int32),
+                                        paddle.to_tensor([10], dtype=paddle.int64)])
             # 自动混合精度训练，逻辑2，定义GradScaler
             self.amp_scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             # 兼容旧的配置文件
