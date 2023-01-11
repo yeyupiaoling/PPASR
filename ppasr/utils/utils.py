@@ -365,4 +365,5 @@ def download(url: str, root: str):
                 output.write(buffer)
                 loop.update(len(buffer))
     unzip_file(download_target, os.path.dirname(download_target))
+    os.remove(download_target)
     return unzip_path

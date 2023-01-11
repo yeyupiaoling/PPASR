@@ -59,9 +59,8 @@ class TimeReductionLayer1D(nn.Layer):
         self.pw_conv._bias_attr = paddle.nn.initializer.Uniform(low=-pw_max, high=pw_max)
 
     def forward(self, xs, xs_lens: paddle.Tensor,
-                mask: paddle.Tensor = paddle.ones((0, 0, 0), dtype=paddle.bool),
-                mask_pad: paddle.Tensor = paddle.ones((0, 0, 0), dtype=paddle.bool),
-                ):
+                mask: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool),
+                mask_pad: paddle.Tensor = paddle.ones([0, 0, 0], dtype=paddle.bool)):
         xs = xs.transpose([0, 2, 1])  # [B, C, T]
         xs = masked_fill(xs, mask_pad.equal(0), 0.0)
 

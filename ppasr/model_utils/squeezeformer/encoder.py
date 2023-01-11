@@ -34,7 +34,6 @@ class SqueezeformerEncoder(nn.Layer):
             input_dropout_rate: float = 0.1,
             pos_enc_layer_type: str = "rel_pos",
             time_reduction_layer_type: str = "conv1d",
-            do_rel_shift: bool = True,
             feed_forward_dropout_rate: float = 0.1,
             attention_dropout_rate: float = 0.1,
             cnn_module_kernel: int = 31,
@@ -64,13 +63,10 @@ class SqueezeformerEncoder(nn.Layer):
             recover_idx Optional[Union[int, List[int]]]:
                 recover layer index, from 80ms to 40ms per frame.
             feed_forward_expansion_factor (int): Enlarge coefficient of FFN.
-            dw_stride (bool): Whether do depthwise convolution
-                              on subsampling module.
+            dw_stride (bool): Whether do depthwise convolution on subsampling module.
             input_dropout_rate (float): Dropout rate of input projection layer.
             pos_enc_layer_type (str): Self attention type.
             time_reduction_layer_type (str): Conv1d or Conv2d reduction layer.
-            do_rel_shift (bool): Whether to do relative shift
-                                 operation on rel-attention module.
             cnn_module_kernel (int): Kernel size of CNN module.
             activation_type (str): Encoder activation function type.
             cnn_module_kernel (int): Kernel size of convolution module.
@@ -113,7 +109,6 @@ class SqueezeformerEncoder(nn.Layer):
             encoder_selfattn_layer_args = (attention_heads,
                                            encoder_dim,
                                            attention_dropout_rate,
-                                           do_rel_shift,
                                            adaptive_scale,
                                            init_weights)
 

@@ -32,8 +32,6 @@ class GroupedRelPositionMultiHeadedAttention(MultiHeadedAttention):
         self.group_size = group_size
         self.d_k = n_feat // n_head  # for GroupedAttention
         self.n_feat = n_feat
-        # these two learnable bias are used in matrix c and matrix d
-        # as described in https://arxiv.org/abs/1901.02860 Section 3.3
         pos_bias_u = self.create_parameter([self.h, self.d_k * self.group_size], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_u', pos_bias_u)
         pos_bias_v = self.create_parameter([self.h, self.d_k * self.group_size], default_initializer=I.XavierUniform())

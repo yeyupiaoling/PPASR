@@ -21,14 +21,11 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         dropout_rate (float): Dropout rate.
     """
 
-    def __init__(self, n_head, n_feat, dropout_rate, do_rel_shift=False, adaptive_scale=False, init_weights=False):
+    def __init__(self, n_head, n_feat, dropout_rate, adaptive_scale=False, init_weights=False):
         """Construct an RelPositionMultiHeadedAttention object."""
         super().__init__(n_head, n_feat, dropout_rate)
         # linear transformation for positional encoding
         self.linear_pos = Linear(n_feat, n_feat)
-        # these two learnable bias are used in matrix c and matrix d
-        # as described in https://arxiv.org/abs/1901.02860 Section 3.3
-        self.do_rel_shift = do_rel_shift
         pos_bias_u = self.create_parameter([self.h, self.d_k], default_initializer=I.XavierUniform())
         self.add_parameter('pos_bias_u', pos_bias_u)
         pos_bias_v = self.create_parameter([self.h, self.d_k], default_initializer=I.XavierUniform())
@@ -158,8 +155,7 @@ class RelPositionMultiHeadedAttention(MultiHeadedAttention):
         matrix_bd = paddle.matmul(q_with_bias_v, p, transpose_y=True)
         # Remove rel_shift since it is useless in speech recognition,
         # and it requires special attention for streaming.
-        if self.do_rel_shift:
-            matrix_bd = self.rel_shift(matrix_bd)
+        # matrix_bd = self.rel_shift(matrix_bd)
 
         scores = (matrix_ac + matrix_bd) / math.sqrt(self.d_k)  # (batch, head, time1, time2)
 
