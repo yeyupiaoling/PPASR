@@ -146,9 +146,11 @@ async def stream_server_run(websocket, path):
         use_predictor.reset_stream()
         use_predictor.running = False
         # 保存录音
-        save_path = os.path.join(args.save_path, f"{int(time.time() * 1000)}.wav")
+        save_dir = os.path.join(args.save_path, datetime.now().strftime('%Y-%m-%d'))
+        os.makedirs(save_dir, exist_ok=True)
+        file_path = os.path.join(save_dir, f'{int(time.time() * 1000)}.wav')
         audio_bytes = b''.join(frames)
-        wf = wave.open(save_path, 'wb')
+        wf = wave.open(file_path, 'wb')
         wf.setnchannels(1)
         wf.setsampwidth(2)
         wf.setframerate(16000)
