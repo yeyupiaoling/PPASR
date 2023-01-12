@@ -24,7 +24,6 @@ from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.data_utils.utils import create_manifest_binary
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
-from ppasr.model_utils.efficient_conformer.model import EfficientConformerModelOnline, EfficientConformerModelOffline
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
 from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing
@@ -115,48 +114,42 @@ class PPASRTrainer(object):
                                       num_workers=self.configs.dataset_conf.num_workers)
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
-        from ppasr.model_utils.squeezeformer.model import SqueezeformerModelOnline, SqueezeformerModelOffline
-        from ppasr.model_utils.conformer.model import ConformerModelOnline, ConformerModelOffline
-        from ppasr.model_utils.deepspeech2.model import DeepSpeech2ModelOnline, DeepSpeech2ModelOffline
+        from ppasr.model_utils.squeezeformer.model import SqueezeformerModel
+        from ppasr.model_utils.conformer.model import ConformerModel
+        from ppasr.model_utils.efficient_conformer.model import EfficientConformerModel
+        from ppasr.model_utils.deepspeech2.model import DeepSpeech2Model
         # 获取模型
-        if self.configs.use_model == 'squeezeformer_online':
-            self.model = SqueezeformerModelOnline(configs=self.configs,
-                                                  input_dim=input_dim,
-                                                  vocab_size=vocab_size,
-                                                  **self.configs.model_conf)
-        elif self.configs.use_model == 'squeezeformer_offline':
-            self.model = SqueezeformerModelOffline(configs=self.configs,
-                                                   input_dim=input_dim,
-                                                   vocab_size=vocab_size,
-                                                   **self.configs.model_conf)
-        elif self.configs.use_model == 'efficient_conformer_online':
-            self.model = EfficientConformerModelOnline(configs=self.configs,
-                                                       input_dim=input_dim,
-                                                       vocab_size=vocab_size,
-                                                       **self.configs.model_conf)
-        elif self.configs.use_model == 'efficient_conformer_offline':
-            self.model = EfficientConformerModelOffline(configs=self.configs,
-                                                        input_dim=input_dim,
-                                                        vocab_size=vocab_size,
-                                                        **self.configs.model_conf)
-        elif self.configs.use_model == 'conformer_online':
-            self.model = ConformerModelOnline(configs=self.configs,
-                                              input_dim=input_dim,
-                                              vocab_size=vocab_size,
-                                              **self.configs.model_conf)
-        elif self.configs.use_model == 'conformer_offline':
-            self.model = ConformerModelOffline(configs=self.configs,
-                                               input_dim=input_dim,
-                                               vocab_size=vocab_size,
-                                               **self.configs.model_conf)
-        elif self.configs.use_model == 'deepspeech2_online':
-            self.model = DeepSpeech2ModelOnline(configs=self.configs,
-                                                input_dim=input_dim,
-                                                vocab_size=vocab_size)
-        elif self.configs.use_model == 'deepspeech2_offline':
-            self.model = DeepSpeech2ModelOffline(configs=self.configs,
-                                                 input_dim=input_dim,
-                                                 vocab_size=vocab_size)
+        if 'squeezeformer' in self.configs.use_model:
+            self.model = SqueezeformerModel(input_dim=input_dim,
+                                            vocab_size=vocab_size,
+                                            mean_istd_path=self.configs.dataset_conf.mean_istd_path,
+                                            streaming='online' in self.configs.use_model,
+                                            encoder_conf=self.configs.encoder_conf,
+                                            decoder_conf=self.configs.decoder_conf,
+                                            **self.configs.model_conf)
+        elif 'efficient_conformer' in self.configs.use_model:
+            self.model = EfficientConformerModel(input_dim=input_dim,
+                                                 vocab_size=vocab_size,
+                                                 mean_istd_path=self.configs.dataset_conf.mean_istd_path,
+                                                 streaming='online' in self.configs.use_model,
+                                                 encoder_conf=self.configs.encoder_conf,
+                                                 decoder_conf=self.configs.decoder_conf,
+                                                 **self.configs.model_conf)
+        elif 'conformer' in self.configs.use_model:
+            self.model = ConformerModel(input_dim=input_dim,
+                                        vocab_size=vocab_size,
+                                        mean_istd_path=self.configs.dataset_conf.mean_istd_path,
+                                        streaming='online' in self.configs.use_model,
+                                        encoder_conf=self.configs.encoder_conf,
+                                        decoder_conf=self.configs.decoder_conf,
+                                        **self.configs.model_conf)
+        elif 'deepspeech2' in self.configs.use_model:
+            self.model = DeepSpeech2Model(input_dim=input_dim,
+                                          vocab_size=vocab_size,
+                                          mean_istd_path=self.configs.dataset_conf.mean_istd_path,
+                                          streaming='online' in self.configs.use_model,
+                                          encoder_conf=self.configs.encoder_conf,
+                                          decoder_conf=self.configs.decoder_conf)
         else:
             raise Exception('没有该模型：{}'.format(self.configs.use_model))
         # print(self.model)

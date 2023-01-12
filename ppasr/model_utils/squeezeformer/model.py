@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Dict
 
 import paddle
 
@@ -10,36 +10,47 @@ from ppasr.model_utils.squeezeformer.encoder import SqueezeformerEncoder
 from ppasr.model_utils.utils.cmvn import GlobalCMVN
 from ppasr.model_utils.utils.common import (IGNORE_ID, add_sos_eos, th_accuracy, reverse_pad_list)
 
-__all__ = ["SqueezeformerModelOnline", "SqueezeformerModelOffline"]
+__all__ = ["SqueezeformerModel"]
 
 
 class SqueezeformerModel(paddle.nn.Layer):
     def __init__(
             self,
-            configs,
             input_dim: int,
             vocab_size: int,
+            mean_istd_path: str,
+            streaming: bool = True,
+            encoder_conf: Dict = None,
+            decoder_conf: Dict = None,
             ctc_weight: float = 0.5,
             ignore_id: int = IGNORE_ID,
             reverse_weight: float = 0.0,
             lsm_weight: float = 0.0,
-            length_normalized_loss: bool = False,
-            time_reduction_layer_type: str = 'conv1d',
-            use_dynamic_chunk: bool = False,
-            causal: bool = False):
+            length_normalized_loss: bool = False):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
         self.input_dim = input_dim
-        feature_normalizer = FeatureNormalizer(mean_istd_filepath=configs.dataset_conf.mean_istd_path)
+        # 设置是否为流式模型
+        self.streaming = streaming
+        time_reduction_layer_type = 'conv1d'
+        use_dynamic_chunk = False
+        causal = False
+        if self.streaming:
+            time_reduction_layer_type = 'stream'
+            use_dynamic_chunk = True
+            causal = True
+        feature_normalizer = FeatureNormalizer(mean_istd_filepath=mean_istd_path)
         global_cmvn = GlobalCMVN(paddle.to_tensor(feature_normalizer.mean, dtype=paddle.float32),
                                  paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
-        self.encoder = SqueezeformerEncoder(input_dim,
+        self.encoder = SqueezeformerEncoder(input_size=input_dim,
                                             global_cmvn=global_cmvn,
                                             time_reduction_layer_type=time_reduction_layer_type,
                                             use_dynamic_chunk=use_dynamic_chunk,
                                             causal=causal,
-                                            **configs.encoder_conf)
-        self.decoder = BiTransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
+                                            **encoder_conf if encoder_conf is not None else {})
+        self.decoder = BiTransformerDecoder(vocab_size=vocab_size,
+                                            encoder_output_size=self.encoder.output_size(),
+                                            **decoder_conf if decoder_conf is not None else {})
 
         self.ctc = CTCLoss(vocab_size, self.encoder.output_size())
         # note that eos is the same as sos (equivalent ID)
@@ -182,7 +193,7 @@ class SqueezeformerModel(paddle.nn.Layer):
 
     @paddle.no_grad()
     def export(self):
-        if self.encoder.use_dynamic_chunk:
+        if self.streaming:
             static_model = paddle.jit.to_static(
                 self.get_encoder_out_chunk,
                 input_spec=[
@@ -201,44 +212,3 @@ class SqueezeformerModel(paddle.nn.Layer):
                 ])
 
         return static_model
-
-
-def SqueezeformerModelOnline(configs,
-                             input_dim: int,
-                             vocab_size: int,
-                             ctc_weight: float = 0.5,
-                             ignore_id: int = IGNORE_ID,
-                             reverse_weight: float = 0.0,
-                             lsm_weight: float = 0.0,
-                             length_normalized_loss: bool = False):
-    model = SqueezeformerModel(configs=configs,
-                               input_dim=input_dim,
-                               vocab_size=vocab_size,
-                               ctc_weight=ctc_weight,
-                               ignore_id=ignore_id,
-                               reverse_weight=reverse_weight,
-                               lsm_weight=lsm_weight,
-                               length_normalized_loss=length_normalized_loss,
-                               time_reduction_layer_type='stream',
-                               use_dynamic_chunk=True,
-                               causal=True)
-    return model
-
-
-def SqueezeformerModelOffline(configs,
-                              input_dim: int,
-                              vocab_size: int,
-                              ctc_weight: float = 0.5,
-                              ignore_id: int = IGNORE_ID,
-                              reverse_weight: float = 0.0,
-                              lsm_weight: float = 0.0,
-                              length_normalized_loss: bool = False):
-    model = SqueezeformerModel(configs=configs,
-                               input_dim=input_dim,
-                               vocab_size=vocab_size,
-                               ctc_weight=ctc_weight,
-                               ignore_id=ignore_id,
-                               reverse_weight=reverse_weight,
-                               lsm_weight=lsm_weight,
-                               length_normalized_loss=length_normalized_loss)
-    return model
