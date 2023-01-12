@@ -2,7 +2,7 @@ import distutils.util
 import json
 import os
 import time
-import urllib
+import urllib.request
 import wave
 import zipfile
 

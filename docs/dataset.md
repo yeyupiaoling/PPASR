@@ -9,7 +9,7 @@ python thchs_30.py
 python noise.py
 ```
 
-**注意：** 以上代码只支持在Linux下执行，**如果是Windows的话**，可以获取程序中的`DATA_URL`单独下载，建议用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下，我把`aishell.py`的文件单独下载，然后替换`download()`函数，再执行该程序，就会自动解压文件文本生成数据列表。
+**注意：** 这样下载慢，可以获取程序中的`DATA_URL`单独下载，用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下，我把`aishell.py`的文件单独下载，然后替换`download()`函数，再执行该程序，就会自动解压文件文本生成数据列表。
 ```python
 # 把这行代码
 filepath = download(url, md5sum, target_dir)

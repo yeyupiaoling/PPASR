@@ -2,7 +2,10 @@ import distutils.util
 import hashlib
 import os
 import tarfile
+import urllib.request
 import zipfile
+
+from tqdm import tqdm
 
 
 def print_arguments(args):
@@ -53,13 +56,22 @@ def download(url, md5sum, target_dir):
     if not os.path.exists(target_dir): os.makedirs(target_dir)
     filepath = os.path.join(target_dir, url.split("/")[-1])
     if not (os.path.exists(filepath) and md5file(filepath) == md5sum):
-        print("Downloading %s ..." % url)
-        os.system("wget -c " + url + " -P " + target_dir)
-        print("\nMD5 Chesksum %s ..." % filepath)
+        print(f"Downloading {url} to {filepath} ...")
+        with urllib.request.urlopen(url) as source, open(filepath, "wb") as output:
+            with tqdm(total=int(source.info().get("Content-Length")), ncols=80, unit='iB', unit_scale=True,
+                      unit_divisor=1024) as loop:
+                while True:
+                    buffer = source.read(8192)
+                    if not buffer:
+                        break
+
+                    output.write(buffer)
+                    loop.update(len(buffer))
+        print(f"\nMD5 Chesksum {filepath} ...")
         if not md5file(filepath) == md5sum:
             raise RuntimeError("MD5 checksum failed.")
     else:
-        print("File exists, skip downloading. (%s)" % filepath)
+        print(f"File exists, skip downloading. ({filepath})")
     return filepath
 
 
