@@ -64,7 +64,7 @@ def make_non_pad_mask(lengths: paddle.Tensor) -> paddle.Tensor:
                  [1, 1, 1, 0, 0],
                  [1, 1, 0, 0, 0]]
     """
-    #return ~make_pad_mask(lengths)
+    # return ~make_pad_mask(lengths)
     return make_pad_mask(lengths).logical_not()
 
 
@@ -93,7 +93,7 @@ def subsequent_mask(size: int) -> paddle.Tensor:
 def subsequent_chunk_mask(
         size: int,
         chunk_size: int,
-        num_left_chunks: int=-1, ) -> paddle.Tensor:
+        num_left_chunks: int = -1, ) -> paddle.Tensor:
     """Create mask for subsequent steps (size, size) with chunk size,
        this is for streaming encoder
     Args:
@@ -134,8 +134,7 @@ def add_optional_chunk_mask(xs: paddle.Tensor,
         xs (paddle.Tensor): padded input, (B, L, D), L for max length
         mask (paddle.Tensor): mask for xs, (B, 1, L)
         use_dynamic_chunk (bool): whether to use dynamic chunk or not
-        use_dynamic_left_chunk (bool): whether to use dynamic left chunk for
-            training.
+        use_dynamic_left_chunk (bool): whether to use dynamic left chunk for training.
         decoding_chunk_size (int): decoding chunk size for dynamic chunk, it's
             0: default for training, use random dynamic chunk.
             <0: for decoding, use full chunk.
@@ -163,7 +162,7 @@ def add_optional_chunk_mask(xs: paddle.Tensor,
             # chunk size is either [1, 25] or full context(max_len).
             # Since we use 4 times subsampling and allow up to 1s(100 frames)
             # delay, the maximum frame is 100 / 4 = 25.
-            chunk_size = int(paddle.randint(1, max_len, (1, )))
+            chunk_size = int(paddle.randint(1, max_len, (1,)))
             num_left_chunks = -1
             if chunk_size > max_len // 2:
                 chunk_size = max_len
@@ -171,17 +170,14 @@ def add_optional_chunk_mask(xs: paddle.Tensor,
                 chunk_size = chunk_size % 25 + 1
                 if use_dynamic_left_chunk:
                     max_left_chunks = (max_len - 1) // chunk_size
-                    num_left_chunks = int(
-                        paddle.randint(0, max_left_chunks, (1, )))
-        chunk_masks = subsequent_chunk_mask(xs.shape[1], chunk_size,
-                                            num_left_chunks)  # (L, L)
+                    num_left_chunks = int(paddle.randint(0, max_left_chunks, (1,)))
+        chunk_masks = subsequent_chunk_mask(xs.shape[1], chunk_size, num_left_chunks)  # (L, L)
         chunk_masks = chunk_masks.unsqueeze(0)  # (1, L, L)
         # chunk_masks = masks & chunk_masks  # (B, L, L)
         chunk_masks = masks.logical_and(chunk_masks)  # (B, L, L)
     elif static_chunk_size > 0:
         num_left_chunks = num_decoding_left_chunks
-        chunk_masks = subsequent_chunk_mask(xs.shape[1], static_chunk_size,
-                                            num_left_chunks)  # (L, L)
+        chunk_masks = subsequent_chunk_mask(xs.shape[1], static_chunk_size, num_left_chunks)  # (L, L)
         chunk_masks = chunk_masks.unsqueeze(0)  # (1, L, L)
         # chunk_masks = masks & chunk_masks  # (B, L, L)
         chunk_masks = masks.logical_and(chunk_masks)  # (B, L, L)

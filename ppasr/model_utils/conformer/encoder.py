@@ -74,8 +74,7 @@ class ConformerEncoder(nn.Layer):
                 and output.
                 True: x -> x + linear(concat(x, att(x)))
                 False: x -> x + att(x)
-            static_chunk_size (int): chunk size for static chunk training and
-                decoding
+            static_chunk_size (int): chunk size for static chunk training and decoding
             use_dynamic_chunk (bool): whether use dynamic chunk size for
                 training or not, You can only use fixed chunk(chunk_size > 0)
                 or dyanmic chunk size(use_dynamic_chunk = True)

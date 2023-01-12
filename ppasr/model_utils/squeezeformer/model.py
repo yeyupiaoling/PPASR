@@ -26,7 +26,6 @@ class SqueezeformerModel(paddle.nn.Layer):
             length_normalized_loss: bool = False,
             time_reduction_layer_type: str = 'conv1d',
             use_dynamic_chunk: bool = False,
-            use_dynamic_left_chunk: bool = False,
             causal: bool = False):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
@@ -38,7 +37,6 @@ class SqueezeformerModel(paddle.nn.Layer):
                                             global_cmvn=global_cmvn,
                                             time_reduction_layer_type=time_reduction_layer_type,
                                             use_dynamic_chunk=use_dynamic_chunk,
-                                            use_dynamic_left_chunk=use_dynamic_left_chunk,
                                             causal=causal,
                                             **configs.encoder_conf)
         self.decoder = BiTransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
@@ -223,7 +221,6 @@ def SqueezeformerModelOnline(configs,
                                length_normalized_loss=length_normalized_loss,
                                time_reduction_layer_type='stream',
                                use_dynamic_chunk=True,
-                               use_dynamic_left_chunk=False,
                                causal=True)
     return model
 

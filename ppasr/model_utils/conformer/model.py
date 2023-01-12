@@ -23,7 +23,6 @@ class ConformerModel(paddle.nn.Layer):
             lsm_weight: float = 0.0,
             length_normalized_loss: bool = False,
             use_dynamic_chunk: bool = False,
-            use_dynamic_left_chunk: bool = False,
             causal: bool = False):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
@@ -34,7 +33,6 @@ class ConformerModel(paddle.nn.Layer):
         self.encoder = ConformerEncoder(input_dim,
                                         global_cmvn=global_cmvn,
                                         use_dynamic_chunk=use_dynamic_chunk,
-                                        use_dynamic_left_chunk=use_dynamic_left_chunk,
                                         causal=causal,
                                         **configs.encoder_conf)
         self.decoder = BiTransformerDecoder(vocab_size, self.encoder.output_size(), **configs.decoder_conf)
@@ -213,7 +211,6 @@ def ConformerModelOnline(configs,
                            lsm_weight=lsm_weight,
                            length_normalized_loss=length_normalized_loss,
                            use_dynamic_chunk=True,
-                           use_dynamic_left_chunk=False,
                            causal=True)
     return model
 
