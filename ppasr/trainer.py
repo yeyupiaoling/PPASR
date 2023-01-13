@@ -78,7 +78,7 @@ class PPASRTrainer(object):
                                               min_duration=self.configs.dataset_conf.min_duration,
                                               max_duration=self.configs.dataset_conf.max_duration,
                                               augmentation_config=augmentation_config,
-                                              manifest_type=self.configs.dataset_conf.get('manifest_type', 'txt'),
+                                              manifest_type=self.configs.dataset_conf.manifest_type,
                                               train=is_train)
             # 设置支持多卡训练
             if paddle.distributed.get_world_size() > 1 and self.use_gpu:
@@ -95,22 +95,22 @@ class PPASRTrainer(object):
                                                                  shuffle=True)
             self.train_loader = DataLoader(dataset=self.train_dataset,
                                            collate_fn=collate_fn,
-                                           prefetch_factor=self.configs.dataset_conf.get('prefetch_factor', 2),
-                                           use_shared_memory=self.configs.dataset_conf.get('use_shared_memory', True),
+                                           prefetch_factor=self.configs.dataset_conf.prefetch_factor,
+                                           use_shared_memory=self.configs.dataset_conf.use_shared_memory,
                                            batch_sampler=self.train_batch_sampler,
                                            num_workers=self.configs.dataset_conf.num_workers)
         # 获取测试数据
         self.test_dataset = PPASRDataset(preprocess_configs=self.configs.preprocess_conf,
                                          data_manifest=self.configs.dataset_conf.test_manifest,
                                          vocab_filepath=self.configs.dataset_conf.dataset_vocab,
-                                         manifest_type=self.configs.dataset_conf.get('manifest_type', 'txt'),
+                                         manifest_type=self.configs.dataset_conf.manifest_type,
                                          min_duration=self.configs.dataset_conf.min_duration,
                                          max_duration=self.configs.dataset_conf.max_duration)
         self.test_loader = DataLoader(dataset=self.test_dataset,
                                       batch_size=self.configs.dataset_conf.batch_size,
                                       collate_fn=collate_fn,
-                                      prefetch_factor=self.configs.dataset_conf.get('prefetch_factor', 2),
-                                      use_shared_memory=self.configs.dataset_conf.get('use_shared_memory', True),
+                                      prefetch_factor=self.configs.dataset_conf.prefetch_factor,
+                                      use_shared_memory=self.configs.dataset_conf.use_shared_memory,
                                       num_workers=self.configs.dataset_conf.num_workers)
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
@@ -160,15 +160,9 @@ class PPASRTrainer(object):
                                         paddle.to_tensor([10], dtype=paddle.int64)])
             # 自动混合精度训练，逻辑2，定义GradScaler
             self.amp_scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
-            # 兼容旧的配置文件
-            scheduler_conf = self.configs.optimizer_conf.get('scheduler_conf', None)
-            if scheduler_conf:
-                scheduler = self.configs.optimizer_conf.get('scheduler', 'WarmupLR')
-            else:
-                scheduler = 'WarmupLR'
-                scheduler_conf = dict_to_object({'warmup_steps': self.configs.optimizer_conf.warmup_steps,
-                                                 'min_lr': float(self.configs.optimizer_conf.get('min_lr', 1.e-5))})
             # 学习率衰减
+            scheduler_conf = self.configs.optimizer_conf.scheduler_conf
+            scheduler = self.configs.optimizer_conf.scheduler
             if scheduler == 'WarmupLR':
                 self.scheduler = WarmupLR(learning_rate=float(self.configs.optimizer_conf.learning_rate),
                                           **scheduler_conf)
@@ -178,7 +172,7 @@ class PPASRTrainer(object):
             else:
                 raise Exception(f'不支持学习率衰减方法：{scheduler}')
             # 获取优化方法
-            optimizer = self.configs.optimizer_conf.get('optimizer', 'Adam')
+            optimizer = self.configs.optimizer_conf.optimizer
             grad_clip = paddle.nn.ClipGradByGlobalNorm(clip_norm=self.configs.train_conf.grad_clip)
             if optimizer == 'Adam':
                 self.optimizer = paddle.optimizer.Adam(parameters=self.model.parameters(),
@@ -312,7 +306,7 @@ class PPASRTrainer(object):
             if num_utts == 0:
                 continue
             # 执行模型计算，是否开启自动混合精度
-            with paddle.amp.auto_cast(enable=self.configs.train_conf.get('enable_amp', False), level='O1'):
+            with paddle.amp.auto_cast(enable=self.configs.train_conf.enable_amp, level='O1'):
                 loss_dict = self.model(inputs, input_lens, labels, label_lens)
             # loss backward
             if nranks > 1 and batch_id % self.configs.train_conf.accum_grad != 0:
@@ -322,7 +316,7 @@ class PPASRTrainer(object):
             with context():
                 loss = loss_dict['loss'] / self.configs.train_conf.accum_grad
                 # 是否开启自动混合精度
-                if self.configs.train_conf.get('enable_amp', False):
+                if self.configs.train_conf.enable_amp:
                     # loss缩放，乘以系数loss_scaling
                     scaled = self.amp_scaler.scale(loss)
                     scaled.backward()
@@ -336,7 +330,7 @@ class PPASRTrainer(object):
                     # 记录学习率
                     writer.add_scalar('Train/lr', self.scheduler.get_lr(), self.train_step)
                 # 是否开启自动混合精度
-                if self.configs.train_conf.get('enable_amp', False):
+                if self.configs.train_conf.enable_amp:
                     # 更新参数（参数梯度先除系数loss_scaling再更新参数）
                     self.amp_scaler.step(self.optimizer)
                     # 基于动态loss_scaling策略更新loss_scaling系数
@@ -440,7 +434,7 @@ class PPASRTrainer(object):
                                      num_samples=num_samples)
         print('计算的均值和标准值已保存在 %s！' % self.configs.dataset_conf.mean_istd_path)
 
-        if self.configs.dataset_conf.get('manifest_type', 'txt') == 'binary':
+        if self.configs.dataset_conf.manifest_type == 'binary':
             logger.info('=' * 70)
             logger.info('正在生成数据列表的二进制文件...')
             create_manifest_binary(train_manifest_path=self.configs.dataset_conf.train_manifest,
