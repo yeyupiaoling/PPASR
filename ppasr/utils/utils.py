@@ -28,7 +28,12 @@ def print_arguments(args=None, configs=None):
             if isinstance(value, dict):
                 logger.info(f"{arg}:")
                 for a, v in sorted(value.items()):
-                    logger.info("\t%s: %s" % (a, v))
+                    if isinstance(v, dict):
+                        logger.info(f"\t{a}:")
+                        for a1, v1 in sorted(v.items()):
+                            logger.info("\t\t%s: %s" % (a1, v1))
+                    else:
+                        logger.info("\t%s: %s" % (a, v))
             else:
                 logger.info("%s: %s" % (arg, value))
         logger.info("------------------------------------------------")
