@@ -440,6 +440,7 @@ class PPASRTrainer(object):
         normalizer.compute_mean_istd(manifest_path=self.configs.dataset_conf.train_manifest,
                                      num_workers=self.configs.dataset_conf.num_workers,
                                      preprocess_configs=self.configs.preprocess_conf,
+                                     batch_size=self.configs.dataset_conf.batch_size,
                                      num_samples=num_samples)
         print('计算的均值和标准值已保存在 %s！' % self.configs.dataset_conf.mean_istd_path)
 

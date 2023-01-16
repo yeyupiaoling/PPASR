@@ -44,12 +44,14 @@ class FeatureNormalizer(object):
                           preprocess_configs,
                           manifest_path,
                           num_workers=4,
+                          batch_size=64,
                           num_samples=5000):
         """从随机抽样的实例中计算均值和标准值，并写入到文件中
 
         :param preprocess_configs: 数据预处理配置参数
         :param manifest_path: 数据列表文件路径
         :param num_workers: 计算的线程数量
+        :param batch_size: 计算的批量大小
         :param num_samples: 用于计算均值和标准值的音频数量
         """
         manifest = read_manifest(manifest_path)
@@ -59,7 +61,7 @@ class FeatureNormalizer(object):
             sampled_manifest = random.sample(manifest, num_samples)
         logger.info('开始抽取{}条数据计算均值和标准值...'.format(len(sampled_manifest)))
         dataset = NormalizerDataset(sampled_manifest, preprocess_configs)
-        test_loader = DataLoader(dataset=dataset, batch_size=64, collate_fn=collate_fn, num_workers=num_workers)
+        test_loader = DataLoader(dataset=dataset, batch_size=batch_size, collate_fn=collate_fn, num_workers=num_workers)
         with paddle.no_grad():
             # 求总和
             std, means = None, None
