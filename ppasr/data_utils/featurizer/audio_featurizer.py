@@ -101,7 +101,7 @@ class AudioFeaturizer(object):
                       n_mfcc=40,
                       frame_shift=10,
                       frame_length=25,
-                      dither=0.1,
+                      dither=1.0,
                       train=False):
         dither = dither if train else 0.0
         waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
@@ -123,7 +123,7 @@ class AudioFeaturizer(object):
                        n_mels=161,
                        frame_shift=10,
                        frame_length=25,
-                       dither=0.1,
+                       dither=1.0,
                        train=False):
         dither = dither if train else 0.0
         waveform = paddle.to_tensor(np.expand_dims(samples, 0), dtype=paddle.float32)
