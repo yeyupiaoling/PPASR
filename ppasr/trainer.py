@@ -26,7 +26,7 @@ from ppasr.data_utils.utils import create_manifest_binary
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
-from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing
+from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing, CosineWithWarmup
 from ppasr.utils.model_summary import summary
 from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object, merge_audio, \
     print_arguments
@@ -169,6 +169,9 @@ class PPASRTrainer(object):
             elif scheduler == 'NoamHoldAnnealing':
                 self.scheduler = NoamHoldAnnealing(learning_rate=float(self.configs.optimizer_conf.learning_rate),
                                                    **scheduler_conf)
+            elif scheduler == 'CosineWithWarmup':
+                self.scheduler = CosineWithWarmup(learning_rate=float(self.configs.optimizer_conf.learning_rate),
+                                                  **scheduler_conf)
             else:
                 raise Exception(f'不支持学习率衰减方法：{scheduler}')
             # 获取优化方法
@@ -184,6 +187,12 @@ class PPASRTrainer(object):
                                                         learning_rate=self.scheduler,
                                                         weight_decay=float(self.configs.optimizer_conf.weight_decay),
                                                         grad_clip=grad_clip)
+            elif optimizer == 'AdamW':
+                self.optimizer = paddle.optimizer.Momentum(parameters=self.model.parameters(),
+                                                           momentum=self.configs.optimizer_conf.momentum,
+                                                           learning_rate=self.scheduler,
+                                                           weight_decay=float(self.configs.optimizer_conf.weight_decay),
+                                                           grad_clip=grad_clip)
             else:
                 raise Exception(f'不支持优化方法：{optimizer}')
 
