@@ -156,10 +156,12 @@ class PPASRTrainer(object):
         if is_train:
             summary(self.model, inputs=[paddle.rand([1, 260, self.train_dataset.feature_dim]),
                                         paddle.to_tensor([260], dtype=paddle.int64),
-                                        paddle.randint(low=0, high=100, shape=[1, 10], dtype=paddle.int32),
+                                        paddle.randint(low=0, high=self.train_dataset.vocab_size - 1, shape=[1, 10],
+                                                       dtype=paddle.int32),
                                         paddle.to_tensor([10], dtype=paddle.int64)])
-            # 自动混合精度训练，逻辑2，定义GradScaler
-            self.amp_scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
+            if self.configs.train_conf.enable_amp:
+                # 自动混合精度训练，逻辑2，定义GradScaler
+                self.amp_scaler = paddle.amp.GradScaler(init_loss_scaling=1024)
             # 学习率衰减
             scheduler_conf = self.configs.optimizer_conf.scheduler_conf
             scheduler = self.configs.optimizer_conf.scheduler
