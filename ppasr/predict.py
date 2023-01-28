@@ -20,8 +20,8 @@ logger = setup_logger(__name__)
 class PPASRPredictor:
     def __init__(self,
                  configs=None,
-                 model_tag='conformer_online_fbank_wenetspeech',
-                 model_path='models/conformer_online_fbank/infer/',
+                 model_tag='conformer_streaming_fbank_wenetspeech',
+                 model_path='models/conformer_streaming_fbank/infer/',
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
                  use_gpu=True):
@@ -44,7 +44,7 @@ class PPASRPredictor:
             # 使用下载的模型
             cache_dir = os.path.expanduser("~/.cache/ppasr")
             model_url_dict = {
-                'conformer_online_fbank_wenetspeech': 'https://ppasr.yeyupiaoling.cn/models/conformer_online_fbank_wenetspeech.zip'}
+                'conformer_streaming_fbank_wenetspeech': 'https://ppasr.yeyupiaoling.cn/models/conformer_streaming_fbank_wenetspeech.zip'}
             model_url = model_url_dict[model_tag]
             _ = download(model_url, cache_dir)
             model_path = os.path.join(cache_dir, model_tag, 'models', model_tag[:model_tag.rfind('_')], 'infer')
@@ -82,6 +82,7 @@ class PPASRPredictor:
         # 获取预测器
         self.predictor = InferencePredictor(configs=self.configs,
                                             use_model=self.configs.use_model,
+                                            streaming=self.configs.streaming,
                                             model_dir=model_path,
                                             use_gpu=use_gpu)
         # 预热
@@ -240,7 +241,7 @@ class PPASRPredictor:
         :param sample_rate: 如果传入的事numpy数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
-        if 'online' not in self.configs.use_model:
+        if not self.configs.streaming:
             raise Exception(f"不支持改该模型流式识别，当前模型：{self.configs.use_model}")
         # 加载音频文件，并进行预处理
         if isinstance(audio_data, np.ndarray):
@@ -291,10 +292,9 @@ class PPASRPredictor:
             x_chunk = self.cached_feat[:, cur:end, :]
 
             # 执行识别
-            if self.configs.use_model == 'deepspeech2_online':
+            if self.configs.use_model == 'deepspeech2':
                 output_chunk_probs, output_lens = self.predictor.predict_chunk_deepspeech(x_chunk=x_chunk)
-            elif self.configs.use_model == 'conformer_online' or self.configs.use_model == 'squeezeformer_online'\
-                    or self.configs.use_model == 'efficient_conformer_online':
+            elif 'former' in self.configs.use_model:
                 num_decoding_left_chunks = -1
                 required_cache_size = decoding_chunk_size * num_decoding_left_chunks
                 output_chunk_probs = self.predictor.predict_chunk_conformer(x_chunk=x_chunk,

@@ -82,13 +82,10 @@ def fuzzy_delete(dir, fuzzy_str):
 
 # 创建数据列表
 def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is_change_frame_rate=True,
-                    max_test_manifest=10000, target_sr=16000):
+                    only_keep_zh_en=True, max_test_manifest=10000, target_sr=16000):
     data_list = []
     test_list = []
     durations = []
-    # 需要安装WeTextProcessing>=0.0.4
-    # from tn.chinese.normalizer import Normalizer
-    # normalizer = Normalizer()
     for annotation_text in os.listdir(annotation_path):
         annotation_text_path = os.path.join(annotation_path, annotation_text)
         if os.path.splitext(annotation_text_path)[-1] == '.json':
@@ -107,11 +104,10 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                     change_rate(audio_path, target_sr=target_sr)
                 # 获取音频长度
                 durations.append(duration)
-                # 对文本进行标准化
-                # text = normalizer.normalize(text)
                 text = text.lower().strip()
-                # 过滤非法的字符
-                text = is_ustr(text)
+                if only_keep_zh_en:
+                    # 过滤非法的字符
+                    text = is_ustr(text)
                 if len(text) == 0: continue
                 # 保证全部都是简体
                 text = convert(text, 'zh-cn')
@@ -141,11 +137,10 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 audio_data, samplerate = soundfile.read(audio_path)
                 duration = float(len(audio_data)) / samplerate
                 durations.append(duration)
-                # 对文本进行标准化
-                # text = normalizer.normalize(text)
                 text = text.lower().strip()
-                # 过滤非法的字符
-                text = is_ustr(text)
+                if only_keep_zh_en:
+                    # 过滤非法的字符
+                    text = is_ustr(text)
                 if len(text) == 0 or text == ' ': continue
                 # 保证全部都是简体
                 text = convert(text, 'zh-cn')

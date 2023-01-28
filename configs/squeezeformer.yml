@@ -1,16 +1,18 @@
 # 编码器参数
 encoder_conf:
+  encoder_dim: 256    # 编码器的隐层大小，对于大数据可以设置设置大一些，如：512
   output_size: 256    # Attention的维度，对于大数据可以设置设置大一些，如：512
   attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
-  linear_units: 2048  # the number of units of position-wise feed forward
   num_blocks: 12      # the number of encoder blocks
-  dropout_rate: 0.1
-  positional_dropout_rate: 0.1
+  reduce_idx: 5
+  recover_idx: 11
+  feed_forward_expansion_factor: 8
+  input_dropout_rate: 0.1
+  feed_forward_dropout_rate: 0.1
   attention_dropout_rate: 0.1
-  input_layer: 'conv2d' # encoder input type, you can chose conv2d, conv2d6 and conv2d8
-  normalize_before: True
-  cnn_module_kernel: 15
-  use_cnn_module: True
+  adaptive_scale: true
+  cnn_module_kernel: 31
+  normalize_before: false
   activation_type: 'swish'
   pos_enc_layer_type: 'rel_pos'
 
@@ -94,17 +96,23 @@ ctc_beam_search_decoder_conf:
 # 优化方法参数配置
 optimizer_conf:
   # 优化方法，支持Adam、AdamW
-  optimizer: 'Adam'
+  optimizer: 'AdamW'
   # 权重衰减系数
-  weight_decay: 1.e-6
+  weight_decay: 4.e-5
   # 初始学习率的大小
   learning_rate: 0.001
   # 学习率衰减方法，支持WarmupLR、NoamHoldAnnealing
-  scheduler: 'WarmupLR'
+  scheduler: 'NoamHoldAnnealing'
   # 学习率衰减方法参数配置
   scheduler_conf:
-    # 学习率预热步数，对应的是step/accum_grad
-    warmup_steps: 25000
+    # 学习率预热步数比例
+    warmup_ratio: 0.2
+    # 学习率保持的步数比例
+    hold_ratio: 0.3
+    # 前面两个的再次比例
+    decay_rate: 1.0
+    # 最大的衰减步数，对应的是step/accum_grad
+    max_steps: 87840
     # 最小学习率
     min_lr: 1.e-5
 
@@ -122,7 +130,9 @@ train_conf:
   log_interval: 100
 
 # 所使用的模型
-use_model: 'conformer_online'
+use_model: 'squeezeformer'
+# 是否流式模型
+streaming: True
 # 结果解码方法，支持：ctc_beam_search、ctc_greedy
 decoder: 'ctc_beam_search'
 # 计算错误率方法，支持：cer、wer

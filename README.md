@@ -31,12 +31,13 @@
 
 ## 项目快速了解
 
- 1. 本项目支持流式识别模型`deepspeech2`、`conformer`、`squeezeformer`，每个模型又分online(在线)和offline(离线)，对应的是流式识别和非流式识别。
+ 1. 本项目支持流式识别模型`deepspeech2`、`conformer`、`squeezeformer`，`efficient_conformer`，每个模型都支持流式识别和非流式识别，在配置文件中`streaming`参数设置。
  2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高，但不支持Windows。
  3. 下面提供了一系列预训练模型的下载，下载预训练模型之后，需要把全部文件复制到项目根目录，并执行导出模型才可以使用语音识别。
 
 ## 更新记录
 
+ - 2023.01.28: 调整配置文件结构，支持efficient_conformer模型。
  - 2022.12.05: 支持自动混合精度训练和导出量化模型。
  - 2022.11.26: 支持Squeezeformer模型。
  - 2022.11.01: 修改Conformer模型的解码器为BiTransformerDecoder，增加SpecSubAugmentor数据增强器。
@@ -56,7 +57,7 @@
 ```python
 from ppasr.predict import PPASRPredictor
 
-predictor = PPASRPredictor(model_tag='conformer_online_fbank_wenetspeech')
+predictor = PPASRPredictor(model_tag='conformer_streaming_fbank_wenetspeech')
 
 wav_path = 'dataset/test.wav'
 result = predictor.predict(audio_data=wav_path, use_pun=False)
@@ -68,7 +69,7 @@ print(f"识别结果: {text}, 得分: {int(score)}")
 ```python
 from ppasr.predict import PPASRPredictor
 
-predictor = PPASRPredictor(model_tag='conformer_online_fbank_wenetspeech')
+predictor = PPASRPredictor(model_tag='conformer_streaming_fbank_wenetspeech')
 
 wav_path = 'dataset/test_long.wav'
 result = predictor.predict_long(audio_data=wav_path, use_pun=False)
@@ -83,7 +84,7 @@ import wave
 
 from ppasr.predict import PPASRPredictor
 
-predictor = PPASRPredictor(model_tag='conformer_online_fbank_wenetspeech')
+predictor = PPASRPredictor(model_tag='conformer_streaming_fbank_wenetspeech')
 
 # 识别间隔时间
 interval_time = 0.5
@@ -108,43 +109,47 @@ predictor.reset_stream()
 
 ## 模型下载
 
-1. `conformer`预训练模型列表：
+1. [WenetSpeech](./docs/wenetspeech.md) (10000小时) 的预训练模型列表：
 
-|       使用模型        |                                                             数据集                                                             | 预处理方式 | 语言  |                             测试集字错率（词错率）                             |                               下载地址                               |
-|:-----------------:|:---------------------------------------------------------------------------------------------------------------------------:|:-----:|:---:|:-------------------------------------------------------------------:|:----------------------------------------------------------------:|
-| conformer_online  |                                       [WenetSpeech](./docs/wenetspeech.md) (10000小时)                                        | fbank | 中文  | 0.03579(aishell_test)<br>0.11081(test_net)<br>0.16031(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86932770)  |
-| conformer_online  | [WenetSpeech](./docs/wenetspeech.md) (10000小时)+[中文语音数据集](https://download.csdn.net/download/qq_33200967/87003964) (3000+小时) | fbank | 中文  | 0.02923(aishell_test)<br>0.11876(test_net)<br>0.18346(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86951249)  |
-| conformer_online  |                              [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)                              | fbank | 中文  |                               0.04936                               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| conformer_offline |                              [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)                              | fbank | 中文  |                               0.04343                               | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| conformer_online  |                            [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)                            | fbank | 英文  |                               0.08109                               | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| conformer_offline |                            [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时)                            | fbank | 英文  |                               0.08036                               | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-
-
-2. `squeezeformer`预训练模型列表：
-
-|         使用模型          |                                  数据集                                  | 预处理方式 | 语言  | 测试集字错率（词错率） |                               下载地址                               |
-|:---------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
-| squeezeformer_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |   0.04758   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| squeezeformer_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |   0.04889   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| squeezeformer_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| squeezeformer_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+|    使用模型     | 是否为流式 | 预处理方式 | 语言  |                             测试集字错率（词错率）                             |                              下载地址                               |
+|:-----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:---------------------------------------------------------------:|
+|  conformer  | True  | fbank | 普通话 | 0.03579(aishell_test)<br>0.11081(test_net)<br>0.16031(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86932770) |
+| deepspeech2 | True  | fbank | 普通话 |                        0.05379(aishell_test)                        | [点击下载](https://download.csdn.net/download/qq_33200967/86932787) |
 
 
 
-3. `deepspeech2`预训练模型列表：
+2.  [WenetSpeech](./docs/wenetspeech.md) (10000小时)+[中文语音数据集](https://download.csdn.net/download/qq_33200967/87003964) (3000+小时) 的预训练模型列表：
 
-|        使用模型         |                                  数据集                                  | 预处理方式 | 语言  |      测试集字错率（词错率）      |                               下载地址                               |
-|:-------------------:|:---------------------------------------------------------------------:|:-----:|:---:|:---------------------:|:----------------------------------------------------------------:|
-| deepspeech2_online  |            [WenetSpeech](./docs/wenetspeech.md) (10000小时)             | fbank | 中文  | 0.05379(aishell_test) | [点击下载](https://download.csdn.net/download/qq_33200967/86932787)  |
-| deepspeech2_online  |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |        0.11367        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| deepspeech2_offline |   [aishell](https://openslr.magicdatatech.com/resources/33) (179小时)   | fbank | 中文  |        0.09385        | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| deepspeech2_online  | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |        0.15294        | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| deepspeech2_offline | [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) | fbank | 英文  |        0.11035        | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+|    使用模型    | 是否为流式 | 预处理方式 | 语言  |                             测试集字错率（词错率）                             |                              下载地址                               |
+|:----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:---------------------------------------------------------------:|
+| conformere | True  | fbank | 普通话 | 0.02923(aishell_test)<br>0.11876(test_net)<br>0.18346(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86951249) |
+
+
+
+3. [AIShell](https://openslr.magicdatatech.com/resources/33) (179小时) 的预训练模型列表：
+
+|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率（词错率） |                               下载地址                               |
+|:-------------------:|:-----:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
+|    squeezeformer    | True  | fbank | 普通话 |   0.04758   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+|     conformere      | True  | fbank | 普通话 |   0.04936   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| efficient_conformer | True  | fbank | 普通话 |             | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+|     deepspeech2     | True  | fbank | 普通话 |   0.11367   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+
+
+4. [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) 的预训练模型列表：
+
+|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率（词错率） |                               下载地址                               |
+|:-------------------:|:-----:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
+|    squeezeformer    | True  | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+|      conformer      | True  | fbank | 英文  |   0.08109   | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+| efficient_conformer | True  | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
+|     deepspeech2     | True  | fbank | 英文  |   0.15294   | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) |
 
 
 **说明：** 
-1. 这里字错率或者词错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的，`min_duration`为1.0，`max_duration`为20.0。
+1. 这里字错率或者词错率是使用`eval.py`程序并使用集束搜索解码`ctc_beam_search`方法计算得到的。
 2. 没有提供预测模型，需要把全部文件复制到项目的根目录下，执行`export_model.py`导出预测模型。
+3. 由于算力不足，这里只提供了流式模型，但全部模型都支持流式和非流式的，在配置文件中`streaming`参数设置。
 
 >有问题欢迎提 [issue](https://github.com/yeyupiaoling/PPASR/issues) 交流
 

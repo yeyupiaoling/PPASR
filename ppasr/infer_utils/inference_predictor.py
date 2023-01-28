@@ -12,7 +12,8 @@ class InferencePredictor:
     def __init__(self,
                  configs,
                  use_model,
-                 model_dir='models/conformer_online_fbank/infer/',
+                 streaming=True,
+                 model_dir='models/conformer_streaming_fbank/infer/',
                  use_gpu=True,
                  use_tensorrt=False,
                  gpu_mem=1000,
@@ -21,6 +22,7 @@ class InferencePredictor:
         语音识别预测工具
         :param configs: 配置参数
         :param use_model: 使用模型的名称
+        :param use_model: 是否为流式模型
         :param model_dir: 导出的预测模型文件夹路径
         :param use_gpu: 是否使用GPU预测
         :param gpu_mem: 预先分配的GPU显存大小
@@ -28,6 +30,7 @@ class InferencePredictor:
         """
         self.configs = configs
         self.use_model = use_model
+        self.streaming = streaming
         # 流式参数
         self.output_state_h = None
         self.output_state_c = None
@@ -76,18 +79,18 @@ class InferencePredictor:
         # 获取输入层
         self.speech_data_handle = self.predictor.get_input_handle('speech')
         # deepspeech2模型
-        if 'deepspeech2' in self.use_model:
+        if self.use_model == 'deepspeech2':
             self.speech_lengths_handle = self.predictor.get_input_handle('speech_lengths')
         # 流式模型需要输入的状态
-        if self.use_model == 'deepspeech2_online':
+        if self.use_model == 'deepspeech2' and self.streaming:
             self.init_state_h_box_handle = self.predictor.get_input_handle('init_state_h_box')
             self.init_state_c_box_handle = self.predictor.get_input_handle('init_state_c_box')
 
         # conformer相关模型
-        if 'conformer' in self.use_model and 'offline' in self.use_model:
+        if 'former' in self.use_model and not self.streaming:
             self.speech_lengths_handle = self.predictor.get_input_handle('speech_lengths')
         # 流式模型需要输入的状态
-        if 'former' in self.use_model and 'online' in self.use_model:
+        if 'former' in self.use_model and self.streaming:
             self.offset_handle = self.predictor.get_input_handle('offset')
             self.required_cache_size_handle = self.predictor.get_input_handle('required_cache_size')
             self.cnn_cache_handle = self.predictor.get_input_handle('cnn_cache')
@@ -107,13 +110,12 @@ class InferencePredictor:
         # 设置输入
         self.speech_data_handle.reshape([speech.shape[0], speech.shape[1], speech.shape[2]])
         self.speech_data_handle.copy_from_cpu(speech)
-        if self.use_model != 'conformer_online' and self.use_model != 'squeezeformer_online' \
-                and self.use_model != 'efficient_conformer_online':
+        if not self.streaming or self.use_model == 'deepspeech2':
             self.speech_lengths_handle.reshape([speech.shape[0]])
             self.speech_lengths_handle.copy_from_cpu(speech_lengths)
 
         # 对流式deepspeech2模型initial_states全零初始化
-        if self.use_model == 'deepspeech2_online':
+        if self.use_model == 'deepspeech2' and self.streaming:
             init_state_h_box = np.zeros(shape=(self.configs.encoder_conf.num_rnn_layers,
                                                speech.shape[0],
                                                self.configs.encoder_conf.rnn_size), dtype=np.float32)
@@ -122,7 +124,7 @@ class InferencePredictor:
             self.init_state_c_box_handle.reshape(init_state_h_box.shape)
             self.init_state_c_box_handle.copy_from_cpu(init_state_h_box)
         # 对流式conformer模型全零初始化
-        if 'former' in self.use_model and 'online' in self.use_model:
+        if 'former' in self.use_model and self.streaming:
             self.reset_stream()
             self.offset_handle.reshape(self.offset.shape)
             self.offset_handle.copy_from_cpu(self.offset)
@@ -143,7 +145,7 @@ class InferencePredictor:
         return output_data
 
     def predict_chunk_deepspeech(self, x_chunk):
-        if self.use_model != 'deepspeech2_online':
+        if not (self.use_model == 'deepspeech2' and self.streaming):
             raise Exception(f'当前模型不支持该方法，当前模型为：{self.use_model}')
         # 设置输入
         x_chunk_lens = np.array([x_chunk.shape[1]])
@@ -180,7 +182,7 @@ class InferencePredictor:
         return output_chunk_probs, output_lens
 
     def predict_chunk_conformer(self, x_chunk, required_cache_size):
-        if not ('former' in self.use_model and 'online' in self.use_model):
+        if not ('former' in self.use_model and self.streaming):
             raise Exception(f'当前模型不支持该方法，当前模型为：{self.use_model}')
         # 设置输入
         self.speech_data_handle.reshape([x_chunk.shape[0], x_chunk.shape[1], x_chunk.shape[2]])

@@ -4,21 +4,15 @@ encoder_conf:
   attention_heads: 4  # Attention头的数量，对于大数据可以设置设置大一些，如：8
   linear_units: 2048  # the number of units of position-wise feed forward
   num_blocks: 12      # the number of encoder blocks
-  activation_type: 'swish'
-  cnn_module_kernel: 15
-  cnn_module_norm: 'layer_norm'
   dropout_rate: 0.1
-  input_layer: conv2d
-  normalize_before: true
-  pos_enc_layer_type: 'rel_pos'
-  attention_dropout_rate: 0.1
   positional_dropout_rate: 0.1
-  efficient_conf:
-    stride_layer_idx: [ 3 ]           # layer id with StrideConv
-    stride: [ 2 ]                     # stride size of each StrideConv
-    group_layer_idx: [ 0, 1, 2, 3 ]   # layer id with GroupedAttention
-    group_size: 3                   # group size of every GroupedAttention layer
-    stride_kernel: true             # true: recompute cnn kernels with stride
+  attention_dropout_rate: 0.1
+  input_layer: 'conv2d' # encoder input type, you can chose conv2d, conv2d6 and conv2d8
+  normalize_before: True
+  cnn_module_kernel: 15
+  use_cnn_module: True
+  activation_type: 'swish'
+  pos_enc_layer_type: 'rel_pos'
 
 # 解码器参数
 decoder_conf:
@@ -121,14 +115,16 @@ train_conf:
   # 梯度裁剪
   grad_clip: 5.0
   # 梯度累加，变相扩大batch_size的作用
-  accum_grad: 1
+  accum_grad: 4
   # 训练的轮数
   max_epoch: 200
   # 多少batch打印一次日志
   log_interval: 100
 
 # 所使用的模型
-use_model: 'efficient_conformer_offline'
+use_model: 'conformer'
+# 是否流式模型
+streaming: True
 # 结果解码方法，支持：ctc_beam_search、ctc_greedy
 decoder: 'ctc_beam_search'
 # 计算错误率方法，支持：cer、wer
