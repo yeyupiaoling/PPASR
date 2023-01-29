@@ -33,14 +33,14 @@ python train.py
 
 执行下面这个脚本对模型进行评估，通过字符错误率来评价模型的性能。
 ```shell
-python eval.py --resume_model=models/conformer_online_fbank/best_model/
+python eval.py --resume_model=models/conformer_streaming_fbank/best_model/
 ```
 
 ### 导出模型
 
 导出为预测模型。
 ```shell
-python export_model.py --resume_model=models/conformer_online_fbank/best_model/
+python export_model.py --resume_model=models/conformer_streaming_fbank/best_model/
 ```
 
 ### 预测

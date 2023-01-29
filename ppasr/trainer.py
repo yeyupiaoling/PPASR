@@ -511,7 +511,7 @@ class PPASRTrainer(object):
             loss, error_result = self.evaluate(resume_model=None)
             logger.info('Test epoch: {}, time/epoch: {}, loss: {:.5f}, {}: {:.5f}, best {}: {:.5f}'.format(
                 epoch_id, str(timedelta(seconds=(time.time() - start_epoch))), loss, self.configs.metrics_type,
-                error_result, self.configs.metrics_type, best_error_rate))
+                error_result, self.configs.metrics_type, error_result if error_result <= best_error_rate else best_error_rate))
             logger.info('=' * 70)
             test_step += 1
             self.model.train()
