@@ -348,8 +348,7 @@ class EfficientConformerEncoder(nn.Layer):
                 xs, att_mask, pos_emb,
                 mask_pad=mask_pad,
                 att_cache=att_cache[i:i + 1, :, ::factor, :],
-                cnn_cache=cnn_cache[i, :, :, :]
-                if cnn_cache.shape[0] > 0 else cnn_cache
+                cnn_cache=cnn_cache[i:i + 1]
             )
 
             if i in self.stride_layer_idx:
@@ -367,7 +366,9 @@ class EfficientConformerEncoder(nn.Layer):
             # use repeat_interleave to new_att_cache
             new_att_cache = new_att_cache.repeat_interleave(repeats=factor, axis=2)
             # padding new_cnn_cache to cnn.lorder for casual convolution
-            new_cnn_cache = F.pad(new_cnn_cache, (self.cnn_module_kernel - 1 - new_cnn_cache.shape[3], 0))
+            new_cnn_cache_padding = paddle.to_tensor((self.cnn_module_kernel - 1 - new_cnn_cache.shape[3], 0),
+                                                     dtype=paddle.int32)
+            new_cnn_cache = F.pad(new_cnn_cache, new_cnn_cache_padding)
 
             if i == 0:
                 # record length for the first block as max length
@@ -478,6 +479,8 @@ class StrideConformerEncoderLayer(nn.Layer):
                 (#batch=1, head, cache_t1 + time, d_k * 2).
             paddle.Tensor: cnn_cahce tensor (#batch, size, cache_t2).
         """
+        # (1, #batch=1, size, cache_t2) -> (#batch=1, size, cache_t2)
+        cnn_cache = paddle.squeeze(cnn_cache, axis=0)
 
         # whether to use macaron style
         if self.feed_forward_macaron is not None:
