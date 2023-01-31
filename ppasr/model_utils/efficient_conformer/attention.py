@@ -53,11 +53,9 @@ class GroupedRelPositionMultiHeadedAttention(MultiHeadedAttention):
         batch_size, _, seq_len_KV, _ = K.shape
 
         # Input Padding (B, T, D) -> (B, T + P, D)
-        padding_Q1 = paddle.to_tensor([0, 0, 0, padding_Q], dtype=paddle.int32)
-        padding_KV1 = paddle.to_tensor([0, 0, 0, padding_KV], dtype=paddle.int32)
-        Q = F.pad(Q, padding_Q1, mode='constant', value=0.0)
-        K = F.pad(K, padding_KV1, mode='constant', value=0.0)
-        V = F.pad(V, padding_KV1, mode='constant', value=0.0)
+        Q = F.pad(Q, (0, 0, 0, padding_Q), mode='constant', value=0.0)
+        K = F.pad(K, (0, 0, 0, padding_KV), mode='constant', value=0.0)
+        V = F.pad(V, (0, 0, 0, padding_KV), mode='constant', value=0.0)
 
         if mask is not None and mask.shape[2] > 0:  # time2 > 0:
             mask = mask[:, ::group_size, ::group_size]
@@ -70,8 +68,7 @@ class GroupedRelPositionMultiHeadedAttention(MultiHeadedAttention):
         P_batch_size = P.shape[0]
         overflow_P = P.shape[1] % group_size
         padding_P = group_size - overflow_P if overflow_P else 0
-        padding_P1 = paddle.to_tensor([0, padding_P], dtype=paddle.int32)
-        P = F.pad(P, padding_P1, mode='constant', value=0.0, data_format='NLC')
+        P = F.pad(P, (0, 0, 0, padding_P, 0, 0), mode='constant', value=0.0, data_format='NLC')
         P = P.reshape([P_batch_size, -1, self.h, self.d_k * group_size]).transpose([0, 2, 1, 3])
 
         return Q, K, V, P, mask, padding_Q

@@ -366,9 +366,7 @@ class EfficientConformerEncoder(nn.Layer):
             # use repeat_interleave to new_att_cache
             new_att_cache = new_att_cache.repeat_interleave(repeats=factor, axis=2)
             # padding new_cnn_cache to cnn.lorder for casual convolution
-            new_cnn_cache_padding = paddle.to_tensor((self.cnn_module_kernel - 1 - new_cnn_cache.shape[3], 0),
-                                                     dtype=paddle.int32)
-            new_cnn_cache = F.pad(new_cnn_cache, new_cnn_cache_padding)
+            new_cnn_cache = F.pad(new_cnn_cache, (self.cnn_module_kernel - 1 - new_cnn_cache.shape[3], 0))
 
             if i == 0:
                 # record length for the first block as max length
