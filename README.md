@@ -111,7 +111,7 @@ predictor.reset_stream()
 
 1. [WenetSpeech](./docs/wenetspeech.md) (10000小时) 的预训练模型列表：
 
-|    使用模型     | 是否为流式 | 预处理方式 | 语言  |                             测试集字错率（词错率）                             |                              下载地址                               |
+|    使用模型     | 是否为流式 | 预处理方式 | 语言  |                             测试集字错率                             |                              下载地址                               |
 |:-----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:---------------------------------------------------------------:|
 |  conformer  | True  | fbank | 普通话 | 0.03579(aishell_test)<br>0.11081(test_net)<br>0.16031(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86932770) |
 | deepspeech2 | True  | fbank | 普通话 |                        0.05379(aishell_test)                        | [点击下载](https://download.csdn.net/download/qq_33200967/86932787) |
@@ -120,7 +120,7 @@ predictor.reset_stream()
 
 2.  [WenetSpeech](./docs/wenetspeech.md) (10000小时)+[中文语音数据集](https://download.csdn.net/download/qq_33200967/87003964) (3000+小时) 的预训练模型列表：
 
-|    使用模型    | 是否为流式 | 预处理方式 | 语言  |                             测试集字错率（词错率）                             |                              下载地址                               |
+|    使用模型    | 是否为流式 | 预处理方式 | 语言  |                             测试集字错率                             |                              下载地址                               |
 |:----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:---------------------------------------------------------------:|
 | conformere | True  | fbank | 普通话 | 0.02923(aishell_test)<br>0.11876(test_net)<br>0.18346(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86951249) |
 
@@ -128,7 +128,7 @@ predictor.reset_stream()
 
 3. [AIShell](https://openslr.magicdatatech.com/resources/33) (179小时) 的预训练模型列表：
 
-|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率（词错率） |                               下载地址                               |
+|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率 |                               下载地址                               |
 |:-------------------:|:-----:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
 |    squeezeformer    | True  | fbank | 普通话 |   0.04675   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 |     conformer       | True  | fbank | 普通话 |   0.04178   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
@@ -138,7 +138,7 @@ predictor.reset_stream()
 
 4. [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) 的预训练模型列表：
 
-|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率（词错率） |                               下载地址                               |
+|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集词错率 |                               下载地址                               |
 |:-------------------:|:-----:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
 |    squeezeformer    | True  | fbank | 英文  |             | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
 |      conformer      | True  | fbank | 英文  |   0.08109   | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
