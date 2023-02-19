@@ -32,7 +32,7 @@
 ## 项目快速了解
 
  1. 本项目支持流式识别模型`deepspeech2`、`conformer`、`squeezeformer`，`efficient_conformer`，每个模型都支持流式识别和非流式识别，在配置文件中`streaming`参数设置。
- 2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高，但不支持Windows。
+ 2. 本项目支持两种解码器，分别是集束搜索解码器`ctc_beam_search`和贪心解码器`ctc_greedy`，集束搜索解码器`ctc_beam_search`准确率更高。
  3. 下面提供了一系列预训练模型的下载，下载预训练模型之后，需要把全部文件复制到项目根目录，并执行导出模型才可以使用语音识别。
 
 ## 更新记录

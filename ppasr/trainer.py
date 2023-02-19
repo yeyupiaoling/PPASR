@@ -273,21 +273,15 @@ class PPASRTrainer(object):
     def __decoder_result(self, outs, vocabulary):
         # 集束搜索方法的处理
         if self.configs.decoder == "ctc_beam_search" and self.beam_search_decoder is None:
-            if platform.system() != 'Windows':
-                try:
-                    from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                    self.beam_search_decoder = BeamSearchDecoder(vocab_list=vocabulary,
-                                                                 **self.configs.ctc_beam_search_decoder_conf)
-                except ModuleNotFoundError:
-                    logger.warning('==================================================================')
-                    logger.warning('缺少 paddlespeech-ctcdecoders 库，请根据文档安装。')
-                    logger.warning('【注意】已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
-                    logger.warning('==================================================================\n')
-                    self.configs.decoder = 'ctc_greedy'
-            else:
+            try:
+                from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
+                self.beam_search_decoder = BeamSearchDecoder(vocab_list=vocabulary,
+                                                             **self.configs.ctc_beam_search_decoder_conf)
+            except ModuleNotFoundError:
                 logger.warning('==================================================================')
-                logger.warning(
-                    '【注意】Windows不支持ctc_beam_search，已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
+                logger.warning('缺少 paddlespeech-ctcdecoders 库，请根据文档安装。')
+                logger.warning('python -m pip install paddlespeech_ctcdecoders -i https://ppasr.yeyupiaoling.cn/pypi/simple/')
+                logger.warning('【注意】现在已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
                 logger.warning('==================================================================\n')
                 self.configs.decoder = 'ctc_greedy'
 
