@@ -1,5 +1,9 @@
 import os
 
+import urllib.request
+
+from tqdm import tqdm
+
 from ppasr.decoders.swig_wrapper import Scorer, CTCBeamSearchDecoder
 from ppasr.decoders.swig_wrapper import ctc_beam_search_decoding_batch, ctc_beam_search_decoding
 
@@ -20,7 +24,15 @@ class BeamSearchDecoder:
             language_model_url = 'https://deepspeech.bj.bcebos.com/zh_lm/zh_giga.no_cna_cmn.prune01244.klm'
             print("语言模型不存在，正在下载，下载地址： %s ..." % language_model_url)
             os.makedirs(os.path.dirname(language_model_path), exist_ok=True)
-            os.system("wget -c " + language_model_url + " -O " + language_model_path)
+            with urllib.request.urlopen(language_model_url) as source, open(language_model_path, "wb") as output:
+                with tqdm(total=int(source.info().get("Content-Length")), ncols=80, unit='iB', unit_scale=True,
+                          unit_divisor=1024) as loop:
+                    while True:
+                        buffer = source.read(8192)
+                        if not buffer:
+                            break
+                        output.write(buffer)
+                        loop.update(len(buffer))
             print('=' * 70)
         print('=' * 70)
         print("初始化解码器...")
