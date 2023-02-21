@@ -65,3 +65,16 @@ dataset_conf:
   # 数据列表类型，支持txt、binary
   manifest_type: 'binary'
 ```
+
+# 常见公开数据集
+
+|       数据集        | 语言  |   时长   |      大小       |                                                                                                                          下载地址                                                                                                                           |
+|:----------------:|:---:|:------:|:-------------:|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|     THCHS30      | 普通话 |  40h   |     6.01G     |                                                                                   [data_thchs30.tgz](http://openslr.magicdatatech.com/resources/18/data_thchs30.tgz)                                                                                    |
+|     ST-CMDS      | 普通话 |  100h  |     7.67G     |                                                                       [ST-CMDS-20170001_1-OS.tar.gz](http://openslr.magicdatatech.com/resources/38/ST-CMDS-20170001_1-OS.tar.gz)                                                                        |
+|    AIShell-1     | 普通话 |  178h  |    14.51G     |                                                                                   [data_aishell.tgz](http://openslr.magicdatatech.com/resources/33/data_aishell.tgz)                                                                                    |
+|    Primewords    | 普通话 |  100h  |     8.44G     |                                                                     [primewords_md_2018_set1.tar.gz](http://openslr.magicdatatech.com/resources/47/primewords_md_2018_set1.tar.gz)                                                                      |
+| aidatatang_200zh | 普通话 |  200h  |    17.47G     |                                                                               [aidatatang_200zh.tgz](http://openslr.magicdatatech.com/resources/62/aidatatang_200zh.tgz)                                                                                |
+|    MagicData     | 普通话 |  755h  | 52G/1.0G/2.2G | [train_set.tar.gz](http://openslr.magicdatatech.com/resources/68/train_set.tar.gz>) / [dev_set.tar.gz](http://openslr.magicdatatech.com/resources/68/dev_set.tar.gz) / [test_set.tar.gz](http://openslr.magicdatatech.com/resources/68/test_set.tar.gz) |
+|   WenetSpeech    | 普通话 | 10000h |     315G      |                                                                                                                [下载教程](./wenetspeech.md)                                                                                                                 |
+
