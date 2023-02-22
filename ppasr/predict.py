@@ -1,5 +1,4 @@
 import os
-import platform
 
 import cn2an
 import numpy as np
@@ -12,7 +11,7 @@ from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
 from ppasr.infer_utils.inference_predictor import InferencePredictor
 from ppasr.utils.logger import setup_logger
-from ppasr.utils.utils import dict_to_object, download, print_arguments
+from ppasr.utils.utils import dict_to_object, print_arguments, download_model
 
 logger = setup_logger(__name__)
 
@@ -46,7 +45,7 @@ class PPASRPredictor:
             model_url_dict = {
                 'conformer_streaming_fbank_wenetspeech': 'https://ppasr.yeyupiaoling.cn/models/conformer_streaming_fbank_wenetspeech.zip'}
             model_url = model_url_dict[model_tag]
-            _ = download(model_url, cache_dir)
+            _ = download_model(model_url, cache_dir)
             model_path = os.path.join(cache_dir, model_tag, 'models', model_tag[:model_tag.rfind('_')], 'infer')
             pun_model_dir = os.path.join(cache_dir, model_tag, 'models/pun_models/')
             configs = os.path.join(cache_dir, model_tag, 'configs',

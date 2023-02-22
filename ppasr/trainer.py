@@ -1,7 +1,6 @@
 import io
 import json
 import os
-import platform
 import shutil
 import time
 from collections import Counter
@@ -24,12 +23,12 @@ from ppasr.data_utils.reader import PPASRDataset
 from ppasr.data_utils.sampler import SortagradBatchSampler, SortagradDistributedBatchSampler
 from ppasr.data_utils.utils import create_manifest_binary
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder_batch
+from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing, CosineWithWarmup
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.metrics import cer, wer
-from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing, CosineWithWarmup
 from ppasr.utils.model_summary import summary
-from ppasr.utils.utils import create_manifest, create_noise, count_manifest, dict_to_object, merge_audio, \
-    print_arguments
+from ppasr.utils.utils import dict_to_object, print_arguments
+from ppasr.data_utils.utils import create_manifest, create_noise, count_manifest, merge_audio
 from ppasr.utils.utils import labels_to_string
 
 logger = setup_logger(__name__)
