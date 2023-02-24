@@ -1,13 +1,8 @@
 # Nvidia Jetson部署
 
-1. 这对Nvidia Jetson设备，如Nano、Nx、AGX等设备，可以通过下面命令安装PaddlePaddle的Inference预测库。
+1. 这对Nvidia Jetson设备，如Nano、Nx、AGX等设备，打开下面链接下载所需的PaddlePaddle的Inference预测库。
 ```shell
-# Jetpack4.4(4.5)版本
-wget https://paddle-inference-lib.bj.bcebos.com/2.2.1/python/Jetson/jetpack4.4_gcc7.5/all/paddlepaddle_gpu-2.2.1-cp36-cp36m-linux_aarch64.whl
-# Jetpack4.6版本
-wget https://paddle-inference-lib.bj.bcebos.com/2.2.1/python/Jetson/jetpack4.6_gcc7.5/all/paddlepaddle_gpu-2.2.1-cp36-cp36m-linux_aarch64.whl
-# 安装PaddlePaddle
-pip3 install paddlepaddle_gpu-2.2.1-cp36-cp36m-linux_aarch64.whl
+https://www.paddlepaddle.org.cn/inference/v2.4/guides/install/download_lib.html#python
 ```
 
 2. 安装scikit-learn依赖库。
