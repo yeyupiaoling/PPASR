@@ -133,7 +133,7 @@ predictor.reset_stream()
 |    squeezeformer    | True  | fbank | 普通话 |   0.04675   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 |     conformer       | True  | fbank | 普通话 |   0.04178   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 | efficient_conformer | True  | fbank | 普通话 |             | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-|     deepspeech2     | True  | fbank | 普通话 |   0.11367   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+|     deepspeech2     | True  | fbank | 普通话 |   0.09993   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 
 
 4. [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) 的预训练模型列表：
