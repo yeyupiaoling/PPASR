@@ -132,7 +132,7 @@ predictor.reset_stream()
 |:-------------------:|:-----:|:-----:|:---:|:-----------:|:----------------------------------------------------------------:|
 |    squeezeformer    | True  | fbank | 普通话 |   0.04675   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 |     conformer       | True  | fbank | 普通话 |   0.04178   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| efficient_conformer | True  | fbank | 普通话 |             | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+| efficient_conformer | True  | fbank | 普通话 |   0.04143   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) (导出问题待解决)|
 |     deepspeech2     | True  | fbank | 普通话 |   0.09732   | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
 
 
