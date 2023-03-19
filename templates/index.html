@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <title>语音识别-夜雨飘零</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <script type="text/javascript" src="record.js"></script>
     <link href="index.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
+<div id="header">
+    <h1>夜雨飘零语音识别</h1>
+</div>
 <div id="content">
     <div>
         <a id="upload" onclick="uploadAudioFile()" class="file">短音频文件识别</a>
         <a id="upload_long" onclick="uploadLongAudioFile()" class="file">长音频文件识别</a>
         <img id="record_btn" onclick="record()" src="record.png" alt="录音"/>
     </div>
-
     <div id="result">
         <textarea id="result_p"></textarea>
     </div>
@@ -51,12 +54,12 @@
     }
 
     // 上传短语音
-    function uploadAudioFile(){
+    function uploadAudioFile() {
         var input = document.createElement("input");
         input.type = "file";
         input.accept = "audio/*";
         input.click();
-        input.onchange = function(){
+        input.onchange = function () {
             var file = input.files[0];
             upload_file(host + "/recognition", file, function (state, e) {
                 switch (state) {
@@ -80,12 +83,12 @@
     }
 
     // 上传长语音
-    function uploadLongAudioFile(){
+    function uploadLongAudioFile() {
         var input = document.createElement("input");
         input.type = "file";
         input.accept = "audio/*";
         input.click();
-        input.onchange = function(){
+        input.onchange = function () {
             var file = input.files[0];
             upload_file(host + "/recognition_long_audio", file, function (state, e) {
                 switch (state) {

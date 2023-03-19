@@ -1,94 +1,91 @@
+* {
+    box-sizing: border-box;
+}
+
 body {
-    padding-top: 100px;
-    background-color: #008e8e;
+    font-family: "Helvetica Neue", "Roboto", sans-serif;
+    background-color: #f2f2f2;
+    margin: 0;
+    padding: 0;
+}
+
+#header {
+    background-color: #fff;
+    color: #333;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 80px;
+}
+
+h1 {
+    font-size: 36px;
+    margin: 0;
 }
 
 #content {
-    width: 900px;
-    height: 500px;
-    margin: 0 auto;
-    background-color: #00921d;
-    position: relative;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    margin: 50px auto;
+    max-width: 600px;
+    padding: 20px;
 }
 
-#player {
-    bottom: 50px;
-    left: 300px;
-    position: absolute;
+#content div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+#content a {
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    color: #333;
+    padding: 10px;
+    text-align: center;
+    text-decoration: none;
+    transition: background-color 0.2s;
+    width: 30%;
+}
+
+#content a:hover {
+    background-color: #f2f2f2;
+}
+
+#content img {
+    cursor: pointer;
+    height: 50px;
+    transition: transform 0.2s;
+    width: 50px;
+}
+
+#content img:hover {
+    transform: scale(1.1);
 }
 
 #result {
-    background-color: white;
-    width: 300px;
-    height: 250px;
-    top: 100px;
-    right: 100px;
-    position: absolute;
+    background-color: #fff;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    padding: 10px;
 }
 
-#result_p{
-    width: 300px;
-    height: 250px;
-}
-
-
-#upload {
-    width: 80px;
-    height: 30px;
-    top: 100px;
-    left: 130px;
-    position: absolute;
-}
-
-#upload_long {
-    width: 80px;
-    height: 30px;
-    top: 100px;
-    left: 300px;
-    position: absolute;
-}
-
-#btn {
-    top: 180px;
-    left: 150px;
-    position: relative;
-}
-
-
-.file {
-    position: relative;
-    text-align: center;
-    display: inline-block;
-    background: #D0EEFF;
-    border: 1px solid #99D3F5;
-    border-radius: 4px;
-    padding: 8px 40px;
-    overflow: hidden;
-    color: #1E88C7;
-    text-decoration: none;
-    text-indent: 0;
-    line-height: 20px;
-}
-
-.file input {
-    position: absolute;
-    font-size: 100px;
-    right: 0;
-    top: 0;
-    opacity: 0;
-}
-
-.file:hover {
-    background: #AADFFD;
-    border-color: #78C3F3;
-    color: #004974;
-    text-decoration: none;
-}
-
-#record_btn {
-    position: relative;
-    width: 150px;
+#result textarea {
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
     height: 150px;
-    left: 200px;
-    top: 185px;
+    margin-top: 10px;
+    padding: 10px;
+    resize: none;
+    width: 100%;
+}
+
+@media only screen and (max-width: 600px) {
+    #content a {
+        width: 100%;
+    }
 }
