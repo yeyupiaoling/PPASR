@@ -42,7 +42,7 @@
 
     // 开始录音
     function startRecording() {
-        url = 'ws://' + location.hostname + ':5001'
+        let url = 'ws://' + location.hostname + ':5001';
         PPASRRecorder.get(function (record) {
             recorder = record;
         }, url, textarea);

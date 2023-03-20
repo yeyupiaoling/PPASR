@@ -110,9 +110,16 @@ var PPASRRecorder = function (stream, url, textResult) {
     //接收到消息的回调方法
     socket.onmessage = function (MesssageEvent) {
         //返回结果
-        var jsonStr = MesssageEvent.data;
+        let jsonStr = MesssageEvent.data;
         console.log(jsonStr)
-        textResult.innerText = JSON.parse(jsonStr)['result']
+        let data = JSON.parse(jsonStr)
+        let code = data['code'];
+        if (code === 0){
+            textResult.innerText = data['result']
+        }else {
+            let msg = data['msg'];
+            alert('报错，错误信息：' + msg)
+        }
     }
     //连接关闭的回调方法
     socket.onerror = function (err) {
