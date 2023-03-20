@@ -7,6 +7,7 @@ import sys
 import time
 import wave
 from datetime import datetime
+from typing import List
 
 import websockets
 from flask import request, Flask, render_template
@@ -29,7 +30,8 @@ add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('is_itn',           bool,   False,  "是否对文本进行反标准化")
-add_arg('num_predictor',    int,    2,      "多少个预测器，也是就可以同时有多少个用户同时识别")
+add_arg('num_web_p',        int,    2,      "多少个预测器，这个是web服务并发的数量，必须大于1")
+add_arg('num_websocket_p',  int,    2,      "多少个预测器，这个是WebSocket同时连接的数量，必须大于1")
 add_arg('model_path',       str,    'models/conformer_streaming_fbank/infer',   "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',    "加标点符号的模型文件夹路径")
 args = parser.parse_args()
@@ -40,13 +42,15 @@ app = Flask('PPASR', template_folder="templates", static_folder="static", static
 CORS(app)
 
 # 多进程
-executor = ProcessPoolExecutor(max_workers=args.num_predictor)
-# 创建预测器
+executor = ProcessPoolExecutor(max_workers=args.num_web_p)
+# 创建预测器，是实时语音的第一个对象和创建多进程时使用
 predictor = PPASRPredictor(configs=args.configs,
                            model_path=args.model_path,
                            use_gpu=args.use_gpu,
                            use_pun=args.use_pun,
                            pun_model_dir=args.pun_model_dir)
+# 创建多个预测器，实时语音识别所以要这样处理
+predictors: List[PPASRPredictor] = [predictor]
 
 
 # 多进行推理需要用到的
@@ -115,8 +119,14 @@ def home():
 # 流式识别WebSocket服务
 async def stream_server_run(websocket, path):
     logger.info(f'有WebSocket连接建立：{websocket.remote_address}')
-    if not predictor.running:
-        predictor.running = True
+    # 寻找空闲的预测器
+    use_predictor = None
+    for predictor2 in predictors:
+        if predictor2.running: continue
+        use_predictor = predictor2
+        use_predictor.running = True
+        break
+    if use_predictor is not None:
         frames = []
         while not websocket.closed:
             try:
@@ -129,8 +139,8 @@ async def stream_server_run(websocket, path):
                     is_end = True
                     data = data[:-3]
                 # 开始预测
-                result = predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=args.is_itn,
-                                                  is_end=is_end)
+                result = use_predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=args.is_itn,
+                                                      is_end=is_end)
                 if result is None: continue
                 score, text = result['score'], result['text']
                 send_data = str({"code": 0, "result": text}).replace("'", '"')
@@ -144,8 +154,8 @@ async def stream_server_run(websocket, path):
                     await websocket.send(str({"code": 2, "msg": "recognition fail!"}).replace("'", '"'))
                 except:pass
         # 重置流式识别
-        predictor.reset_stream()
-        predictor.running = False
+        use_predictor.reset_stream()
+        use_predictor.running = False
         # 保存录音
         save_dir = os.path.join(args.save_path, datetime.now().strftime('%Y-%m-%d'))
         os.makedirs(save_dir, exist_ok=True)
@@ -169,8 +179,18 @@ def start_server_thread():
 
 
 if __name__ == '__main__':
+    # 实时语音识别所以要这样处理
+    for _ in range(args.num_websocket_p - 1):
+        predictor1 = PPASRPredictor(configs=args.configs,
+                                    model_path=args.model_path,
+                                    use_gpu=args.use_gpu,
+                                    use_pun=args.use_pun,
+                                    pun_model_dir=args.pun_model_dir)
+        predictors.append(predictor1)
+    # 创建保存路径
     if not os.path.exists(args.save_path):
         os.makedirs(args.save_path)
+    # 启动web服务
     _thread.start_new_thread(start_server_thread, ())
     logger.warning('因为是多进程，所以第一次访问比较慢是正常，后面速度就会恢复了！')
     # 启动Flask服务
