@@ -30,8 +30,8 @@ add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('is_itn',           bool,   False,  "是否对文本进行反标准化")
-add_arg('num_web_p',        int,    2,      "多少个预测器，这个是web服务并发的数量，必须大于1")
-add_arg('num_websocket_p',  int,    2,      "多少个预测器，这个是WebSocket同时连接的数量，必须大于1")
+add_arg('num_web_p',        int,    2,      "多少个预测器，这个是Web服务并发的数量，必须大于等于1")
+add_arg('num_websocket_p',  int,    2,      "多少个预测器，这个是WebSocket同时连接的数量，必须大于等于1")
 add_arg('model_path',       str,    'models/conformer_streaming_fbank/infer',   "导出的预测模型文件路径")
 add_arg('pun_model_dir',    str,    'models/pun_models/',    "加标点符号的模型文件夹路径")
 args = parser.parse_args()
@@ -40,6 +40,9 @@ print_arguments(args=args)
 app = Flask('PPASR', template_folder="templates", static_folder="static", static_url_path="/")
 # 允许跨越访问
 CORS(app)
+
+assert args.num_web_p >= 1, f'Web服务的预测器数量必须大于等于1，当前为：{args.num_web_p}'
+assert args.num_websocket_p >= 1, f'WebSocket服务的预测器数量必须大于等于1，当前为：{args.num_websocket_p}'
 
 # 多进程
 executor = ProcessPoolExecutor(max_workers=args.num_web_p)
