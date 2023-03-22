@@ -3,13 +3,12 @@ import io
 import os
 import random
 
-import ffmpeg
 import numpy as np
 import resampy
 import soundfile
 from scipy import signal
 
-from ppasr.data_utils.utils import buf_to_float
+from ppasr.data_utils.utils import buf_to_float, decode_audio
 
 
 class AudioSegment(object):
@@ -57,7 +56,7 @@ class AudioSegment(object):
     def from_file(cls, file):
         """从音频文件创建音频段
         
-        :param file: 文件路径
+        :param file: 文件路径，或者文件对象
         :type file: str
         :return: 音频片段实例
         :rtype: AudioSegment
@@ -66,12 +65,9 @@ class AudioSegment(object):
         try:
             samples, sample_rate = soundfile.read(file, dtype='float32')
         except:
-            # 使用ffmpeg读取音频，以支持更多格式数据
+            # 支持更多格式数据
             sample_rate = 16000
-            out, _ = (ffmpeg.input(file, threads=0)
-                      .output("-", format="s16le", acodec="pcm_s16le", ac=1, ar=sample_rate)
-                      .run(cmd=["ffmpeg", "-nostdin"], capture_stdout=True, capture_stderr=True))
-            samples = np.frombuffer(out, np.int16).flatten().astype(np.float32) / 32768.0
+            samples = decode_audio(file=file, sample_rate=sample_rate)
         return cls(samples, sample_rate)
 
     @classmethod

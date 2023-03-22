@@ -1,12 +1,14 @@
+import io
+import itertools
 import json
 import os
 import time
 import wave
 
+import av
 import numpy as np
 import resampy
 import soundfile
-from pydub import AudioSegment
 from tqdm import tqdm
 from zhconv import convert
 
@@ -307,6 +309,57 @@ def create_manifest_binary(train_manifest_path, test_manifest_path):
         dataset_writer.close()
 
 
+def decode_audio(file, sample_rate: int = 16000):
+    """读取音频，主要用于兜底读取，支持各种数据格式
+
+    Args:
+      file: Path to the input file or a file-like object.
+      sample_rate: Resample the audio to this sample rate.
+
+    Returns:
+      A float32 Numpy array.
+    """
+    resampler = av.audio.resampler.AudioResampler(format="s16", layout="mono", rate=sample_rate)
+
+    raw_buffer = io.BytesIO()
+    dtype = None
+
+    with av.open(file, metadata_errors="ignore") as container:
+        frames = container.decode(audio=0)
+        frames = _group_frames(frames, 500000)
+        frames = _resample_frames(frames, resampler)
+
+        for frame in frames:
+            array = frame.to_ndarray()
+            dtype = array.dtype
+            raw_buffer.write(array)
+
+    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
+
+    # Convert s16 back to f32.
+    return audio.astype(np.float32) / 32768.0
+
+
+def _group_frames(frames, num_samples=None):
+    fifo = av.audio.fifo.AudioFifo()
+
+    for frame in frames:
+        frame.pts = None  # Ignore timestamp check.
+        fifo.write(frame)
+
+        if num_samples is not None and fifo.samples >= num_samples:
+            yield fifo.read()
+
+    if fifo.samples > 0:
+        yield fifo.read()
+
+
+def _resample_frames(frames, resampler):
+    # Add None to flush the resampler.
+    for frame in itertools.chain(frames, [None]):
+        yield from resampler.resample(frame)
+
+
 # 将音频流转换为numpy
 def buf_to_float(x, n_bytes=2, dtype=np.float32):
     """Convert an integer buffer to floating point values.
@@ -338,9 +391,3 @@ def buf_to_float(x, n_bytes=2, dtype=np.float32):
 
     # Rescale and format the data buffer
     return scale * np.frombuffer(x, fmt).astype(dtype)
-
-
-def opus_to_wav(opus_path, save_wav_path, rate=16000):
-    source_wav = AudioSegment.from_file(opus_path)
-    target_audio = source_wav.set_frame_rate(rate)
-    target_audio.export(save_wav_path, format="wav")
