@@ -1,4 +1,5 @@
 import os
+from io import BufferedReader
 
 import cn2an
 import numpy as np
@@ -133,21 +134,17 @@ class PPASRPredictor:
             text = self.inverse_text_normalization(text)
         return score, text
 
-    # 预测音频
-    def predict(self,
-                audio_data,
-                use_pun=False,
-                is_itn=False,
-                sample_rate=16000):
-        """ 预测函数，只预测完整的一句话
-        :param audio_data: 需要识别的数据，支持文件路径，字节，numpy。如果是字节的话，必须是完整的字节文件
-        :param use_pun: 是否使用加标点符号的模型
-        :param is_itn: 是否对文本进行反标准化
+    @staticmethod
+    def _load_audio(audio_data, sample_rate=16000):
+        """加载音频
+        :param audio_data: 需要识别的数据，支持文件路径，文件对象，字节，numpy。如果是字节的话，必须是完整的字节文件
         :param sample_rate: 如果传入的事numpy数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
         # 加载音频文件，并进行预处理
         if isinstance(audio_data, str):
+            audio_segment = AudioSegment.from_file(audio_data)
+        elif isinstance(audio_data, BufferedReader):
             audio_segment = AudioSegment.from_file(audio_data)
         elif isinstance(audio_data, np.ndarray):
             audio_segment = AudioSegment.from_ndarray(audio_data, sample_rate)
@@ -155,6 +152,23 @@ class PPASRPredictor:
             audio_segment = AudioSegment.from_bytes(audio_data)
         else:
             raise Exception(f'不支持该数据类型，当前数据类型为：{type(audio_data)}')
+        return audio_segment
+
+    # 预测音频
+    def predict(self,
+                audio_data,
+                use_pun=False,
+                is_itn=False,
+                sample_rate=16000):
+        """ 预测函数，只预测完整的一句话
+        :param audio_data: 需要识别的数据，支持文件路径，文件对象，字节，numpy。如果是字节的话，必须是完整的字节文件
+        :param use_pun: 是否使用加标点符号的模型
+        :param is_itn: 是否对文本进行反标准化
+        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
+        :return: 识别的文本结果和解码的得分数
+        """
+        # 加载音频文件，并进行预处理
+        audio_segment = self._load_audio(audio_data=audio_data, sample_rate=sample_rate)
         audio_feature = self._audio_featurizer.featurize(audio_segment)
         input_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
         audio_len = np.array([input_data.shape[1]]).astype(np.int64)
@@ -175,7 +189,7 @@ class PPASRPredictor:
                      sample_rate=16000):
         """
         预测函数，只预测完整的一句话。
-        :param audio_data: 需要识别的数据，支持文件路径，字节，numpy。如果是字节的话，必须是完整的字节文件
+        :param audio_data: 需要识别的数据，支持文件路径，文件对象，字节，numpy。如果是字节的话，必须是完整的字节文件
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
         :param sample_rate: 如果传入的事numpy数据，需要指定采样率
@@ -185,14 +199,7 @@ class PPASRPredictor:
             from ppasr.infer_utils.vad_predictor import VADPredictor
             self.vad_predictor = VADPredictor()
         # 加载音频文件，并进行预处理
-        if isinstance(audio_data, str):
-            audio_segment = AudioSegment.from_file(audio_data)
-        elif isinstance(audio_data, np.ndarray):
-            audio_segment = AudioSegment.from_ndarray(audio_data, sample_rate)
-        elif isinstance(audio_data, bytes):
-            audio_segment = AudioSegment.from_bytes(audio_data)
-        else:
-            raise Exception(f'不支持该数据类型，当前数据类型为：{type(audio_data)}')
+        audio_segment = self._load_audio(audio_data=audio_data, sample_rate=sample_rate)
         # 重采样，方便进行语音活动检测
         if audio_segment.sample_rate != self.configs.preprocess_conf.sample_rate:
             audio_segment.resample(self.configs.preprocess_conf.sample_rate)

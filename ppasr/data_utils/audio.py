@@ -57,7 +57,7 @@ class AudioSegment(object):
         """从音频文件创建音频段
         
         :param file: 文件路径，或者文件对象
-        :type file: str
+        :type file: str, BufferedReader
         :return: 音频片段实例
         :rtype: AudioSegment
         """
