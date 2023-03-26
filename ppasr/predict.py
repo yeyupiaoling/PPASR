@@ -231,6 +231,8 @@ class PPASRPredictor:
                        is_end=False,
                        use_pun=False,
                        is_itn=False,
+                       channels=1,
+                       samp_width=2,
                        sample_rate=16000):
         """
         预测函数，流式预测，通过一直输入音频数据，实现实时识别。
@@ -238,7 +240,9 @@ class PPASRPredictor:
         :param is_end: 是否结束语音识别
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
-        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
+        :param channels: 如果传入的是pcm字节流数据，需要指定通道数
+        :param samp_width: 如果传入的是pcm字节流数据，需要指定音频宽度
+        :param sample_rate: 如果传入的是numpy或者pcm字节流数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
         if not self.configs.streaming:
@@ -247,7 +251,8 @@ class PPASRPredictor:
         if isinstance(audio_data, np.ndarray):
             audio_data = AudioSegment.from_ndarray(audio_data, sample_rate)
         elif isinstance(audio_data, bytes):
-            audio_data = AudioSegment.from_wave_bytes(audio_data)
+            audio_data = AudioSegment.from_pcm_bytes(audio_data, channels=channels,
+                                                     samp_width=samp_width, sample_rate=sample_rate)
         else:
             raise Exception(f'不支持该数据类型，当前数据类型为：{type(audio_data)}')
         if self.remained_wav is None:

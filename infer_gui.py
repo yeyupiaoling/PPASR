@@ -4,14 +4,18 @@ import asyncio
 import functools
 import json
 import os
+import queue
 import time
 import tkinter.messagebox
 import wave
 from tkinter import *
 from tkinter.filedialog import askopenfilename
 
+import numpy as np
 import pyaudio
+import soundcard
 import requests
+import soundfile
 import websockets
 
 from ppasr.predict import PPASRPredictor
@@ -47,14 +51,14 @@ class SpeechRecognitionApp:
         self.use_server = args.use_server
         # 录音参数
         self.frames = []
+        self.data_queue = queue.Queue()
+        self.sample_rate = 16000
         interval_time = 0.5
-        self.CHUNK = int(16000 * interval_time)
+        self.block_size = int(self.sample_rate * interval_time)
         # 最大录音时长
         self.max_record = 600
         # 录音保存的路径
         self.output_path = 'dataset/record'
-        # 创建一个播放器
-        self.p = pyaudio.PyAudio()
         # 指定窗口标题
         self.window.title("夜雨飘零语音识别")
         # 固定窗口大小
@@ -80,7 +84,8 @@ class SpeechRecognitionApp:
         # 对文本进行反标准化
         self.an_frame = Frame(self.window)
         self.check_var = BooleanVar(value=False)
-        self.is_itn_check = Checkbutton(self.an_frame, text='是否对文本进行反标准化', variable=self.check_var, command=self.is_itn_state)
+        self.is_itn_check = Checkbutton(self.an_frame, text='是否对文本进行反标准化', variable=self.check_var,
+                                        command=self.is_itn_state)
         self.is_itn_check.grid(row=0)
         self.an_frame.grid(row=1)
         self.an_frame.place(x=700, y=10)
@@ -100,14 +105,118 @@ class SpeechRecognitionApp:
     # 预测短语音线程
     def predict_audio_thread(self):
         if not self.predicting:
-            self.wav_path = askopenfilename(filetypes=[("音频文件", "*.wav"), ("音频文件", "*.mp3")], initialdir='./dataset')
+            self.wav_path = askopenfilename(filetypes=[("音频文件", "*.wav"), ("音频文件", "*.mp3")],
+                                            initialdir='./dataset')
             if self.wav_path == '': return
             self.result_text.delete('1.0', 'end')
             self.result_text.insert(END, "已选择音频文件：%s\n" % self.wav_path)
             self.result_text.insert(END, "正在识别中...\n")
-            _thread.start_new_thread(self.predict_audio, (self.wav_path, ))
+            _thread.start_new_thread(self.predict_audio, (self.wav_path,))
         else:
             tkinter.messagebox.showwarning('警告', '正在预测，请等待上一轮预测结束！')
+
+    # 预测长语音线程
+    def predict_long_audio_thread(self):
+        if not self.predicting:
+            self.wav_path = askopenfilename(filetypes=[("音频文件", "*.wav"), ("音频文件", "*.mp3")],
+                                            initialdir='./dataset')
+            if self.wav_path == '': return
+            self.result_text.delete('1.0', 'end')
+            self.result_text.insert(END, "已选择音频文件：%s\n" % self.wav_path)
+            self.result_text.insert(END, "正在识别中...\n")
+            _thread.start_new_thread(self.predict_long_audio, (self.wav_path,))
+        else:
+            tkinter.messagebox.showwarning('警告', '正在预测，请等待上一轮预测结束！')
+
+    # 录音识别线程
+    def record_audio_thread(self):
+        if not self.playing and not self.recording:
+            self.result_text.delete('1.0', 'end')
+            self.recording = True
+            if not self.use_server:
+                _thread.start_new_thread(self.record_audio, ())
+            _thread.start_new_thread(self.predict_stream, ())
+        else:
+            if self.playing:
+                tkinter.messagebox.showwarning('警告', '正在录音，无法播放音频！')
+            else:
+                # 停止录音
+                self.recording = False
+
+    # 播放音频线程
+    def play_audio_thread(self):
+        if self.wav_path is None or self.wav_path == '':
+            tkinter.messagebox.showwarning('警告', '音频路径为空！')
+        else:
+            if not self.playing and not self.recording:
+                _thread.start_new_thread(self.play_audio, ())
+            else:
+                if self.recording:
+                    tkinter.messagebox.showwarning('警告', '正在录音，无法播放音频！')
+                else:
+                    # 停止播放
+                    self.playing = False
+
+    def record_audio(self):
+        self.frames = []
+        self.record_button.configure(text='停止录音')
+        self.result_text.insert(END, "正在录音...\n")
+        # 打开默认的输入设备
+        input_device = soundcard.default_microphone()
+        recorder = input_device.recorder(samplerate=self.sample_rate, channels=1, blocksize=self.block_size)
+        with recorder:
+            while True:
+                # 开始录制并获取数据
+                data = recorder.record(numframes=self.block_size)
+                data = data.squeeze()
+                self.frames.append(data)
+                self.data_queue.put(data)
+                if not self.recording: break
+        self.recording = False
+
+    # 播放音频
+    def play_audio(self):
+        self.play_button.configure(text='停止播放')
+        self.playing = True
+        default_speaker = soundcard.default_speaker()
+        data, sr = soundfile.read(self.wav_path)
+        with default_speaker.player(samplerate=sr) as player:
+            for i in range(0, data.shape[0], sr):
+                if not self.playing: break
+                d = data[i:i + sr]
+                player.play(d / np.max(np.abs(d)))
+        self.playing = False
+        self.play_button.configure(text='播放音频')
+
+    def predict_stream(self):
+        if not self.use_server:
+            # 本地识别
+            while self.recording:
+                try:
+                    data = self.data_queue.get(timeout=1)
+                except queue.Empty:
+                    continue
+                # 在这里处理数据
+                result = self.predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=self.is_itn,
+                                                       is_end=not self.recording, sample_rate=self.sample_rate)
+                if result is None: continue
+                score, text = result['score'], result['text']
+                self.result_text.delete('1.0', 'end')
+                self.result_text.insert(END, f"{text}\n")
+            self.predictor.reset_stream()
+            # 拼接录音数据
+            data = np.concatenate(self.frames)
+            # 保存音频数据
+            os.makedirs(self.output_path, exist_ok=True)
+            self.wav_path = os.path.join(self.output_path, '%s.wav' % str(int(time.time())))
+            soundfile.write(self.wav_path, data=data, samplerate=self.sample_rate)
+            self.result_text.insert(END, "录音已结束，录音文件保存在：%s\n" % self.wav_path)
+            self.record_button.configure(text='录音识别')
+
+        else:
+            # 调用服务接口
+            new_loop = asyncio.new_event_loop()
+            new_loop.run_until_complete(self.run_websocket())
 
     # 预测短语音
     def predict_audio(self, wav_file):
@@ -128,23 +237,12 @@ class SpeechRecognitionApp:
                 if data['code'] != 0:
                     raise Exception(f'服务请求失败，错误信息：{data["msg"]}')
                 text, score = data['result'], data['score']
-            self.result_text.insert(END, f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {score}\n")
+            self.result_text.insert(END,
+                                    f"消耗时间：{int(round((time.time() - start) * 1000))}ms, 识别结果: {text}, 得分: {score}\n")
         except Exception as e:
             self.result_text.insert(END, str(e))
             logger.error(e)
         self.predicting = False
-
-    # 预测长语音线程
-    def predict_long_audio_thread(self):
-        if not self.predicting:
-            self.wav_path = askopenfilename(filetypes=[("音频文件", "*.wav"), ("音频文件", "*.mp3")], initialdir='./dataset')
-            if self.wav_path == '': return
-            self.result_text.delete('1.0', 'end')
-            self.result_text.insert(END, "已选择音频文件：%s\n" % self.wav_path)
-            self.result_text.insert(END, "正在识别中...\n")
-            _thread.start_new_thread(self.predict_long_audio, (self.wav_path, ))
-        else:
-            tkinter.messagebox.showwarning('警告', '正在预测，请等待上一轮预测结束！')
 
     # 预测长语音
     def predict_long_audio(self, wav_path):
@@ -166,29 +264,29 @@ class SpeechRecognitionApp:
                     raise Exception(f'服务请求失败，错误信息：{data["msg"]}')
                 text, score = data['result'], data['score']
             self.result_text.insert(END, "=====================================================\n")
-            self.result_text.insert(END, f"最终结果，消耗时间：{int(round((time.time() - start) * 1000))}, 得分: {score}, 识别结果: {text}\n")
+            self.result_text.insert(END,
+                                    f"最终结果，消耗时间：{int(round((time.time() - start) * 1000))}, 得分: {score}, 识别结果: {text}\n")
         except Exception as e:
             self.result_text.insert(END, str(e))
             logger.error(e)
         self.predicting = False
 
-    # 录音识别线程
-    def record_audio_thread(self):
-        if not self.playing and not self.recording:
-            self.result_text.delete('1.0', 'end')
-            _thread.start_new_thread(self.record_audio, ())
-        else:
-            if self.playing:
-                tkinter.messagebox.showwarning('警告', '正在播放音频，无法录音！')
-            else:
-                # 停止播放
-                self.recording = False
-
     # 使用WebSocket调用实时语音识别服务
     async def run_websocket(self):
+        self.frames = []
+        self.record_button.configure(text='停止录音')
+        self.result_text.insert(END, "正在录音...\n")
+        # 创建一个播放器
+        p = pyaudio.PyAudio()
+        # 打开录音
+        stream = p.open(format=pyaudio.paInt16,
+                        channels=1,
+                        rate=self.sample_rate,
+                        input=True,
+                        frames_per_buffer=self.block_size)
         async with websockets.connect(f"ws://{args.host}:{args.port_stream}") as websocket:
             while not websocket.closed:
-                data = self.stream.read(self.CHUNK)
+                data = stream.read(self.block_size)
                 self.frames.append(data)
                 send_data = data
                 # 用户点击停止录音按钮
@@ -198,95 +296,27 @@ class SpeechRecognitionApp:
                 result = await websocket.recv()
                 self.result_text.delete('1.0', 'end')
                 self.result_text.insert(END, f"{json.loads(result)['result']}\n")
-                # 停止录音后，需要把end发给服务器才能最终停止
-                if not self.recording and b'end' == send_data[-3:]:break
+                # 停止录音后，需要把"end"发给服务器才最终停止
+                if not self.recording and b'end' == send_data[-3:]:
+                    logger.info('识别结束')
+                    break
             # await websocket.close()
-        logger.info('close websocket')
-
-    def record_audio(self):
-        self.record_button.configure(text='停止录音')
-        self.recording = True
-        self.frames = []
-        FORMAT = pyaudio.paInt16
-        channels = 1
-        rate = 16000
-
-        # 打开录音
-        self.stream = self.p.open(format=FORMAT,
-                                  channels=channels,
-                                  rate=rate,
-                                  input=True,
-                                  frames_per_buffer=self.CHUNK)
-        self.result_text.insert(END, "正在录音...\n")
-        if not self.use_server:
-            # 本地识别
-            while True:
-                data = self.stream.read(self.CHUNK)
-                self.frames.append(data)
-                result = self.predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=self.is_itn, is_end=not self.recording)
-                if result is None:continue
-                score, text = result['score'], result['text']
-                self.result_text.delete('1.0', 'end')
-                self.result_text.insert(END, f"{text}\n")
-                if not self.recording:break
-            self.predictor.reset_stream()
-        else:
-            # 调用服务接口
-            new_loop = asyncio.new_event_loop()
-            new_loop.run_until_complete(self.run_websocket())
-
+        stream.close()
         # 录音的字节数据，用于后面的预测和保存
         audio_bytes = b''.join(self.frames)
         # 保存音频数据
         os.makedirs(self.output_path, exist_ok=True)
         self.wav_path = os.path.join(self.output_path, '%s.wav' % str(int(time.time())))
         wf = wave.open(self.wav_path, 'wb')
-        wf.setnchannels(channels)
-        wf.setsampwidth(self.p.get_sample_size(FORMAT))
-        wf.setframerate(rate)
+        wf.setnchannels(1)
+        wf.setsampwidth(p.get_sample_size(pyaudio.paInt16))
+        wf.setframerate(self.sample_rate)
         wf.writeframes(audio_bytes)
         wf.close()
         self.recording = False
         self.result_text.insert(END, "录音已结束，录音文件保存在：%s\n" % self.wav_path)
         self.record_button.configure(text='录音识别')
-
-    # 播放音频线程
-    def play_audio_thread(self):
-        if self.wav_path is None or self.wav_path == '':
-            tkinter.messagebox.showwarning('警告', '音频路径为空！')
-        else:
-            if not self.playing and not self.recording:
-                _thread.start_new_thread(self.play_audio, ())
-            else:
-                if self.recording:
-                    tkinter.messagebox.showwarning('警告', '正在录音，无法播放音频！')
-                else:
-                    # 停止播放
-                    self.playing = False
-
-    # 播放音频
-    def play_audio(self):
-        self.play_button.configure(text='停止播放')
-        self.playing = True
-        CHUNK = 1024
-        wf = wave.open(self.wav_path, 'rb')
-        # 打开数据流
-        self.stream = self.p.open(format=self.p.get_format_from_width(wf.getsampwidth()),
-                                  channels=wf.getnchannels(),
-                                  rate=wf.getframerate(),
-                                  output=True)
-        # 读取数据
-        data = wf.readframes(CHUNK)
-        # 播放
-        while data != b'':
-            if not self.playing:break
-            self.stream.write(data)
-            data = wf.readframes(CHUNK)
-        # 停止数据流
-        self.stream.stop_stream()
-        self.stream.close()
-        self.playing = False
-        self.play_button.configure(text='播放音频')
+        logger.info('close websocket')
 
 
 tk = Tk()

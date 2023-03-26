@@ -3,7 +3,8 @@ scipy>=1.6.3
 tqdm
 python-Levenshtein==0.12.2
 visualdl>=2.1.1
-SoundFile>=0.12.1
+soundfile>=0.12.1
+soundcard>=0.4.2
 resampy>=0.2.2
 zhconv>=1.4.2
 ijson~=3.1.4

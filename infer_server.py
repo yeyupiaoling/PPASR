@@ -131,6 +131,7 @@ async def stream_server_run(websocket, path):
         break
     if use_predictor is not None:
         frames = []
+        score, text = 0, ""
         while not websocket.closed:
             try:
                 data = await websocket.recv()
@@ -144,8 +145,8 @@ async def stream_server_run(websocket, path):
                 # 开始预测
                 result = use_predictor.predict_stream(audio_data=data, use_pun=args.use_pun, is_itn=args.is_itn,
                                                       is_end=is_end)
-                if result is None: continue
-                score, text = result['score'], result['text']
+                if result is not None:
+                    score, text = result['score'], result['text']
                 send_data = str({"code": 0, "result": text}).replace("'", '"')
                 logger.info(f'向客户端发生消息：{send_data}')
                 await websocket.send(send_data)
