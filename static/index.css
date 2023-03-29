@@ -28,7 +28,7 @@ h1 {
     border-radius: 10px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     margin: 50px auto;
-    max-width: 600px;
+    max-width: 800px;
     padding: 20px;
 }
 
@@ -77,7 +77,7 @@ h1 {
     border: none;
     border-radius: 5px;
     font-size: 16px;
-    height: 150px;
+    height: 300px;
     margin-top: 10px;
     padding: 10px;
     resize: none;
