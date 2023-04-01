@@ -167,8 +167,7 @@ class EfficientConformerEncoder(nn.Layer):
                     encoder_selfattn_layer(*encoder_selfattn_layer_args),
                     positionwise_layer(*positionwise_layer_args),
                     positionwise_layer(*positionwise_layer_args) if macaron_style else None,
-                    convolution_layer(
-                        *convolution_layer_args_stride) if use_cnn_module else None,
+                    convolution_layer(*convolution_layer_args_stride) if use_cnn_module else None,
                     paddle.nn.AvgPool1D(kernel_size=self.stride[index], stride=self.stride[index],
                                         padding=0, ceil_mode=True),  # pointwise_conv_layer
                     dropout_rate,
@@ -327,8 +326,10 @@ class EfficientConformerEncoder(nn.Layer):
 
         # for ONNX export， padding xs to chunk_size
         if self.global_chunk_size > 0:
-            real_len = xs.size(1)
-            xs = F.pad(xs, (0, 0, 0, self.global_chunk_size - real_len), mode='constant', value=0.0)
+            real_len = xs.shape[1]
+            padding = paddle.full([2], 0, dtype="int32")
+            padding[1] = self.global_chunk_size - real_len
+            xs = F.pad(xs, padding, mode='constant', value=0.0, data_format='NLC')
             tmp_zeros = paddle.zeros(att_mask.shape, dtype=paddle.bool)
             att_mask[:, :, required_cache_size + real_len + 1:] = \
                 tmp_zeros[:, :, required_cache_size + real_len + 1:]
@@ -347,8 +348,8 @@ class EfficientConformerEncoder(nn.Layer):
             xs, _, new_att_cache, new_cnn_cache = layer(
                 xs, att_mask, pos_emb,
                 mask_pad=mask_pad,
-                att_cache=att_cache[i:i + 1, :, ::factor, :],
-                cnn_cache=cnn_cache[i:i + 1]
+                att_cache=att_cache[i:i + 1, :, ::factor, :] if att_cache.shape[0] > 0 else att_cache,
+                cnn_cache=cnn_cache[i:i + 1] if cnn_cache.shape[0] > 0 else cnn_cache
             )
 
             if i in self.stride_layer_idx:
@@ -366,7 +367,9 @@ class EfficientConformerEncoder(nn.Layer):
             # use repeat_interleave to new_att_cache
             new_att_cache = new_att_cache.repeat_interleave(repeats=factor, axis=2)
             # padding new_cnn_cache to cnn.lorder for casual convolution
-            new_cnn_cache = F.pad(new_cnn_cache, (self.cnn_module_kernel - 1 - new_cnn_cache.shape[3], 0))
+            padding = paddle.full([4], 0, dtype="int32")
+            padding[0] = self.cnn_module_kernel - 1 - new_cnn_cache.shape[3]
+            new_cnn_cache = F.pad(new_cnn_cache, padding)
 
             if i == 0:
                 # record length for the first block as max length
@@ -374,7 +377,9 @@ class EfficientConformerEncoder(nn.Layer):
                 max_cnn_len = new_cnn_cache.shape[3]
 
             # update real shape of att_cache and cnn_cache
-            r_att_cache.append(new_att_cache[:, :, -max_att_len:, :])
+            # TODO There is a bug in this code
+            # r_att_cache.append(new_att_cache[:, :, -max_att_len:, :])
+            r_att_cache.append(new_att_cache)
             r_cnn_cache.append(new_cnn_cache[:, :, :, -max_cnn_len:])
 
         if self.normalize_before:

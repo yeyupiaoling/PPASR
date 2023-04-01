@@ -47,15 +47,19 @@ class GroupedRelPositionMultiHeadedAttention(MultiHeadedAttention):
         overflow_Q = Q.shape[2] % group_size
         overflow_KV = K.shape[2] % group_size
 
-        padding_Q = (group_size - overflow_Q) * int(overflow_Q // (overflow_Q + 1e-17))
-        padding_KV = (group_size - overflow_KV) * int(overflow_KV // (overflow_KV + 1e-17))
+        padding_Q = paddle.full([4], 0, dtype="int32")
+        padding_q = (group_size - overflow_Q) * int(overflow_Q // (overflow_Q + 1e-17))
+        padding_Q[3] = padding_q
+        padding_KV = paddle.full([4], 0, dtype="int32")
+        padding_KV[3] = (group_size - overflow_KV) * int(overflow_KV // (overflow_KV + 1e-17))
 
         batch_size, _, seq_len_KV, _ = K.shape
 
         # Input Padding (B, T, D) -> (B, T + P, D)
-        Q = F.pad(Q, (0, 0, 0, padding_Q), mode='constant', value=0.0)
-        K = F.pad(K, (0, 0, 0, padding_KV), mode='constant', value=0.0)
-        V = F.pad(V, (0, 0, 0, padding_KV), mode='constant', value=0.0)
+
+        Q = F.pad(Q, padding_Q, mode='constant', value=0.0)
+        K = F.pad(K, padding_KV, mode='constant', value=0.0)
+        V = F.pad(V, padding_KV, mode='constant', value=0.0)
 
         if mask is not None and mask.shape[2] > 0:  # time2 > 0:
             mask = mask[:, ::group_size, ::group_size]
@@ -67,11 +71,12 @@ class GroupedRelPositionMultiHeadedAttention(MultiHeadedAttention):
         # process pos_emb
         P_batch_size = P.shape[0]
         overflow_P = P.shape[1] % group_size
-        padding_P = group_size - overflow_P if overflow_P else 0
-        P = F.pad(P, (0, 0, 0, padding_P, 0, 0), mode='constant', value=0.0, data_format='NLC')
+        padding_P = paddle.full([2], 0, dtype="int32")
+        padding_P[1] = group_size - overflow_P if overflow_P else 0
+        P = F.pad(P, padding_P, mode='constant', value=0.0, data_format='NLC')
         P = P.reshape([P_batch_size, -1, self.h, self.d_k * group_size]).transpose([0, 2, 1, 3])
 
-        return Q, K, V, P, mask, padding_Q
+        return Q, K, V, P, mask, padding_q
 
     def forward_attention(
             self, value: paddle.Tensor, scores: paddle.Tensor,
@@ -144,17 +149,8 @@ class GroupedRelPositionMultiHeadedAttention(MultiHeadedAttention):
                 where `cache_t == chunk_size * num_decoding_left_chunks`
                 and `head * d_k == size`
         """
-        q = self.linear_q(query)
-        k = self.linear_k(key)  # (#batch, time2, size)
-        v = self.linear_v(value)
+        q, k, v = self.forward_qkv(query, key, value)
         p = self.linear_pos(pos_emb)  # (#batch, time2, size)
-
-        batch_size, seq_len_KV, _ = k.shape  # seq_len_KV = time2
-
-        # (#batch, time2, size) -> (#batch, head, time2, size/head)
-        q = q.reshape([batch_size, -1, self.h, self.d_k]).transpose([0, 2, 1, 3])
-        k = k.reshape([batch_size, -1, self.h, self.d_k]).transpose([0, 2, 1, 3])
-        v = v.reshape([batch_size, -1, self.h, self.d_k]).transpose([0, 2, 1, 3])
         if cache.shape[0] > 0:
             key_cache, value_cache = paddle.split(cache, 2, axis=-1)
             k = paddle.concat([key_cache, k], axis=2)
