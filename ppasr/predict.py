@@ -1,7 +1,7 @@
 import os
 from io import BufferedReader
+import platform
 
-import cn2an
 import numpy as np
 import yaml
 
@@ -345,9 +345,8 @@ class PPASRPredictor:
 
     # 对文本进行反标准化
     def inverse_text_normalization(self, text):
-        if self.configs.decoder == 'ctc_beam_search':
-            logger.error("当解码器为ctc_beam_search时，因为包冲突，不能使用文本反标准化")
-            text = cn2an.transform(text, "cn2an")
+        if self.configs.decoder == 'ctc_beam_search' and platform.system() != 'Windows':
+            logger.error("目前只有Windows支持同时使用ctc_beam_search和itn")
             return text
         if self.inv_normalizer is None:
             # 需要安装WeTextProcessing>=0.1.0

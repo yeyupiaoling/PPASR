@@ -14,7 +14,7 @@ from paddle.io import DataLoader
 from tqdm import tqdm
 from visualdl import LogWriter
 
-from ppasr import SUPPORT_MODEL
+from ppasr import SUPPORT_MODEL, __version__
 from ppasr.data_utils.collate_fn import collate_fn
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
@@ -257,8 +257,9 @@ class PPASRTrainer(object):
             logger.error(f'保存模型时出现错误，错误信息：{e}')
             return
         with open(os.path.join(model_path, 'model.state'), 'w', encoding='utf-8') as f:
-            f.write('{"last_epoch": %d, "test_%s": %f, "test_loss": %f}' % (
-                epoch_id, self.configs.metrics_type, error_rate, test_loss))
+            data = {"last_epoch": epoch_id, f"test_{self.configs.metrics_type}": error_rate, "test_loss": test_loss,
+                    "version": __version__}
+            f.write(json.dumps(data))
         if not best_model:
             last_model_path = os.path.join(save_model_path, save_model_name, 'last_model')
             shutil.rmtree(last_model_path, ignore_errors=True)
