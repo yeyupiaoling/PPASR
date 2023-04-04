@@ -280,7 +280,7 @@ class PPASRTrainer(object):
             except ModuleNotFoundError:
                 logger.warning('==================================================================')
                 logger.warning('缺少 paddlespeech-ctcdecoders 库，请根据文档安装。')
-                logger.warning('python -m pip install paddlespeech_ctcdecoders -i https://ppasr.yeyupiaoling.cn/pypi/simple/')
+                logger.warning('python -m pip install paddlespeech_ctcdecoders -U -i https://ppasr.yeyupiaoling.cn/pypi/simple/')
                 logger.warning('【注意】现在已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
                 logger.warning('==================================================================\n')
                 self.configs.decoder = 'ctc_greedy'
