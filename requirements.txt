@@ -13,6 +13,5 @@ termcolor~=1.1.0
 scikit-learn>=1.0.2
 paddleaudio~=1.0.1
 typeguard==2.13.3
-cn2an>=0.5.17
 onnxruntime>=1.11.1
 av>=10.0.0
