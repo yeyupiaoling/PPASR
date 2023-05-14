@@ -1,8 +1,9 @@
 import argparse
+import functools
 import io
 import os
 
-from utility import download, unpack
+from utility import download, unpack, add_arguments
 
 URL_ROOT = "https://openslr.magicdatatech.com/resources/12"
 URL_TEST_CLEAN = URL_ROOT + "/test-clean.tar.gz"
@@ -22,14 +23,9 @@ MD5_TRAIN_CLEAN_360 = "c0e676e450a7ff2f54aeade5171606fa"
 MD5_TRAIN_OTHER_500 = "d1a0fd59409feb2c614ce4d30c387708"
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument("--target_dir",
-                    default="../dataset/audio/",
-                    type=str,
-                    help="存放音频文件的目录 (默认: %(default)s)")
-parser.add_argument("--annotation_text",
-                    default="../dataset/annotation/",
-                    type=str,
-                    help="存放音频标注文件的目录 (默认: %(default)s)")
+add_arg = functools.partial(add_arguments, argparser=parser)
+add_arg("target_dir", default="../dataset/audio/", type=str, help="存放音频文件的目录")
+add_arg("annotation_text", default="../dataset/annotation/", type=str, help="存放音频标注文件的目录")
 args = parser.parse_args()
 
 

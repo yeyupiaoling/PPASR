@@ -11,14 +11,8 @@ MD5_DATA = 'e6f48e257286e05de56413b4779d8ffb'
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
-parser.add_argument("--target_dir",
-                    default="../dataset/audio/",
-                    type=str,
-                    help="存放音频文件的目录 (默认: %(default)s)")
-parser.add_argument("--noise_path",
-                    default="../dataset/audio/noise/",
-                    type=str,
-                    help="存放噪声音频的目录 (默认: %(default)s)")
+add_arg("target_dir", default="../dataset/audio/", type=str, help="存放音频文件的目录")
+add_arg("annotation_text", default="../dataset/annotation/", type=str, help="存放音频标注文件的目录")
 args = parser.parse_args()
 
 

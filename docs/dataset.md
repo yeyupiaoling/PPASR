@@ -9,13 +9,7 @@ python thchs_30.py
 python noise.py
 ```
 
-**注意：** 这样下载慢，可以获取程序中的`DATA_URL`单独下载，用迅雷等下载工具，这样下载速度快很多。然后把`download()`函数改为文件的绝对路径，如下，我把`aishell.py`的文件单独下载，然后替换`download()`函数，再执行该程序，就会自动解压文件文本生成数据列表。
-```python
-# 把这行代码
-filepath = download(url, md5sum, target_dir)
-# 修改为
-filepath = "D:\\Download\\data_aishell.tgz"
-```
+**注意：** 这样下载慢，可以获取程序中的`DATA_URL`单独下载，用迅雷等下载工具，这样下载速度快很多。然后把下载的压缩文件放在`dataset/audio`目录下，就会自动跳过下载，直接解压文件文本生成数据列表。
 
 2. 如果开发者有自己的数据集，可以使用自己的数据集进行训练，当然也可以跟上面下载的数据集一起训练。自定义的语音数据需要符合以下格式，另外对于音频的采样率，本项目默认使用的是16000Hz，在`create_data.py`中也提供了统一音频数据的采样率转换为16000Hz，只要`is_change_frame_rate`参数设置为True就可以。
     1. 语音文件需要放在`dataset/audio/`目录下，例如我们有个`wav`的文件夹，里面都是语音文件，我们就把这个文件存放在`dataset/audio/`。
