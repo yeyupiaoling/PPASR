@@ -184,6 +184,13 @@ predictor.reset_stream()
 
  - 感谢 <img src="docs/images/PyCharm_icon.png" height="25" width="25" >[JetBrains开源社区](https://jb.gg/OpenSourceSupport) 提供开发工具。
 
+## 打赏作者
+
+<br/>
+<div align="center">
+<img src="https://yeyupiaoling.cn/reward.png" alt="打赏作者" width="400">
+</div>
+
 ## 参考资料
  - https://github.com/PaddlePaddle/PaddleSpeech
  - https://github.com/jiwidi/DeepSpeech-pytorch
