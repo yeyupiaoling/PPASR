@@ -5,7 +5,7 @@ import os
 
 from utility import download, unpack, add_arguments
 
-URL_ROOT = "https://openslr.magicdatatech.com/resources/12"
+URL_ROOT = "https://openslr.elda.org/resources/12"
 URL_TEST_CLEAN = URL_ROOT + "/test-clean.tar.gz"
 URL_TEST_OTHER = URL_ROOT + "/test-other.tar.gz"
 URL_DEV_CLEAN = URL_ROOT + "/dev-clean.tar.gz"

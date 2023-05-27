@@ -4,7 +4,7 @@ import os
 from utility import download, unpack
 from utility import add_arguments, print_arguments
 
-DATA_URL = 'https://openslr.magicdatatech.com/resources/38/ST-CMDS-20170001_1-OS.tar.gz'
+DATA_URL = 'https://openslr.elda.org/resources/38/ST-CMDS-20170001_1-OS.tar.gz'
 MD5_DATA = 'c28ddfc8e4ebe48949bc79a0c23c5545'
 
 parser = argparse.ArgumentParser(description=__doc__)
