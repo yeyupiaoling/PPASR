@@ -6,7 +6,7 @@
 
 使用主要分为三4步：
 
-1. 首先是[下载七个标点的模型](https://download.csdn.net/download/qq_33200967/75664996)或者[下载三个标点符号的模型](https://download.csdn.net/download/qq_33200967/86539773)，个人偏向第二个模型，并解压到`models/`目录下，注意这个模型只支持中文，如果想自己训练模型的话，可以在[PunctuationModel](https://github.com/yeyupiaoling/PunctuationModel)训练模型，然后导出模型复制到`models/`目录。
+1. 首先是[下载五个标点的模型](https://download.csdn.net/download/qq_33200967/75664996)或者[下载三个标点符号的模型](https://download.csdn.net/download/qq_33200967/86539773)，并解压到`models/`目录下，注意这个模型只支持中文，如果想自己训练模型的话，可以在[PunctuationModel](https://github.com/yeyupiaoling/PunctuationModel)训练模型，然后导出模型复制到`models/`目录。
 
 
 2. 需要使用PaddleNLP工具，所以需要提前安装PaddleNLP，安装命令如下：
