@@ -325,7 +325,7 @@ class PPASRTrainer(object):
             # 执行一次梯度计算
             if batch_id % self.configs.train_conf.accum_grad == 0:
                 if self.local_rank == 0 and writer is not None:
-                    writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
+                    writer.add_scalar('Train/Loss', float(loss), self.train_step)
                     # 记录学习率
                     writer.add_scalar('Train/lr', self.scheduler.get_lr(), self.train_step)
                 # 是否开启自动混合精度
@@ -352,14 +352,14 @@ class PPASRTrainer(object):
                 eta_str = str(timedelta(seconds=int(eta_sec / 1000)))
                 logger.info(f'Train epoch: [{epoch_id}/{self.configs.train_conf.max_epoch}], '
                             f'batch: [{batch_id}/{len(self.train_loader)}], '
-                            f'loss: {loss.numpy()[0]:.5f}, '
+                            f'loss: {float(loss):.5f}, '
                             f'learning_rate: {self.scheduler.get_lr():>.8f}, '
                             f'reader_cost: {(sum(reader_times) / len(reader_times) / 1000):.4f}, '
                             f'batch_cost: {(sum(batch_times) / len(batch_times) / 1000):.4f}, '
                             f'ips: {train_speed:.4f} speech/sec, '
                             f'eta: {eta_str}')
                 if self.local_rank == 0:
-                    writer.add_scalar('Train/Loss', loss.numpy(), self.train_step)
+                    writer.add_scalar('Train/Loss', float(loss), self.train_step)
                 train_times = []
             # 固定步数也要保存一次模型
             if batch_id % 10000 == 0 and batch_id != 0 and self.local_rank == 0:
@@ -552,7 +552,7 @@ class PPASRTrainer(object):
             for batch_id, batch in enumerate(tqdm(self.test_loader())):
                 inputs, labels, input_lens, label_lens = batch
                 loss_dict = self.model(inputs, input_lens, labels, label_lens)
-                losses.append(loss_dict['loss'].numpy()[0] / self.configs.train_conf.accum_grad)
+                losses.append(float(loss_dict['loss']) / self.configs.train_conf.accum_grad)
                 # 获取模型编码器输出
                 outputs = eval_model.get_encoder_out(inputs, input_lens).numpy()
                 out_strings = self.__decoder_result(outs=outputs, vocabulary=self.test_dataset.vocab_list)
