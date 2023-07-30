@@ -104,6 +104,12 @@ class PPASRPredictor:
                 logger.warning('==================================================================\n')
                 self.configs.decoder = 'ctc_greedy'
 
+    # 初始化VAD工具
+    def init_vad(self):
+        if self.vad_predictor is None:
+            from ppasr.infer_utils.vad_predictor import VADPredictor
+            self.vad_predictor = VADPredictor()
+
     # 解码模型输出结果
     def decode(self, output_data, use_pun, is_itn):
         """
@@ -194,9 +200,7 @@ class PPASRPredictor:
         :param sample_rate: 如果传入的事numpy数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
-        if self.vad_predictor is None:
-            from ppasr.infer_utils.vad_predictor import VADPredictor
-            self.vad_predictor = VADPredictor()
+        self.init_vad()
         # 加载音频文件，并进行预处理
         audio_segment = self._load_audio(audio_data=audio_data, sample_rate=sample_rate)
         # 重采样，方便进行语音活动检测
