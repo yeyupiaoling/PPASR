@@ -8,11 +8,13 @@
 
 本项目将分三个阶段分支，分别是[入门级](https://github.com/yeyupiaoling/PPASR/tree/%E5%85%A5%E9%97%A8%E7%BA%A7) 、[进阶级](https://github.com/yeyupiaoling/PPASR/tree/%E8%BF%9B%E9%98%B6%E7%BA%A7) 和[最终级](https://github.com/yeyupiaoling/PPASR) 分支，当前为最终级的V2版本，如果想使用最终级的V1版本，请在这个分支[r1.x](https://github.com/yeyupiaoling/PPASR/tree/r1.x)。PPASR中文名称PaddlePaddle中文语音识别（PaddlePaddle Automatic Speech Recognition），是一款基于PaddlePaddle实现的语音识别框架，PPASR致力于简单，实用的语音识别项目。可部署在服务器，Nvidia Jetson设备，未来还计划支持Android等移动设备。**别忘了star**
 
-**欢迎大家扫码入QQ群讨论**，或者直接搜索QQ群号`758170167`，问题答案为博主Github的ID`yeyupiaoling`。
+**欢迎大家扫码入知识星球或者QQ群讨论，知识星球里面提供项目的模型文件和博主其他相关项目的模型文件，也包括其他一些资源。**
 
 <div align="center">
-  <img src="docs/images/qq.png"/>
+  <img src="https://yeyupiaoling.cn/zsxq.png" alt="知识星球" width="400">
+  <img src="https://yeyupiaoling.cn/qq.png" alt="QQ群" width="400">
 </div>
+
 
 ## 在线使用
 
@@ -113,39 +115,39 @@ predictor.reset_stream()
 
 1. [WenetSpeech](./docs/wenetspeech.md) (10000小时) 的预训练模型列表：
 
-|    使用模型     | 是否为流式 | 预处理方式 | 语言  |                               测试集字错率                                |                              下载地址                            |
-|:-----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:---------------------------------------------------------------:|
-|  conformer  | True  | fbank | 普通话 | 0.03579(aishell_test)<br>0.11081(test_net)<br>0.16031(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86932770) |
-| deepspeech2 | True  | fbank | 普通话 |                        0.05379(aishell_test)                        | [点击下载](https://download.csdn.net/download/qq_33200967/86932787) |
+|    使用模型     | 是否为流式 | 预处理方式 | 语言  |                               测试集字错率                                |   下载地址   |
+|:-----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:--------:|
+|  conformer  | True  | fbank | 普通话 | 0.03579(aishell_test)<br>0.11081(test_net)<br>0.16031(test_meeting) | 加入知识星球获取 |
+| deepspeech2 | True  | fbank | 普通话 |                        0.05379(aishell_test)                        | 加入知识星球获取 |
 
 
 
 2.  [WenetSpeech](./docs/wenetspeech.md) (10000小时)+[中文语音数据集](https://download.csdn.net/download/qq_33200967/87003964) (3000+小时) 的预训练模型列表：
 
-|    使用模型    | 是否为流式 | 预处理方式 | 语言  |                               测试集字错率                                |                              下载地址                            |
-|:----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:---------------------------------------------------------------:|
-| conformere | True  | fbank | 普通话 | 0.02923(aishell_test)<br>0.11876(test_net)<br>0.18346(test_meeting) | [点击下载](https://download.csdn.net/download/qq_33200967/86951249) |
+|    使用模型    | 是否为流式 | 预处理方式 | 语言  |                               测试集字错率                                |   下载地址   |
+|:----------:|:-----:|:-----:|:---:|:-------------------------------------------------------------------:|:--------:|
+| conformere | True  | fbank | 普通话 | 0.02923(aishell_test)<br>0.11876(test_net)<br>0.18346(test_meeting) | 加入知识星球获取 |
 
 
 
 3. [AIShell](https://openslr.magicdatatech.com/resources/33) (179小时) 的预训练模型列表：
 
-|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率  |                               下载地址                               |
-|:-------------------:|:-----:|:-----:|:---:|:-------:|:----------------------------------------------------------------:|
-|    squeezeformer    | True  | fbank | 普通话 | 0.04675 | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-|      conformer      | True  | fbank | 普通话 | 0.04178 | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-| efficient_conformer | True  | fbank | 普通话 | 0.04143 | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
-|     deepspeech2     | True  | fbank | 普通话 | 0.09732 | [点击下载](https://pan.baidu.com/s/1LI29m53S1-x_BPsLV4S87A?pwd=9f0f) |
+|        使用模型         | 是否为流式 | 预处理方式 | 语言  | 测试集字错率  |   下载地址    |
+|:-------------------:|:-----:|:-----:|:---:|:-------:|:---------:|
+|    squeezeformer    | True  | fbank | 普通话 | 0.04675 | 加入知识星球获取  |
+|      conformer      | True  | fbank | 普通话 | 0.04178 | 加入知识星球获取  |
+| efficient_conformer | True  | fbank | 普通话 | 0.04143 | 加入知识星球获取  |
+|     deepspeech2     | True  | fbank | 普通话 | 0.09732 | 加入知识星球获取  |
 
 
 4. [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时) 的预训练模型列表：
 
-|        使用模型         | 是否为流式 | 预处理方式 | 语言 | 测试集词错率  |                               下载地址                               |
-|:-------------------:|:-----:|:-----:|:--:|:-------:|:----------------------------------------------------------------:|
-|    squeezeformer    | True  | fbank | 英文 | 0.13033 | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-|      conformer      | True  | fbank | 英文 | 0.08109 | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-| efficient_conformer | True  | fbank | 英文 |         | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) | 
-|     deepspeech2     | True  | fbank | 英文 | 0.15294 | [点击下载](https://pan.baidu.com/s/1LNMwj7YsUUIzagegivsw8A?pwd=ly84) |
+|        使用模型         | 是否为流式 | 预处理方式 | 语言 | 测试集词错率  |   下载地址   |
+|:-------------------:|:-----:|:-----:|:--:|:-------:|:--------:|
+|    squeezeformer    | True  | fbank | 英文 | 0.13033 | 加入知识星球获取 | 
+|      conformer      | True  | fbank | 英文 | 0.08109 | 加入知识星球获取 | 
+| efficient_conformer | True  | fbank | 英文 |         | 加入知识星球获取 | 
+|     deepspeech2     | True  | fbank | 英文 | 0.15294 | 加入知识星球获取 |
 
 
 **说明：** 
