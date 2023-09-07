@@ -12,7 +12,7 @@ MD5_DATA = 'e6f48e257286e05de56413b4779d8ffb'
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg("target_dir", default="../dataset/audio/", type=str, help="存放音频文件的目录")
-add_arg("annotation_text", default="../dataset/annotation/", type=str, help="存放音频标注文件的目录")
+add_arg("noise_path", default="../dataset/noise/", type=str, help="存放噪声文件的目录")
 args = parser.parse_args()
 
 
@@ -26,8 +26,7 @@ def prepare_dataset(url, md5sum, target_dir, noise_path):
     else:
         print("Skip downloading and unpacking. RIRS_NOISES data already exists in %s." % target_dir)
     # 移动噪声音频到指定文件夹
-    if not os.path.exists(noise_path):
-        os.makedirs(noise_path)
+    os.makedirs(noise_path, exist_ok=True)
     json_lines = []
     data_types = [
         'pointsource_noises', 'real_rirs_isotropic_noises', 'simulated_rirs'
