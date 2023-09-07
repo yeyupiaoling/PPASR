@@ -7,11 +7,11 @@ soundfile>=0.12.1
 soundcard>=0.4.2
 resampy>=0.2.2
 zhconv>=1.4.2
-ijson~=3.1.4
-pyyaml~=5.4.1
-termcolor~=1.1.0
+ijson>=3.1.4
+pyyaml>=5.4.1
+termcolor>=1.1.0
 scikit-learn>=1.0.2
-paddleaudio~=1.0.1
+paddleaudio>=1.0.1
 typeguard==2.13.3
 onnxruntime>=1.11.1
 av>=10.0.0
