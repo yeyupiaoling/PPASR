@@ -9,7 +9,7 @@ from datetime import datetime
 
 import aiofiles
 import uvicorn
-from fastapi import FastAPI, WebSocket, UploadFile, File
+from fastapi import FastAPI, WebSocket, UploadFile, File, Request
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.websockets import WebSocketState
@@ -96,8 +96,8 @@ async def recognition_long_audio(audio: UploadFile = File(..., description="éŸ³é
 
 
 @app.get("/")
-async def index():
-    return templates.TemplateResponse("index.html")
+async def index(request: Request):
+    return templates.TemplateResponse("index.html", {"request": request, "id": id})
 
 
 @app.websocket("/")
