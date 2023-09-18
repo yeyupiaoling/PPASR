@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <title>语音识别-夜雨飘零</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script type="text/javascript" src="record.js"></script>
-    <link href="index.css" rel="stylesheet" type="text/css"/>
+    <script type="text/javascript" src="/static/record.js"></script>
+    <link href="/static/index.css" rel="stylesheet" type="text/css"/>
 </head>
 <body>
 <div id="header">
@@ -15,7 +15,7 @@
     <div>
         <a id="upload" onclick="uploadAudioFile()" class="file">短音频文件识别</a>
         <a id="upload_long" onclick="uploadLongAudioFile()" class="file">长音频文件识别</a>
-        <img id="record_btn" onclick="record()" src="record.png" alt="录音"/>
+        <img id="record_btn" onclick="record()" src="/static/record.png" alt="录音"/>
     </div>
     <div id="result">
         <textarea id="result_p"></textarea>
@@ -32,17 +32,17 @@
         if (is_recording) {
             is_recording = false;
             stopRecording()
-            document.getElementById('record_btn').src = 'record.png'
+            document.getElementById('record_btn').src = '/static/record.png'
         } else {
             is_recording = true;
             startRecording()
-            document.getElementById('record_btn').src = 'recording.gif'
+            document.getElementById('record_btn').src = '/static/recording.gif'
         }
     }
 
     // 开始录音
     function startRecording() {
-        let url = 'ws://' + location.hostname + ':5001';
+        let url = 'ws://' + location.hostname + ':5000';
         PPASRRecorder.get(function (record) {
             recorder = record;
         }, url, textarea);

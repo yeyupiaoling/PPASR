@@ -38,7 +38,7 @@ app = FastAPI(title="PPASR")
 app.mount('/static', StaticFiles(directory='static'), name='static')
 templates = Jinja2Templates(directory="templates")
 
-# 创建预测器，是实时语音的第一个对象和创建多进程时使用
+# 创建预测器
 predictor = PPASRPredictor(configs=args.configs,
                            model_path=args.model_path,
                            use_gpu=args.use_gpu,
@@ -64,11 +64,11 @@ async def recognition(audio: UploadFile = File(..., description="音频文件"))
         score, text = result['score'], result['text']
         end = time.time()
         print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
-        result = str({"code": 0, "msg": "success", "result": text, "score": round(score, 3)}).replace("'", '"')
+        result = {"code": 0, "msg": "success", "result": text, "score": round(score, 3)}
         return result
     except Exception as e:
         print(f'[{datetime.now()}] 短语音识别失败，错误信息：{e}', file=sys.stderr)
-        return str({"error": 1, "msg": "audio read fail!"})
+        return {"error": 1, "msg": "audio read fail!"}
 
 
 # 长语音识别接口
@@ -88,11 +88,11 @@ async def recognition_long_audio(audio: UploadFile = File(..., description="音�
         score, text = result['score'], result['text']
         end = time.time()
         print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
-        result = str({"code": 0, "msg": "success", "result": text, "score": score}).replace("'", '"')
+        result = {"code": 0, "msg": "success", "result": text, "score": score}
         return result
     except Exception as e:
         print(f'[{datetime.now()}] 长语音识别失败，错误信息：{e}', file=sys.stderr)
-        return str({"error": 1, "msg": "audio read fail!"})
+        return {"error": 1, "msg": "audio read fail!"}
 
 
 @app.get("/")
