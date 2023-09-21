@@ -20,7 +20,7 @@
 
 **1. [在AI Studio平台训练预测](https://aistudio.baidu.com/aistudio/projectdetail/3290199)**
 
-**2. [在线使用Dome](https://asr.yeyupiaoling.cn:8082/)**
+**2. [在线使用Dome](https://www.doiduoyi.com/?app=SPEECHRECOG)**
 
 **3. [inscode](https://inscode.csdn.net/@yeyupiaoling/ppasr)**
 
