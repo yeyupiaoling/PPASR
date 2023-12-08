@@ -184,7 +184,7 @@ class SpeechRecognitionApp:
             for i in range(0, data.shape[0], sr):
                 if not self.playing: break
                 d = data[i:i + sr]
-                player.play(d / np.max(np.abs(d)))
+                player.play(d)
         self.playing = False
         self.play_button.configure(text='播放音频')
 
