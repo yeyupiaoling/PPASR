@@ -29,7 +29,7 @@
 **本项目使用的环境：**
  - Anaconda 3
  - Python 3.8
- - PaddlePaddle 2.4.1
+ - PaddlePaddle 2.5.1
  - Windows 10 or Ubuntu 18.04
 
 
