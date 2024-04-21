@@ -517,6 +517,7 @@ class PPASRTrainer(object):
             self.__train_epoch(epoch_id=epoch_id, save_model_path=save_model_path, writer=writer, nranks=nranks)
             # 多卡训练只使用一个进程执行评估和保存模型
             logger.info('=' * 70)
+            if self.stop_eval: continue
             self.eval_loss, self.eval_error_result = self.evaluate(resume_model=None)
             logger.info(
                 f'Test epoch: {epoch_id}, time/epoch: {str(timedelta(seconds=(time.time() - start_epoch)))}, '
