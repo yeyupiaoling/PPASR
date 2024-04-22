@@ -6,7 +6,7 @@ import shutil
 from utility import download, unzip
 from utility import add_arguments, print_arguments
 
-DATA_URL = 'https://openslr.elda.org/resources/28/rirs_noises.zip'
+DATA_URL = 'https://openslr.trmal.net/resources/28/rirs_noises.zip'
 MD5_DATA = 'e6f48e257286e05de56413b4779d8ffb'
 
 parser = argparse.ArgumentParser(description=__doc__)
