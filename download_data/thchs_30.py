@@ -22,7 +22,7 @@ def create_annotation_text(data_dir, annotation_path):
     data_path = 'data'
     for file in os.listdir(os.path.join(data_dir, data_path)):
         if '.trn' in file:
-            file = os.path.join(data_dir, data_path, file)
+            file = os.path.join(data_dir, data_path, file).replace('\\', '/')
             with open(file, 'r', encoding='utf-8') as f:
                 line = f.readline()
                 line = ''.join(line.split())

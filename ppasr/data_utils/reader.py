@@ -50,28 +50,26 @@ class PPASRDataset(Dataset):
             self.data_list = self.dataset_reader.get_keys()
 
     def __getitem__(self, idx):
-        # 获取数据列表
-        if self.manifest_type == 'txt':
-            data_list = self.data_list[idx]
-        elif self.manifest_type == 'binary':
-            data_list = self.dataset_reader.get_data(self.data_list[idx])
+        data_list = self.get_one_list(idx)
+        # 分割音频路径和标签
+        audio_file, transcript = data_list["audio_filepath"], data_list["text"]
+        # 如果后缀名为.npy的文件，那么直接读取
+        if audio_file.endswith('.npy'):
+            start_frame, end_frame = data_list["start_frame"], data_list["end_frame"]
+            feature = np.load(audio_file)
+            feature = feature[start_frame:end_frame, :]
         else:
-            raise Exception(f'没有该类型：{self.manifest_type}')
-        if 'start_time' not in data_list.keys():
-            # 分割音频路径和标签
-            audio_file, transcript = data_list["audio_filepath"], data_list["text"]
-            # 读取音频
-            audio_segment = AudioSegment.from_file(audio_file)
-        else:
-            # 分割音频路径和标签
-            audio_file, transcript = data_list["audio_filepath"], data_list["text"]
-            start_time, end_time = data_list["start_time"], data_list["end_time"]
-            # 分割读取音频
-            audio_segment = AudioSegment.slice_from_file(audio_file, start=start_time, end=end_time)
-        # 音频增强
-        self._augmentation_pipeline.transform_audio(audio_segment)
-        # 预处理，提取特征
-        feature = self._audio_featurizer.featurize(audio_segment)
+            if 'start_time' not in data_list.keys():
+                # 读取音频
+                audio_segment = AudioSegment.from_file(audio_file)
+            else:
+                start_time, end_time = data_list["start_time"], data_list["end_time"]
+                # 分割读取音频
+                audio_segment = AudioSegment.slice_from_file(audio_file, start=start_time, end=end_time)
+            # 音频增强
+            self._augmentation_pipeline.transform_audio(audio_segment)
+            # 预处理，提取特征
+            feature = self._audio_featurizer.featurize(audio_segment)
         transcript = self._text_featurizer.featurize(transcript)
         # 特征增强
         feature = self._augmentation_pipeline.transform_feature(feature)
@@ -80,6 +78,16 @@ class PPASRDataset(Dataset):
 
     def __len__(self):
         return len(self.data_list)
+
+    def get_one_list(self, idx):
+        # 获取数据列表
+        if self.manifest_type == 'txt':
+            data_list = self.data_list[idx]
+        elif self.manifest_type == 'binary':
+            data_list = self.dataset_reader.get_data(self.data_list[idx])
+        else:
+            raise Exception(f'没有该类型：{self.manifest_type}')
+        return data_list
 
     @property
     def feature_dim(self):

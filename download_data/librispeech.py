@@ -49,7 +49,7 @@ def create_annotation_text(data_dir, annotation_path):
             for line in io.open(text_filepath, encoding="utf8"):
                 segments = line.strip().split()
                 text = ' '.join(segments[1:]).lower()
-                audio_filepath = os.path.join(subfolder, segments[0] + '.flac')
+                audio_filepath = os.path.join(subfolder, segments[0] + '.flac').replace('\\', '/')
                 if 'test-clean' not in subfolder and 'test-other' not in subfolder and \
                         'dev-other' not in subfolder and 'dev-other' not in subfolder:
                     f_train.write(audio_filepath[3:] + '\t' + text + '\n')

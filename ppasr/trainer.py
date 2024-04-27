@@ -1,12 +1,14 @@
 import io
 import json
 import os
+import platform
 import shutil
 import time
 from collections import Counter
 from contextlib import nullcontext
 from datetime import timedelta
 
+import numpy as np
 import paddle
 import yaml
 from paddle.distributed import fleet
@@ -59,6 +61,10 @@ class PPASRTrainer(object):
         self.model = None
         self.test_loader = None
         self.beam_search_decoder = None
+        if platform.system().lower() == 'windows':
+            self.configs.dataset_conf.num_workers = 0
+            self.configs.dataset_conf.prefetch_factor = 2
+            logger.warning('Windows系统不支持多线程读取数据，已自动关闭！')
         self.max_step, self.train_step = None, None
         self.train_loss, self.train_eta_sec = None, None
         self.eval_best_error_rate = None
@@ -117,6 +123,51 @@ class PPASRTrainer(object):
                                       prefetch_factor=self.configs.dataset_conf.prefetch_factor,
                                       use_shared_memory=self.configs.dataset_conf.use_shared_memory,
                                       num_workers=self.configs.dataset_conf.num_workers)
+
+    # 提取特征保存文件
+    def extract_features(self, save_dir='dataset/features'):
+        for i, data_list_file in enumerate([self.configs.dataset_conf.train_manifest,
+                                            self.configs.dataset_conf.test_manifest]):
+            save_dir1 = os.path.join(save_dir, data_list_file.split('.')[-1])
+            os.makedirs(save_dir1, exist_ok=True)
+            test_dataset = PPASRDataset(preprocess_configs=self.configs.preprocess_conf,
+                                        data_manifest=data_list_file,
+                                        vocab_filepath=self.configs.dataset_conf.dataset_vocab,
+                                        manifest_type=self.configs.dataset_conf.manifest_type,
+                                        max_duration=-1)
+            save_dir_num = f'{int(time.time())}'
+            os.makedirs(os.path.join(str(save_dir1), save_dir_num), exist_ok=True)
+            all_feature, time_sum, index = None, 0, 0
+            save_data_list = data_list_file.replace('manifest', 'manifest_features')
+            with open(save_data_list, 'w', encoding='utf-8') as f:
+                for i in tqdm(range(len(test_dataset))):
+                    feature, _ = test_dataset[i]
+                    data_list = test_dataset.get_one_list(idx=i)
+                    time_sum += data_list['duration']
+                    if all_feature is None:
+                        index += 1
+                        all_feature = feature
+                        if index >= 1000:
+                            index = 0
+                            save_dir_num = f'{int(time.time())}'
+                            os.makedirs(os.path.join(str(save_dir1), save_dir_num), exist_ok=True)
+                        save_path = os.path.join(str(save_dir1), save_dir_num,
+                                                 f'{int(time.time() * 1000)}.npy').replace('\\', '/')
+                    else:
+                        all_feature = np.concatenate((all_feature, feature), axis=0)
+                    new_data_list = {"audio_filepath": save_path,
+                                     "duration": data_list['duration'],
+                                     "text": data_list['text'],
+                                     "start_frame": all_feature.shape[0] - feature.shape[0],
+                                     "end_frame": all_feature.shape[0]}
+                    f.write(f'{json.dumps(new_data_list, ensure_ascii=False)}\n')
+                    if time_sum > 600:
+                        np.save(save_path, all_feature)
+                        all_feature, time_sum = None, 0
+                if all_feature is not None:
+                    np.save(save_path, all_feature)
+                    print(save_path)
+            logger.info(f'[{data_list_file}]列表中的数据已提取特征完成，新列表为：[{save_data_list}]')
 
     def __setup_model(self, input_dim, vocab_size, is_train=False):
         from ppasr.model_utils.squeezeformer.model import SqueezeformerModel

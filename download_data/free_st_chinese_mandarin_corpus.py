@@ -20,7 +20,7 @@ def create_annotation_text(data_dir, annotation_path):
     for subfolder, _, filelist in sorted(os.walk(data_dir)):
         for file in filelist:
             if '.wav' in file:
-                file = os.path.join(subfolder, file)
+                file = os.path.join(subfolder, file).replace('\\', '/')
                 with open(file[:-4] + '.txt', 'r', encoding='utf-8') as f:
                     line = f.readline()
                 f_a.write(file[3:] + '\t' + line + '\n')
