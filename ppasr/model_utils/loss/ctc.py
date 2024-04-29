@@ -1,11 +1,12 @@
 import paddle
 import paddle.nn.functional as F
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 
 class CTCLoss(paddle.nn.Layer):
     """CTC module"""
 
+    @typechecked
     def __init__(
             self,
             odim: int,
@@ -20,7 +21,6 @@ class CTCLoss(paddle.nn.Layer):
             dropout_rate: dropout rate (0.0 ~ 1.0)
             reduce: reduce the CTC loss into a scalar
         """
-        assert check_argument_types()
         super().__init__()
         eprojs = encoder_output_size
         self.dropout_rate = dropout_rate

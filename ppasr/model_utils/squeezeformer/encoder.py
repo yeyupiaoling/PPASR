@@ -2,7 +2,7 @@ import paddle
 import paddle.nn as nn
 from typing import Tuple, Union, Optional, List
 
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 from ppasr.model_utils.conformer.embedding import RelPositionalEncoding
@@ -20,6 +20,7 @@ __all__ = ["SqueezeformerEncoder"]
 
 
 class SqueezeformerEncoder(nn.Layer):
+    @typechecked
     def __init__(
             self,
             input_size: int,
@@ -74,7 +75,6 @@ class SqueezeformerEncoder(nn.Layer):
             init_weights (bool): Whether to initialize weights.
             causal (bool): whether to use causal convolution or not.
         """
-        assert check_argument_types()
         super().__init__()
         self.global_cmvn = global_cmvn
         self.reduce_idx: Optional[Union[int, List[int]]] = [reduce_idx] \

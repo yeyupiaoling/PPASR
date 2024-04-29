@@ -3,7 +3,7 @@ from typing import Optional, Tuple
 
 import paddle
 from paddle import nn
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention
 from ppasr.model_utils.utils.base import Embedding, LayerNorm, Linear
@@ -34,6 +34,7 @@ class BiTransformerDecoder(nn.Layer):
             False: x -> x + att(x)
     """
 
+    @typechecked
     def __init__(self,
                  vocab_size: int,
                  encoder_output_size: int,
@@ -50,8 +51,6 @@ class BiTransformerDecoder(nn.Layer):
                  normalize_before: bool = True,
                  concat_after: bool = False,
                  max_len: int = 5000):
-        assert check_argument_types()
-
         nn.Layer.__init__(self)
         self.left_decoder = TransformerDecoder(
             vocab_size, encoder_output_size, attention_heads, linear_units,
@@ -145,6 +144,7 @@ class TransformerDecoder(nn.Layer):
             False: x -> x + att(x)
     """
 
+    @typechecked
     def __init__(self,
                  vocab_size: int,
                  encoder_output_size: int,
@@ -160,9 +160,6 @@ class TransformerDecoder(nn.Layer):
                  normalize_before: bool = True,
                  concat_after: bool = False,
                  max_len: int = 5000):
-
-        assert check_argument_types()
-
         nn.Layer.__init__(self)
         self.selfattention_layer_type = 'selfattn'
         attention_dim = encoder_output_size

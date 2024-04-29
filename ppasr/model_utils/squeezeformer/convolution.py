@@ -3,7 +3,7 @@ from typing import Tuple
 import paddle
 from paddle import nn
 from paddle.nn import initializer as I
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from ppasr.model_utils.utils.base import Conv1D, BatchNorm1D, LayerNorm
 from ppasr.model_utils.utils.common import masked_fill
@@ -14,6 +14,7 @@ __all__ = ['ConvolutionModule']
 class ConvolutionModule(nn.Layer):
     """ConvolutionModule in Conformer model."""
 
+    @typechecked
     def __init__(self,
                  channels: int,
                  kernel_size: int = 15,
@@ -29,7 +30,6 @@ class ConvolutionModule(nn.Layer):
             kernel_size (int): Kernel size of conv layers.
             causal (int): Whether use causal convolution or not
         """
-        assert check_argument_types()
         super().__init__()
         self.bias = bias
         self.channels = channels

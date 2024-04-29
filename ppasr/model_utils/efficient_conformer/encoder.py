@@ -3,7 +3,7 @@ from typing import Tuple, Union, Optional, List
 import paddle
 import paddle.nn as nn
 import paddle.nn.functional as F
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 from ppasr.model_utils.conformer.attention import MultiHeadedAttention, RelPositionMultiHeadedAttention
 from ppasr.model_utils.conformer.embedding import PositionalEncoding, RelPositionalEncoding, NoPositionalEncoding
@@ -22,6 +22,7 @@ from ppasr.model_utils.utils.mask import make_non_pad_mask, add_optional_chunk_m
 class EfficientConformerEncoder(nn.Layer):
     """Conformer encoder module."""
 
+    @typechecked
     def __init__(
             self,
             input_size: int,
@@ -69,7 +70,6 @@ class EfficientConformerEncoder(nn.Layer):
             group_size (int): group size of every GroupedAttention layer
             stride_kernel (bool): default True. True: recompute cnn kernels with stride.
         """
-        assert check_argument_types()
         super().__init__()
         self._output_size = output_size
 

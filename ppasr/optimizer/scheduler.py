@@ -2,7 +2,7 @@ import math
 from typing import Union
 
 from paddle.optimizer.lr import LRScheduler
-from typeguard import check_argument_types
+from typeguard import typechecked
 
 
 class WarmupLR(LRScheduler):
@@ -18,9 +18,9 @@ class WarmupLR(LRScheduler):
     Note that the maximum lr equals to optimizer.lr in this scheduler.
     """
 
+    @typechecked
     def __init__(self, learning_rate=1.0, warmup_steps: Union[int, float] = 25000,
                  min_lr=1e-5, last_epoch=-1, verbose=False):
-        assert check_argument_types()
         self.warmup_steps = warmup_steps
         self.min_lr = min_lr
         super().__init__(learning_rate, last_epoch, verbose)
