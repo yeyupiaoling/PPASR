@@ -37,6 +37,20 @@ dataset/audio/LibriSpeech/dev-clean/1272/135031/1272-135031-0008.flac   i hope h
 python create_data.py
 ```
 
+
+# 提取特征（可选）
+
+在训练过程中，首先是要读取音频数据，然后提取特征，最后再进行训练。其中读取音频数据、提取特征也是比较消耗时间的，所以我们可以选择提前提取好取特征，训练模型的是就可以直接加载提取好的特征，这样训练速度会更快。这个提取特征是可选择，如果没有提取好的特征，训练模型的时候就会从读取音频数据，然后提取特征开始。提取特征步骤如下：
+
+1. 执行`extract_features.py`，提取特征，特征会保存在`dataset/features`目录下，并生成新的数据列表`manifest_features.train`和`manifest_features.test`。
+
+```shell
+python extract_features.py --configs=configs/cam++.yml --save_dir=dataset/features
+```
+
+2. 修改配置文件，将`dataset_conf.train_manifest`和`dataset_conf.test_manifest`修改为`manifest_features.train`和`manifest_features.test`。
+
+
 # 超大数据集
 
 ## 减少音频文件数量
