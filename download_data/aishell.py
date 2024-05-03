@@ -43,7 +43,7 @@ def create_annotation_text(data_dir, annotation_path):
                 if audio_id not in transcript_dict:
                     continue
                 text = transcript_dict[audio_id]
-                f_train.write(audio_path[3:] + '\t' + text + '\n')
+                f_train.write(audio_path.replace('../', '') + '\t' + text + '\n')
     audio_dir = os.path.join(data_dir, 'wav', 'test')
     for subfolder, _, filelist in sorted(os.walk(audio_dir)):
         for fname in filelist:
@@ -53,7 +53,7 @@ def create_annotation_text(data_dir, annotation_path):
             if audio_id not in transcript_dict:
                 continue
             text = transcript_dict[audio_id]
-            f_test.write(audio_path[3:] + '\t' + text + '\n')
+            f_test.write(audio_path.replace('../', '') + '\t' + text + '\n')
     f_test.close()
     f_train.close()
 

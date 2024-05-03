@@ -52,10 +52,10 @@ def create_annotation_text(data_dir, annotation_path):
                 audio_filepath = os.path.join(subfolder, segments[0] + '.flac').replace('\\', '/')
                 if 'test-clean' not in subfolder and 'test-other' not in subfolder and \
                         'dev-other' not in subfolder and 'dev-other' not in subfolder:
-                    f_train.write(audio_filepath[3:] + '\t' + text + '\n')
+                    f_train.write(audio_filepath.replace('../', '') + '\t' + text + '\n')
                 else:
                     if 'test-clean' in subfolder:
-                        f_test.write(audio_filepath[3:] + '\t' + text + '\n')
+                        f_test.write(audio_filepath.replace('../', '') + '\t' + text + '\n')
     f_test.close()
     f_train.close()
 

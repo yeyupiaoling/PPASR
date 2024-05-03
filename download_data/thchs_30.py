@@ -26,7 +26,7 @@ def create_annotation_text(data_dir, annotation_path):
             with open(file, 'r', encoding='utf-8') as f:
                 line = f.readline()
                 line = ''.join(line.split())
-            f_a.write(file[3:-4] + '\t' + line + '\n')
+            f_a.write(file[:-4].replace('../', '') + '\t' + line + '\n')
     f_a.close()
 
 
