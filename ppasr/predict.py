@@ -3,24 +3,19 @@ import os
 from io import BufferedReader
 
 import numpy as np
+import paddle
 import yaml
-from yeaudio.streaming_vad import StreamingVAD, VADParams
+from loguru import logger
+from yeaudio.audio import AudioSegment
+from yeaudio.streaming_vad import StreamingVAD, VADParams, VADState
 
-from ppasr import SUPPORT_MODEL
-from ppasr.data_utils.audio import AudioSegment
-from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
-from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
-from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
-
+from ppasr.data_utils.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.tokenizer import PPASRTokenizer
 from ppasr.decoders.attention_rescoring import attention_rescoring
 from ppasr.decoders.ctc_greedy_search import ctc_greedy_search
 from ppasr.decoders.ctc_prefix_beam_search import ctc_prefix_beam_search
 from ppasr.infer_utils.inference_predictor import InferencePredictor
-from ppasr.utils.logger import setup_logger
-from ppasr.utils.utils import dict_to_object, print_arguments, download_model
-
-logger = setup_logger(__name__)
+from ppasr.utils.utils import dict_to_object, print_arguments
 
 
 class PPASRPredictor:
@@ -171,10 +166,9 @@ class PPASRPredictor:
         :return: 识别的文本结果和解码的得分数
         """
         # 提取音频特征
-        audio_data = torch.tensor(audio_data, dtype=torch.float32)
         audio_feature = self._audio_featurizer.featurize(waveform=audio_data, sample_rate=sample_rate)
         audio_feature = audio_feature.unsqueeze(0)
-        audio_len = torch.tensor([audio_feature.size(1)], dtype=torch.int64)
+        audio_len = np.array([audio_feature.shape[1]], dtype=np.int64)
 
         # 运行predictor
         encoder_outs, ctc_probs, ctc_lens = self.predictor.predict(audio_feature, audio_len)
@@ -184,74 +178,66 @@ class PPASRPredictor:
                            use_pun=use_pun, is_itn=is_itn)
         return text
 
-    # 预测音频
+    # 语音预测
     def predict(self,
                 audio_data,
                 use_pun=False,
                 is_itn=False,
-                sample_rate=16000):
-        """ 预测函数，只预测完整的一句话
-        :param audio_data: 需要识别的数据，支持文件路径，文件对象，字节，numpy。如果是字节的话，必须是完整的字节文件
-        :param use_pun: 是否使用加标点符号的模型
-        :param is_itn: 是否对文本进行反标准化
-        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
-        :return: 识别的文本结果和解码的得分数
-        """
-        # 加载音频文件，并进行预处理
-        audio_segment = self._load_audio(audio_data=audio_data, sample_rate=sample_rate)
-        audio_feature = self._audio_featurizer.featurize(audio_segment)
-        input_data = np.array(audio_feature).astype(np.float32)[np.newaxis, :]
-        audio_len = np.array([input_data.shape[1]]).astype(np.int64)
-
-        # 运行predictor
-        output_data = self.predictor.predict(input_data, audio_len)[0]
-
-        # 解码
-        score, text = self.decode(output_data=output_data, use_pun=use_pun, is_itn=is_itn)
-        result = {'text': text, 'score': score}
-        return result
-
-    # 长语音预测
-    def predict_long(self,
-                     audio_data,
-                     use_pun=False,
-                     is_itn=False,
-                     sample_rate=16000):
+                sample_rate=16000,
+                allow_use_vad=True):
         """
         预测函数，只预测完整的一句话。
         :param audio_data: 需要识别的数据，支持文件路径，文件对象，字节，numpy。如果是字节的话，必须是完整的字节文件
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
         :param sample_rate: 如果传入的事numpy数据，需要指定采样率
+        :param allow_use_vad: 当音频长度大于30秒，是否允许使用语音活动检测分割音频进行识别
         :return: 识别的文本结果和解码的得分数
         """
-        self.init_vad()
+        if isinstance(audio_data, np.ndarray):
+            assert isinstance(sample_rate, int), '当传入的是numpy数据时，需要指定采样率'
         # 加载音频文件，并进行预处理
         audio_segment = self._load_audio(audio_data=audio_data, sample_rate=sample_rate)
         # 重采样，方便进行语音活动检测
-        if audio_segment.sample_rate != self.configs.preprocess_conf.sample_rate:
-            audio_segment.resample(self.configs.preprocess_conf.sample_rate)
-        # 获取语音活动区域
-        speech_timestamps = self.vad_predictor.get_speech_timestamps(audio_segment.samples, audio_segment.sample_rate)
-        texts, scores = '', []
-        for t in speech_timestamps:
-            audio_ndarray = audio_segment.samples[t['start']: t['end']]
-            # 执行识别
-            result = self.predict(audio_data=audio_ndarray, use_pun=False, is_itn=is_itn)
-            score, text = result['score'], result['text']
-            if text != '':
-                texts = texts + text if use_pun else texts + '，' + text
-            scores.append(score)
-            logger.info(f'长语音识别片段结果：{text}')
-        if texts[0] == '，': texts = texts[1:]
-        # 加标点符号
-        if use_pun and len(texts) > 0:
-            if self.pun_predictor is not None:
-                texts = self.pun_predictor(texts)
-            else:
-                logger.warning('标点符号模型没有初始化！')
-        result = {'text': texts, 'score': round(sum(scores) / len(scores), 2)}
-        return result
+        if audio_segment.sample_rate != self.model_info.sample_rate:
+            audio_segment.resample(self.model_info.sample_rate)
+        if audio_segment.duration <= 30 or not allow_use_vad:
+            text = self._infer(audio_data=audio_segment.samples, use_pun=use_pun, is_itn=is_itn,
+                               sample_rate=audio_segment.sample_rate)
+            result = {'text': text,
+                      'sentences': [{'text': text, 'start': 0, 'end': audio_segment.duration}]}
+            return result
+        elif allow_use_vad and audio_segment.duration > 30:
+            last_audio_ndarray = None
+            # 获取语音活动区域
+            speech_timestamps = audio_segment.vad()
+            texts, sentences = '', []
+            for t in speech_timestamps:
+                audio_ndarray = audio_segment.samples[t['start']: t['end']]
+                # 如果语音片段小于0.5秒，则跳过推理，下次合并使用
+                if (t['end'] - t['start']) * audio_segment.sample_rate < 0.5 and last_audio_ndarray is None:
+                    continue
+                if last_audio_ndarray is not None:
+                    audio_ndarray = np.concatenate((last_audio_ndarray, audio_ndarray))
+                    last_audio_ndarray = None
+                # 执行识别
+                text = self._infer(audio_data=audio_ndarray, use_pun=False, is_itn=is_itn,
+                                   sample_rate=audio_segment.sample_rate)
+                if text != '':
+                    texts = texts + text if use_pun else texts + '，' + text
+                sentences.append({'text': text,
+                                  'start': round(t['start'] / audio_segment.sample_rate, 3),
+                                  'end': round(t['end'] / audio_segment.sample_rate, 3)})
+                logger.info(f'长语音识别片段结果：{text}')
+            if texts[0] == '，': texts = texts[1:]
+            # 加标点符号
+            if use_pun and len(texts) > 0:
+                if self.pun_predictor is not None:
+                    texts = self.pun_predictor(texts)
+                else:
+                    logger.warning('标点符号模型没有初始化！')
+            result = {'text': texts, 'sentences': sentences}
+            return result
 
     # 预测音频
     def predict_stream(self,
@@ -273,8 +259,7 @@ class PPASRPredictor:
         :param sample_rate: 如果传入的是numpy或者pcm字节流数据，需要指定采样率
         :return: 识别的文本结果和解码的得分数
         """
-        if not self.configs.streaming:
-            raise Exception(f"不支持改该模型流式识别，当前模型：{self.configs.use_model}")
+        assert self.model_info.streaming, f'不支持改该模型流式识别，当前模型：{self.model_info.model_name}'
         # 加载音频文件，并进行预处理
         if isinstance(audio_data, np.ndarray):
             audio_data = AudioSegment.from_ndarray(audio_data, sample_rate)
@@ -290,13 +275,20 @@ class PPASRPredictor:
                                              audio_data.sample_rate)
 
         # 预处理语音块
-        x_chunk = self._audio_featurizer.featurize(self.remained_wav)
+        x_chunk = self._audio_featurizer.featurize(self.remained_wav, sample_rate=self.remained_wav.sample_rate)
         x_chunk = np.array(x_chunk).astype(np.float32)[np.newaxis, :]
         if self.cached_feat is None:
             self.cached_feat = x_chunk
         else:
             self.cached_feat = np.concatenate([self.cached_feat, x_chunk], axis=1)
         self.remained_wav._samples = self.remained_wav.samples[160 * x_chunk.shape[1]:]
+
+        # 实时检测VAD
+        state = VADState.SPEAKING
+        if self.streaming_vad is not None:
+            for ith_frame in range(0, len(audio_data.samples), self.streaming_vad.vad_frames):
+                buffer = audio_data.samples[ith_frame:ith_frame + self.streaming_vad.vad_frames]
+                state = self.streaming_vad(buffer)
 
         # 识别的数据块大小
         decoding_chunk_size = 16
@@ -325,51 +317,49 @@ class PPASRPredictor:
             x_chunk = self.cached_feat[:, cur:end, :]
 
             # 执行识别
-            if self.configs.use_model == 'deepspeech2':
+            if self.model_info.model_name == 'DeepSpeech2Model':
                 output_chunk_probs, output_lens = self.predictor.predict_chunk_deepspeech(x_chunk=x_chunk)
-            elif 'former' in self.configs.use_model:
+            elif 'ConformerModel' in self.model_info.model_name:
                 num_decoding_left_chunks = -1
                 required_cache_size = decoding_chunk_size * num_decoding_left_chunks
                 output_chunk_probs = self.predictor.predict_chunk_conformer(x_chunk=x_chunk,
                                                                             required_cache_size=required_cache_size)
-                output_lens = np.array([output_chunk_probs.shape[1]])
+                output_lens = paddle.to_tensor([output_chunk_probs.size(1)], dtype=paddle.int32,
+                                               place=output_chunk_probs.place)
             else:
-                raise Exception(f'当前模型不支持该方法，当前模型为：{self.configs.use_model}')
+                raise Exception(f'当前模型不支持该方法，当前模型为：{self.model_info.model_name}')
             # 执行解码
-            if self.configs.decoder == 'ctc_beam_search':
-                # 集束搜索解码策略
-                score, text = self.beam_search_decoder.decode_chunk(probs=output_chunk_probs, logits_lens=output_lens)
-            else:
-                # 贪心解码策略
-                score, text, self.greedy_last_max_prob_list, self.greedy_last_max_index_list = \
-                    greedy_decoder_chunk(probs_seq=output_chunk_probs[0], vocabulary=self._text_featurizer.vocab_list,
-                                         last_max_index_list=self.greedy_last_max_index_list,
-                                         last_max_prob_list=self.greedy_last_max_prob_list)
+            chunk_result = ctc_greedy_search(ctc_probs=output_chunk_probs, ctc_lens=output_lens,
+                                             blank_id=self._tokenizer.blank_id)[0]
+            chunk_text = self._tokenizer.ids2text(chunk_result)
+            self.last_chunk_text = self.last_chunk_text + chunk_text
         # 更新特征缓存
         self.cached_feat = self.cached_feat[:, end - cached_feature_num:, :]
-
+        # 如果是静音并且推理音频时间足够长，重置流式识别状态，以免显存不足
+        if state == VADState.QUIET and self.last_chunk_time > self.reset_state_time:
+            logger.info('检测到静音，重置流式识别状态！')
+            self.predictor.reset_stream()
+            self.last_chunk_time = 0
         # 加标点符号
-        if use_pun and is_end and len(text) > 0:
+        if use_pun and is_end and len(self.last_chunk_text) > 0:
             if self.pun_predictor is not None:
-                text = self.pun_predictor(text)
+                self.last_chunk_text = self.pun_predictor(self.last_chunk_text)
             else:
                 logger.warning('标点符号模型没有初始化！')
-        # 是否对文本进行反标准化
-        if is_itn:
-            text = self.inverse_text_normalization(text)
+        # 是否对文本进行逆标准化
+        if is_itn and is_end and len(self.last_chunk_text) > 0:
+            self.last_chunk_text = self.inverse_text_normalization(self.last_chunk_text)
 
-        result = {'text': text, 'score': score}
+        result = {'text': self.last_chunk_text}
         return result
 
     # 重置流式识别，每次流式识别完成之后都要执行
     def reset_stream(self):
         self.predictor.reset_stream()
+        self.last_chunk_time = 0
         self.remained_wav = None
         self.cached_feat = None
-        self.greedy_last_max_prob_list = None
-        self.greedy_last_max_index_list = None
-        if self.configs.decoder == 'ctc_beam_search':
-            self.beam_search_decoder.reset_decoder()
+        self.last_chunk_text = ''
 
     # 对文本进行反标准化
     def inverse_text_normalization(self, text):

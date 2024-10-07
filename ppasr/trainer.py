@@ -1,10 +1,8 @@
-import io
 import json
 import os
 import platform
 import shutil
 import time
-from collections import Counter
 from contextlib import nullcontext
 from datetime import timedelta
 
@@ -17,7 +15,6 @@ from tqdm import tqdm
 from visualdl import LogWriter
 from loguru import logger
 
-from ppasr import SUPPORT_MODEL, __version__
 from ppasr.data_utils.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.collate_fn import collate_fn
 from ppasr.data_utils.normalizer import FeatureNormalizer
@@ -30,9 +27,8 @@ from ppasr.decoders.ctc_greedy_search import ctc_greedy_search
 from ppasr.decoders.ctc_prefix_beam_search import ctc_prefix_beam_search
 from ppasr.model_utils import build_model
 from ppasr.optimizer import build_lr_scheduler, build_optimizer
-from ppasr.optimizer.scheduler import WarmupLR, NoamHoldAnnealing, CosineWithWarmup
 from ppasr.utils.checkpoint import save_checkpoint, load_pretrained, load_checkpoint
-from ppasr.utils.metrics import cer, wer, mer
+from ppasr.utils.metrics import cer, wer
 from ppasr.utils.summary import summary
 from ppasr.utils.utils import dict_to_object, print_arguments
 from ppasr.data_utils.utils import create_manifest, merge_audio
