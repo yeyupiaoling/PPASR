@@ -19,14 +19,16 @@ def make_xs_mask(xs: paddle.Tensor, pad_value=0.0) -> paddle.Tensor:
     return mask
 
 
-def make_pad_mask(lengths: paddle.Tensor) -> paddle.Tensor:
+def make_pad_mask(lengths: paddle.Tensor, max_len: int = 0) -> paddle.Tensor:
     """Make mask tensor containing indices of padded part.
+
     See description of make_non_pad_mask.
+
     Args:
         lengths (paddle.Tensor): Batch of lengths (B,).
     Returns:
         paddle.Tensor: Mask tensor containing indices of padded part.
-        (B, T)
+
     Examples:
         >>> lengths = [5, 3, 2]
         >>> make_pad_mask(lengths)
@@ -35,7 +37,7 @@ def make_pad_mask(lengths: paddle.Tensor) -> paddle.Tensor:
                  [0, 0, 1, 1, 1]]
     """
     batch_size = int(lengths.shape[0])
-    max_len = int(lengths.max())
+    max_len = max_len if max_len > 0 else lengths.max().item()
     seq_range = paddle.arange(0, max_len, dtype=paddle.int64)
     seq_range_expand = seq_range.unsqueeze(0).expand([batch_size, max_len])
     seq_length_expand = lengths.unsqueeze(-1)

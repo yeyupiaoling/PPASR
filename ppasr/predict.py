@@ -1,14 +1,21 @@
+import json
 import os
 from io import BufferedReader
 
 import numpy as np
 import yaml
+from yeaudio.streaming_vad import StreamingVAD, VADParams
 
 from ppasr import SUPPORT_MODEL
 from ppasr.data_utils.audio import AudioSegment
 from ppasr.data_utils.featurizer.audio_featurizer import AudioFeaturizer
 from ppasr.data_utils.featurizer.text_featurizer import TextFeaturizer
 from ppasr.decoders.ctc_greedy_decoder import greedy_decoder, greedy_decoder_chunk
+
+from ppasr.data_utils.tokenizer import PPASRTokenizer
+from ppasr.decoders.attention_rescoring import attention_rescoring
+from ppasr.decoders.ctc_greedy_search import ctc_greedy_search
+from ppasr.decoders.ctc_prefix_beam_search import ctc_prefix_beam_search
 from ppasr.infer_utils.inference_predictor import InferencePredictor
 from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import dict_to_object, print_arguments, download_model
@@ -18,59 +25,50 @@ logger = setup_logger(__name__)
 
 class PPASRPredictor:
     def __init__(self,
-                 configs=None,
-                 model_tag='conformer_streaming_fbank_wenetspeech',
-                 model_path='models/conformer_streaming_fbank/infer/',
+                 model_dir='models/ConformerModel_fbank/inference_model/',
+                 decoder="ctc_greedy",
+                 decoder_configs=None,
                  use_pun=False,
                  pun_model_dir='models/pun_models/',
                  use_gpu=True):
         """
         语音识别预测工具
-        :param configs: 配置文件路径或者是yaml读取到的配置参数
-        :param model_tag: 如果configs为None，则使用项目提供的模型预测
-        :param model_path: 导出的预测模型文件夹路径
+        :param model_dir: 导出的预测模型文件夹路径
+        :param decoder: 解码器，支持ctc_greedy、ctc_beam_search
+        :param decoder_configs: 解码器配置参数文件路径，支持yaml格式
         :param use_pun: 是否使用加标点符号的模型
         :param pun_model_dir: 给识别结果加标点符号的模型文件夹路径
         :param use_gpu: 是否使用GPU预测
         """
-        if configs:
-            if isinstance(configs, str):
-                # 读取配置文件
-                with open(configs, 'r', encoding='utf-8') as f:
-                    configs = yaml.load(f.read(), Loader=yaml.FullLoader)
-                print_arguments(configs=configs)
-        else:
-            # 使用下载的模型
-            cache_dir = os.path.expanduser("~/.cache/ppasr")
-            model_url_dict = {
-                'conformer_streaming_fbank_wenetspeech': 'https://ppasr.yeyupiaoling.cn/models/conformer_streaming_fbank_wenetspeech.zip'}
-            model_url = model_url_dict[model_tag]
-            _ = download_model(model_url, cache_dir)
-            model_path = os.path.join(cache_dir, model_tag, 'models', model_tag[:model_tag.rfind('_')], 'infer')
-            pun_model_dir = os.path.join(cache_dir, model_tag, 'models/pun_models/')
-            configs = os.path.join(cache_dir, model_tag, 'configs',
-                                   os.listdir(os.path.join(cache_dir, model_tag, 'configs'))[0])
-            # 读取配置文件
-            with open(configs, 'r', encoding='utf-8') as f:
-                configs = yaml.load(f.read(), Loader=yaml.FullLoader)
-            configs['dataset_conf']['dataset_vocab'] = os.path.join(cache_dir, model_tag,
-                                                                    configs['dataset_conf']['dataset_vocab'])
-            print_arguments(configs=configs)
-
-        self.configs = dict_to_object(configs)
-        assert self.configs.use_model in SUPPORT_MODEL, f'没有该模型：{self.configs.use_model}'
+        model_path = os.path.join(model_dir, 'inference')
+        model_info_path = os.path.join(model_dir, 'inference.json')
+        with open(model_info_path, 'r', encoding='utf-8') as f:
+            configs = json.load(f)
+            print_arguments(configs=configs, title="模型参数配置")
+        self.model_info = dict_to_object(configs)
+        if self.model_info.model_name == "DeepSpeech2Model":
+            assert decoder != "attention_rescoring", f'DeepSpeech2Model不支持使用{decoder}解码器！'
+        self.decoder = decoder
+        # 读取解码器配置文件
+        if isinstance(decoder_configs, str) and os.path.exists(decoder_configs):
+            with open(decoder_configs, 'r', encoding='utf-8') as f:
+                decoder_configs = yaml.load(f.read(), Loader=yaml.FullLoader)
+            print_arguments(configs=decoder_configs, title='解码器参数配置')
+        self.decoder_configs = decoder_configs if decoder_configs is not None else {}
         self.running = False
+        self.use_gpu = use_gpu
         self.inv_normalizer = None
         self.pun_predictor = None
-        self.vad_predictor = None
-        self._text_featurizer = TextFeaturizer(vocab_filepath=self.configs.dataset_conf.dataset_vocab)
-        self._audio_featurizer = AudioFeaturizer(**self.configs.preprocess_conf)
+        vocab_model_dir = os.path.join(model_dir, 'vocab_model/')
+        assert os.path.exists(vocab_model_dir), f'词表模型文件夹[{vocab_model_dir}]不存在，请检查该文件是否存在！'
+        self._tokenizer = PPASRTokenizer(vocab_model_dir=vocab_model_dir)
+        self._audio_featurizer = AudioFeaturizer(**self.model_info.preprocess_conf)
         # 流式解码参数
         self.remained_wav = None
         self.cached_feat = None
-        self.greedy_last_max_prob_list = None
-        self.greedy_last_max_index_list = None
-        self.__init_decoder()
+        self.last_chunk_text = ""
+        self.last_chunk_time = 0
+        self.reset_state_time = 30
         # 创建模型
         if not os.path.exists(model_path):
             raise Exception("模型文件不存在，请检查{}是否存在！".format(model_path))
@@ -79,55 +77,53 @@ class PPASRPredictor:
             from ppasr.infer_utils.pun_predictor import PunctuationPredictor
             self.pun_predictor = PunctuationPredictor(model_dir=pun_model_dir, use_gpu=use_gpu)
         # 获取预测器
-        self.predictor = InferencePredictor(configs=self.configs,
-                                            use_model=self.configs.use_model,
-                                            streaming=self.configs.streaming,
-                                            model_dir=model_path,
-                                            use_gpu=use_gpu)
+        self.predictor = InferencePredictor(model_name=self.model_info.model_name,
+                                            streaming=self.model_info.streaming,
+                                            model_path=model_path,
+                                            use_gpu=self.use_gpu)
+        # 加载流式VAD模型
+        if self.model_info.streaming:
+            self.streaming_vad = StreamingVAD(sample_rate=self.model_info.sample_rate,
+                                              params=VADParams(stop_secs=0.2))
         # 预热
         warmup_audio = np.random.uniform(low=-2.0, high=2.0, size=(134240,))
         self.predict(audio_data=warmup_audio, is_itn=False)
-
-    # 初始化解码器
-    def __init_decoder(self):
-        # 集束搜索方法的处理
-        if self.configs.decoder == "ctc_beam_search":
-            try:
-                from ppasr.decoders.beam_search_decoder import BeamSearchDecoder
-                self.beam_search_decoder = BeamSearchDecoder(vocab_list=self._text_featurizer.vocab_list,
-                                                             **self.configs.ctc_beam_search_decoder_conf)
-            except ModuleNotFoundError:
-                logger.warning('==================================================================')
-                logger.warning('缺少 paddlespeech_ctcdecoders 库，请执行以下命令安装。')
-                logger.warning('python -m pip install paddlespeech_ctcdecoders -U -i https://ppasr.yeyupiaoling.cn/pypi/simple/')
-                logger.warning('【注意】现在已自动切换为ctc_greedy解码器，ctc_greedy解码器准确率相对较低。')
-                logger.warning('==================================================================\n')
-                self.configs.decoder = 'ctc_greedy'
-
-    # 初始化VAD工具
-    def init_vad(self):
-        if self.vad_predictor is None:
-            from ppasr.infer_utils.vad_predictor import VADPredictor
-            self.vad_predictor = VADPredictor()
+        if self.model_info.streaming:
+            self.predict_stream(audio_data=warmup_audio[:16000], is_itn=False)
+        self.reset_stream()
+        logger.info("预测器已准备完成！")
 
     # 解码模型输出结果
-    def decode(self, output_data, use_pun, is_itn):
-        """
-        解码模型输出结果
-        :param output_data: 模型输出结果
+    def decode(self, encoder_outs, ctc_probs, ctc_lens, use_pun, is_itn):
+        """解码模型输出结果
+
+        :param encoder_outs: 编码器输出
+        :param ctc_probs: 模型输出的CTC概率
+        :param ctc_lens: 模型输出的CTC长度
         :param use_pun: 是否使用加标点符号的模型
         :param is_itn: 是否对文本进行反标准化
         :return:
         """
         # 执行解码
-        if self.configs.decoder == 'ctc_beam_search':
-            # 集束搜索解码策略
-            result = self.beam_search_decoder.decode_beam_search_offline(probs_split=output_data)
+        if self.decoder == "ctc_greedy_search":
+            result = ctc_greedy_search(ctc_probs=ctc_probs, ctc_lens=ctc_lens, blank_id=self._tokenizer.blank_id)
+        elif self.decoder == "ctc_prefix_beam_search":
+            decoder_args = self.decoder_configs.get('ctc_prefix_beam_search_args', {})
+            result, _ = ctc_prefix_beam_search(ctc_probs=ctc_probs, ctc_lens=ctc_lens,
+                                               blank_id=self._tokenizer.blank_id, **decoder_args)
+        elif self.decoder == "attention_rescoring":
+            decoder_args = self.decoder_configs.get('attention_rescoring_args', {})
+            result = attention_rescoring(model=self.predictor.model,
+                                         ctc_probs=ctc_probs,
+                                         ctc_lens=ctc_lens,
+                                         blank_id=self._tokenizer.blank_id,
+                                         encoder_outs=encoder_outs,
+                                         encoder_lens=ctc_lens,
+                                         **decoder_args)
         else:
-            # 贪心解码策略
-            result = greedy_decoder(probs_seq=output_data, vocabulary=self._text_featurizer.vocab_list)
+            raise ValueError(f"不支持该解码器：{self.decoder}")
+        text = self._tokenizer.ids2text(result[0])
 
-        score, text = result[0], result[1]
         # 加标点符号
         if use_pun and len(text) > 0:
             if self.pun_predictor is not None:
@@ -137,7 +133,7 @@ class PPASRPredictor:
         # 是否对文本进行反标准化
         if is_itn:
             text = self.inverse_text_normalization(text)
-        return score, text
+        return text
 
     @staticmethod
     def _load_audio(audio_data, sample_rate=16000):
@@ -158,6 +154,35 @@ class PPASRPredictor:
         else:
             raise Exception(f'不支持该数据类型，当前数据类型为：{type(audio_data)}')
         return audio_segment
+
+    # 预测音频
+    def _infer(self,
+               audio_data,
+               use_pun=False,
+               is_itn=False,
+               sample_rate=16000):
+        """
+        预测函数，只预测完整的一句话。
+        :param audio_data: 音频数据
+        :type audio_data: np.ndarray
+        :param use_pun: 是否使用加标点符号的模型
+        :param is_itn: 是否对文本进行反标准化
+        :param sample_rate: 如果传入的事numpy数据，需要指定采样率
+        :return: 识别的文本结果和解码的得分数
+        """
+        # 提取音频特征
+        audio_data = torch.tensor(audio_data, dtype=torch.float32)
+        audio_feature = self._audio_featurizer.featurize(waveform=audio_data, sample_rate=sample_rate)
+        audio_feature = audio_feature.unsqueeze(0)
+        audio_len = torch.tensor([audio_feature.size(1)], dtype=torch.int64)
+
+        # 运行predictor
+        encoder_outs, ctc_probs, ctc_lens = self.predictor.predict(audio_feature, audio_len)
+
+        # 解码
+        text = self.decode(encoder_outs=encoder_outs, ctc_probs=ctc_probs, ctc_lens=ctc_lens,
+                           use_pun=use_pun, is_itn=is_itn)
+        return text
 
     # 预测音频
     def predict(self,
@@ -349,8 +374,13 @@ class PPASRPredictor:
     # 对文本进行反标准化
     def inverse_text_normalization(self, text):
         if self.inv_normalizer is None:
-            # 需要安装WeTextProcessing>=0.1.0
+            # 需要安装WeTextProcessing>=1.0.4.1
             from itn.chinese.inverse_normalizer import InverseNormalizer
-            self.inv_normalizer = InverseNormalizer()
+            user_dir = os.path.expanduser('~')
+            cache_dir = os.path.join(user_dir, '.cache/itn_v1.0.4.1')
+            exists = os.path.exists(os.path.join(cache_dir, 'zh_itn_tagger.fst')) and \
+                     os.path.exists(os.path.join(cache_dir, 'zh_itn_verbalizer.fst'))
+            self.inv_normalizer = InverseNormalizer(cache_dir=cache_dir, enable_0_to_9=False,
+                                                    overwrite_cache=not exists)
         result_text = self.inv_normalizer.normalize(text)
         return result_text

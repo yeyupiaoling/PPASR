@@ -3,7 +3,7 @@ window.URL = window.URL || window.webkitURL;
 //获取计算机的设备：摄像头或者录音设备
 navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia;
 
-var PPASRRecorder = function (stream, url, textResult) {
+var MASRRecorder = function (stream, url, textResult) {
     var socket = new WebSocket(url);
     var sampleBits = 16; //输出采样数位 8, 16
     var sampleRate = 16000; //输出采样率
@@ -105,7 +105,7 @@ var PPASRRecorder = function (stream, url, textResult) {
     socket.onopen = () => {
         socket.binaryType = 'arraybuffer';
         this.start();
-        textResult.innerText = ''
+        textResult.value = ''
     };
     //接收到消息的回调方法
     socket.onmessage = function (MesssageEvent) {
@@ -115,7 +115,7 @@ var PPASRRecorder = function (stream, url, textResult) {
         let data = JSON.parse(jsonStr)
         let code = data['code'];
         if (code === 0){
-            textResult.innerText = data['result']
+            textResult.value = data['result']
         }else {
             let msg = data['msg'];
             alert('报错，错误信息：' + msg)
@@ -124,7 +124,7 @@ var PPASRRecorder = function (stream, url, textResult) {
     //连接关闭的回调方法
     socket.onerror = function (err) {
         console.info(err)
-        textResult.innerText = err
+        textResult.value = err
     }
     //关闭websocket连接
     socket.onclose = function (msg) {
@@ -160,7 +160,7 @@ PPASRWebSocket = function useWebSocket(url, record, textResult) {
 }
 
 //抛出异常
-PPASRRecorder.throwError = function (message) {
+MASRRecorder.throwError = function (message) {
     alert(message);
     throw new function () {
         this.toString = function () {
@@ -169,39 +169,39 @@ PPASRRecorder.throwError = function (message) {
     }
 }
 //是否支持录音
-PPASRRecorder.canRecording = (navigator.getUserMedia != null);
+MASRRecorder.canRecording = (navigator.getUserMedia != null);
 //获取录音机
-PPASRRecorder.get = function (callback, url, textarea) {
+MASRRecorder.get = function (callback, url, textarea) {
     if (callback) {
         if (navigator.getUserMedia) {
             navigator.getUserMedia(
                 {audio: true} //只启用音频
                 , function (stream) {
-                    var record = new PPASRRecorder(stream, url, textarea);
+                    var record = new MASRRecorder(stream, url, textarea);
                     callback(record);
                 }
                 , function (error) {
                     switch (error.code || error.name) {
                         case 'PERMISSION_DENIED':
                         case 'PermissionDeniedError':
-                            PPASRRecorder.throwError('用户拒绝提供信息。');
+                            MASRRecorder.throwError('用户拒绝提供信息。');
                             break;
                         case 'NOT_SUPPORTED_ERROR':
                         case 'NotSupportedError':
-                            PPASRRecorder.throwError('浏览器不支持硬件设备。');
+                            MASRRecorder.throwError('浏览器不支持硬件设备。');
                             break;
                         case 'MANDATORY_UNSATISFIED_ERROR':
                         case 'MandatoryUnsatisfiedError':
-                            PPASRRecorder.throwError('无法发现指定的硬件设备。');
+                            MASRRecorder.throwError('无法发现指定的硬件设备。');
                             break;
                         default:
-                            PPASRRecorder.throwError('无法打开麦克风。异常信息:' + (error.code || error.name));
+                            MASRRecorder.throwError('无法打开麦克风。异常信息:' + (error.code || error.name));
                             break;
                     }
                 });
         } else {
             window.alert('不是HTTPS协议或者localhost地址，不能使用录音功能！')
-            PPASRRecorder.throwErr('当前浏览器不支持录音功能。');
+            MASRRecorder.throwErr('当前浏览器不支持录音功能。');
             return;
         }
     }

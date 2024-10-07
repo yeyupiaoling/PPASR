@@ -70,7 +70,7 @@ class LabelSmoothingLoss(nn.Layer):
         x = x.reshape((-1, self.size))
         target = target.reshape([-1])
 
-        # use zeros_like instead of torch.no_grad() for true_dist,
+        # use zeros_like instead of paddle.no_grad() for true_dist,
         # since no_grad() can not be exported by JIT
         true_dist = paddle.full_like(x, self.smoothing / (self.size - 1))
         ignore = target == self.padding_idx  # (B,)

@@ -2,7 +2,6 @@ import argparse
 import functools
 import os
 import random
-import sys
 import time
 import wave
 from datetime import datetime
@@ -10,15 +9,13 @@ from datetime import datetime
 import aiofiles
 import uvicorn
 from fastapi import FastAPI, WebSocket, UploadFile, File, Request
+from loguru import logger
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
 from starlette.websockets import WebSocketState
 
 from ppasr.predict import PPASRPredictor
-from ppasr.utils.logger import setup_logger
 from ppasr.utils.utils import add_arguments, print_arguments
-
-logger = setup_logger(__name__)
 
 parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
@@ -29,8 +26,10 @@ add_arg("save_path",        str,    'dataset/upload/',    "上传音频文件的
 add_arg('use_gpu',          bool,   True,   "是否使用GPU预测")
 add_arg('use_pun',          bool,   False,  "是否给识别结果加标点符号")
 add_arg('is_itn',           bool,   False,  "是否对文本进行反标准化")
-add_arg('model_path',       str,    'models/conformer_streaming_fbank/infer',   "导出的预测模型文件路径")
-add_arg('pun_model_dir',    str,    'models/pun_models/',    "加标点符号的模型文件夹路径")
+add_arg('model_dir',        str,    'models/ConformerModel_fbank/inference_model/', "导出的预测模型文件夹路径")
+add_arg('decoder',          str,   'ctc_greedy_search',     "解码器，支持 ctc_greedy_search、ctc_prefix_beam_search、attention_rescoring")
+add_arg('decoder_configs',  str,    'configs/decoder.yml',  "解码器配置参数文件路径")
+add_arg('pun_model_dir',    str,    'models/pun_models/',   "加标点符号的模型文件夹路径")
 args = parser.parse_args()
 print_arguments(args=args)
 
@@ -39,9 +38,10 @@ app.mount('/static', StaticFiles(directory='static'), name='static')
 templates = Jinja2Templates(directory="templates")
 
 # 创建预测器
-predictor = PPASRPredictor(configs=args.configs,
-                           model_path=args.model_path,
+predictor = PPASRPredictor(model_dir=args.model_dir,
                            use_gpu=args.use_gpu,
+                           decoder=args.decoder,
+                           decoder_configs=args.decoder_configs,
                            use_pun=args.use_pun,
                            pun_model_dir=args.pun_model_dir)
 
@@ -59,39 +59,13 @@ async def recognition(audio: UploadFile = File(..., description="音频文件"))
         await out_file.write(content)
     try:
         start = time.time()
-        # 执行识别
         result = predictor.predict(audio_data=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
-        score, text = result['score'], result['text']
         end = time.time()
-        print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
-        result = {"code": 0, "msg": "success", "result": text, "score": round(score, 3)}
+        logger.info(f"识别时间：{round((end - start) * 1000)}ms，识别结果：{result}")
+        result = {"code": 0, "msg": "success", "result": result}
         return result
     except Exception as e:
-        print(f'[{datetime.now()}] 短语音识别失败，错误信息：{e}', file=sys.stderr)
-        return {"error": 1, "msg": "audio read fail!"}
-
-
-# 长语音识别接口
-@app.post("/recognition_long_audio")
-async def recognition_long_audio(audio: UploadFile = File(..., description="音频文件")):
-    # 保存路径
-    save_dir = os.path.join(args.save_path, datetime.now().strftime('%Y-%m-%d'))
-    os.makedirs(save_dir, exist_ok=True)
-    suffix = audio.filename.split('.')[-1]
-    file_path = os.path.join(save_dir, f'{int(time.time() * 1000)}_{random.randint(100, 999)}.{suffix}')
-    async with aiofiles.open(file_path, 'wb') as out_file:
-        content = await audio.read()
-        await out_file.write(content)
-    try:
-        start = time.time()
-        result = predictor.predict_long(audio_data=file_path, use_pun=args.use_pun, is_itn=args.is_itn)
-        score, text = result['score'], result['text']
-        end = time.time()
-        print("识别时间：%dms，识别结果：%s， 得分: %f" % (round((end - start) * 1000), text, score))
-        result = {"code": 0, "msg": "success", "result": text, "score": score}
-        return result
-    except Exception as e:
-        print(f'[{datetime.now()}] 长语音识别失败，错误信息：{e}', file=sys.stderr)
+        logger.error(f'语音识别失败：错误信息：{e}')
         return {"error": 1, "msg": "audio read fail!"}
 
 

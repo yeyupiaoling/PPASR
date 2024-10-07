@@ -1,3 +1,4 @@
+import importlib
 from typing import Tuple, Dict
 
 import paddle
@@ -5,10 +6,11 @@ import paddle
 from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.model_utils.loss.ctc import CTCLoss
 from ppasr.model_utils.loss.label_smoothing_loss import LabelSmoothingLoss
-from ppasr.model_utils.transformer.decoder import BiTransformerDecoder
-from ppasr.model_utils.conformer.encoder import ConformerEncoder
+from ppasr.model_utils.transformer.decoder import *
+from ppasr.model_utils.conformer.encoder import *
 from ppasr.model_utils.utils.cmvn import GlobalCMVN
 from ppasr.model_utils.utils.common import (IGNORE_ID, add_sos_eos, th_accuracy, reverse_pad_list)
+from ppasr.utils.utils import DictObject
 
 __all__ = ["ConformerModel"]
 
@@ -16,12 +18,13 @@ __all__ = ["ConformerModel"]
 class ConformerModel(paddle.nn.Layer):
     def __init__(
             self,
-            input_dim: int,
+            input_size: int,
             vocab_size: int,
             mean_istd_path: str,
+            eos_id: int,
             streaming: bool = True,
-            encoder_conf: Dict = None,
-            decoder_conf: Dict = None,
+            encoder_conf: DictObject = None,
+            decoder_conf: DictObject = None,
             ctc_weight: float = 0.5,
             ignore_id: int = IGNORE_ID,
             reverse_weight: float = 0.0,
@@ -29,7 +32,7 @@ class ConformerModel(paddle.nn.Layer):
             length_normalized_loss: bool = False):
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         super().__init__()
-        self.input_dim = input_dim
+        self.input_size = input_size
         # 设置是否为流式模型
         self.streaming = streaming
         use_dynamic_chunk = False
@@ -40,19 +43,23 @@ class ConformerModel(paddle.nn.Layer):
         feature_normalizer = FeatureNormalizer(mean_istd_filepath=mean_istd_path)
         global_cmvn = GlobalCMVN(paddle.to_tensor(feature_normalizer.mean, dtype=paddle.float32),
                                  paddle.to_tensor(feature_normalizer.istd, dtype=paddle.float32))
-        self.encoder = ConformerEncoder(input_size=input_dim,
-                                        global_cmvn=global_cmvn,
-                                        use_dynamic_chunk=use_dynamic_chunk,
-                                        causal=causal,
-                                        **encoder_conf if encoder_conf is not None else {})
-        self.decoder = BiTransformerDecoder(vocab_size=vocab_size,
-                                            encoder_output_size=self.encoder.output_size(),
-                                            **decoder_conf if decoder_conf is not None else {})
+        # 创建编码器和解码器
+        mod = importlib.import_module(__name__)
+        self.encoder = getattr(mod, encoder_conf.encoder_name)
+        self.encoder = self.encoder(input_size=input_size,
+                                    global_cmvn=global_cmvn,
+                                    use_dynamic_chunk=use_dynamic_chunk,
+                                    causal=causal,
+                                    **encoder_conf.encoder_args if encoder_conf.encoder_args is not None else {})
+        self.decoder = getattr(mod, decoder_conf.decoder_name)
+        self.decoder = self.decoder(vocab_size=vocab_size,
+                                    encoder_output_size=self.encoder.output_size(),
+                                    **decoder_conf.decoder_args if decoder_conf.decoder_args is not None else {})
 
         self.ctc = CTCLoss(vocab_size, self.encoder.output_size())
-        # note that eos is the same as sos (equivalent ID)
-        self.sos = vocab_size - 1
-        self.eos = vocab_size - 1
+        # sos 和 eos 使用相同的ID
+        self.sos = eos_id
+        self.eos = eos_id
         self.vocab_size = vocab_size
         self.ignore_id = ignore_id
         self.ctc_weight = ctc_weight
@@ -145,7 +152,29 @@ class ConformerModel(paddle.nn.Layer):
                               ys_out_pad, ignore_label=self.ignore_id, )
         return loss_att, acc_att
 
-    def get_encoder_out(self, speech: paddle.Tensor, speech_lengths: paddle.Tensor) -> paddle.Tensor:
+    @paddle.jit.to_static
+    def ignore_symbol(self) -> int:
+        return self.ignore_id
+
+    @paddle.jit.to_static
+    def subsampling_rate(self) -> int:
+        return self.encoder.embed.subsampling_rate
+
+    @paddle.jit.to_static
+    def right_context(self) -> int:
+        return self.encoder.embed.right_context
+
+    @paddle.jit.to_static
+    def sos_symbol(self) -> int:
+        return self.sos
+
+    @paddle.jit.to_static
+    def eos_symbol(self) -> int:
+        return self.eos
+
+    @paddle.jit.to_static
+    def get_encoder_out(self, speech: paddle.Tensor, speech_lengths: paddle.Tensor) -> \
+            Tuple[paddle.Tensor, paddle.Tensor, paddle.Tensor]:
         """ Get encoder output
 
         Args:
@@ -154,13 +183,15 @@ class ConformerModel(paddle.nn.Layer):
         Returns:
             Tensor: ctc softmax output
         """
-        encoder_out, _ = self.encoder(speech,
-                                      speech_lengths,
-                                      decoding_chunk_size=-1,
-                                      num_decoding_left_chunks=-1)  # (B, maxlen, encoder_dim)
-        ctc_probs = self.ctc.softmax(encoder_out)
-        return ctc_probs
+        encoder_outs, encoder_mask = self.encoder(speech,
+                                                  speech_lengths,
+                                                  decoding_chunk_size=-1,
+                                                  num_decoding_left_chunks=-1)  # (B, maxlen, encoder_dim)
+        ctc_probs = self.ctc.log_softmax(encoder_outs)
+        encoder_lens = encoder_mask.squeeze(1).sum(1)
+        return encoder_outs, ctc_probs, encoder_lens
 
+    @paddle.jit.to_static
     def get_encoder_out_chunk(self,
                               speech: paddle.Tensor,
                               offset: int,
@@ -183,24 +214,52 @@ class ConformerModel(paddle.nn.Layer):
         ctc_probs = self.ctc.softmax(xs)
         return ctc_probs, att_cache, cnn_cache
 
+    @paddle.jit.to_static
+    def forward_attention_decoder(
+            self,
+            hyps: paddle.Tensor,
+            hyps_lens: paddle.Tensor,
+            encoder_out: paddle.Tensor,
+            reverse_weight: float = 0,
+    ) -> Tuple[paddle.Tensor, paddle.Tensor]:
+        """ Export interface for c++ call, forward decoder with multiple
+            hypothesis from ctc prefix beam search and one encoder output
+        Args:
+            hyps (paddle.Tensor): hyps from ctc prefix beam search, already
+                pad sos at the begining
+            hyps_lens (paddle.Tensor): length of each hyp in hyps
+            encoder_out (paddle.Tensor): corresponding encoder output
+            r_hyps (paddle.Tensor): hyps from ctc prefix beam search, already
+                pad eos at the begining which is used fo right to left decoder
+            reverse_weight: used for verfing whether used right to left decoder,
+            > 0 will use.
+
+        Returns:
+            paddle.Tensor: decoder output
+        """
+        assert encoder_out.shape[0] == 1
+        num_hyps = hyps.shape[0]
+        assert hyps_lens.shape[0] == num_hyps
+        encoder_out = encoder_out.repeat(num_hyps, 1, 1)
+        encoder_mask = paddle.ones((num_hyps, 1, encoder_out.shape[1]), dtype=paddle.bool)
+        r_hyps_lens = hyps_lens - 1
+        r_hyps = hyps[:, 1:]
+        max_len = paddle.max(r_hyps_lens)
+        index_range = paddle.arange(0, max_len, 1).to(encoder_out.device)
+        seq_len_expand = r_hyps_lens.unsqueeze(1)
+        seq_mask = seq_len_expand > index_range  # (beam, max_len)
+        index = (seq_len_expand - 1) - index_range  # (beam, max_len)
+        index = index * seq_mask
+        r_hyps = paddle.gather(r_hyps, 1, index)
+        r_hyps = paddle.where(seq_mask, r_hyps, self.eos)
+        r_hyps = paddle.concat([hyps[:, 0:1], r_hyps], axis=1)
+        decoder_out, r_decoder_out, _ = self.decoder(encoder_out, encoder_mask, hyps, hyps_lens, r_hyps,
+                                                     reverse_weight)  # (num_hyps, max_hyps_len, vocab_size)
+        decoder_out = paddle.nn.functional.log_softmax(decoder_out, axis=-1)
+        r_decoder_out = paddle.nn.functional.log_softmax(r_decoder_out, axis=-1)
+        return decoder_out, r_decoder_out
+
     @paddle.no_grad()
     def export(self):
-        if self.streaming:
-            static_model = paddle.jit.to_static(
-                self.get_encoder_out_chunk,
-                input_spec=[
-                    paddle.static.InputSpec(shape=[1, None, self.input_dim], dtype=paddle.float32),  # [B, T, D]
-                    paddle.static.InputSpec(shape=[1], dtype=paddle.int32),  # offset, int, but need be tensor
-                    paddle.static.InputSpec(shape=[1], dtype=paddle.int32),  # required_cache_size, int
-                    paddle.static.InputSpec(shape=[None, None, None, None], dtype=paddle.float32),  # att_cache
-                    paddle.static.InputSpec(shape=[None, None, None, None], dtype=paddle.float32)  # cnn_cache
-                ])
-        else:
-            static_model = paddle.jit.to_static(
-                self.get_encoder_out,
-                input_spec=[
-                    paddle.static.InputSpec(shape=[None, None, self.input_dim], dtype=paddle.float32),  # [B, T, D]
-                    paddle.static.InputSpec(shape=[None], dtype=paddle.int64),  # audio_length, [B]
-                ])
-
+        static_model = self.eval()
         return static_model

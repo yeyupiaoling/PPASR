@@ -6,7 +6,7 @@ from ppasr.model_utils.deepspeech2.conv import Conv2dSubsampling4Pure
 
 class CRNNEncoder(nn.Layer):
     def __init__(self,
-                 input_dim,
+                 input_size,
                  vocab_size,
                  global_cmvn=None,
                  num_rnn_layers=4,
@@ -15,12 +15,13 @@ class CRNNEncoder(nn.Layer):
                  use_gru=False):
         super().__init__()
         self.rnn_size = rnn_size
-        self.input_dim = input_dim
+        self.input_size = input_size
         self.vocab_size = vocab_size
+        self.rnn_size = rnn_size
         self.num_rnn_layers = num_rnn_layers
         self.rnn_direction = rnn_direction
         self.use_gru = use_gru
-        self.conv = Conv2dSubsampling4Pure(input_dim, 32)
+        self.conv = Conv2dSubsampling4Pure(input_size, 32)
 
         self.global_cmvn = global_cmvn
         self.output_dim = self.conv.output_dim

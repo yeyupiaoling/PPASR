@@ -5,6 +5,11 @@ import struct
 
 
 class DatasetWriter(object):
+    """创建数据二进制数据列表
+
+    :param prefix: 保存文件的前缀
+    :type prefix: str
+    """
     def __init__(self, prefix):
         # 创建对应的数据文件
         self.data_file = open(prefix + '.data', 'wb')
@@ -34,6 +39,15 @@ class DatasetWriter(object):
 
 
 class DatasetReader(object):
+    """读取数据集
+
+    :param data_path: 二进制数据列表路径前缀
+    :type data_path: str
+    :param min_duration: 最小音频时长
+    :type min_duration: float
+    :param max_duration: 最大音频时长
+    :type max_duration: float
+    """
     def __init__(self, data_path, min_duration=0, max_duration=20):
         self.keys = []
         self.offset_dict = {}

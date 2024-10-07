@@ -8,12 +8,11 @@ from pydub import AudioSegment
 from tqdm import tqdm
 
 parser = argparse.ArgumentParser(description=__doc__)
-parser.add_argument('--wenetspeech_json',  type=str,    default='F:\音频数据\WenetSpeech数据集/WenetSpeech.json',  help="WenetSpeech的标注json文件路径")
+parser.add_argument('--wenetspeech_json',  type=str,    default='/media/wenetspeech/WenetSpeech.json',  help="WenetSpeech的标注json文件路径")
 parser.add_argument('--annotation_dir',    type=str,    default='../dataset/annotation/',    help="存放数量列表的文件夹路径")
 parser.add_argument('--to_wav',            type=bool,   default=False,                       help="是否把opus格式转换为wav格式，以空间换时间")
 parser.add_argument('--num_workers',       type=int,    default=8,                           help="把opus格式转换为wav格式的线程数量")
 args = parser.parse_args()
-
 
 if not os.path.exists(args.annotation_dir):
     os.makedirs(args.annotation_dir)
@@ -36,10 +35,10 @@ class myThread(threading.Thread):
         self.data = data
 
     def run(self):
-        print(f"开启线程：{self.threadID}，数据大小为：{len(self.data)}" )
+        print(f"开启线程：{self.threadID}，数据大小为：{len(self.data)}")
         for i, data in enumerate(self.data):
             long_audio_path, segments_lists = data
-            print(f'线程：{self.threadID} 正在处理：[{i+1}/{len(self.data)}]')
+            print(f'线程：{self.threadID} 正在处理：[{i + 1}/{len(self.data)}]')
             lines = process_wenetspeech(long_audio_path, segments_lists)
             # 获取锁
             threadLock.acquire()

@@ -5,9 +5,8 @@ import re
 import numpy as np
 import paddle.inference as paddle_infer
 from paddlenlp.transformers import ErnieTokenizer
-from ppasr.utils.logger import setup_logger
+from loguru import logger
 
-logger = setup_logger(__name__)
 
 __all__ = ['PunctuationPredictor']
 

@@ -1,26 +1,19 @@
-import io
-import itertools
 import json
 import os
 import time
-import wave
 
-import av
 import numpy as np
-import resampy
 import soundfile
+from loguru import logger
 from tqdm import tqdm
+from yeaudio.audio import AudioSegment
 from zhconv import convert
 
 from ppasr.data_utils.binary import DatasetWriter
-from ppasr.utils.logger import setup_logger
-
-logger = setup_logger(__name__)
 
 
-def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.5):
-    """解析数据列表
-    持续时间在[min_duration, max_duration]之外的实例将被过滤。
+def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.0):
+    """读取数据列表文件
 
     :param manifest_path: 数据列表的路径
     :type manifest_path: str
@@ -43,9 +36,18 @@ def read_manifest(manifest_path, max_duration=float('inf'), min_duration=0.5):
     return manifest
 
 
-# 创建数据列表
-def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is_change_frame_rate=True,
-                    only_keep_zh_en=True, max_test_manifest=10000, target_sr=16000):
+def create_manifest(annotation_path, train_manifest_path, test_manifest_path, max_test_manifest=10000):
+    """创建数据列表
+
+    :param annotation_path: 标注列表文件夹路径
+    :type annotation_path: str
+    :param train_manifest_path: 训练数据列表路径
+    :type train_manifest_path: str
+    :param test_manifest_path: 测试数据列表路径
+    :type test_manifest_path: str
+    :param max_test_manifest: 测试数据列表最大数量
+    :type max_test_manifest: int
+    """
     data_list = []
     test_list = []
     durations = []
@@ -62,15 +64,9 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                     continue
                 audio_path, text = d["audio_filepath"], d["text"]
                 start_time, end_time, duration = d["start_time"], d["end_time"], d["duration"]
-                # 重新调整音频格式并保存
-                if is_change_frame_rate:
-                    change_rate(audio_path, target_sr=target_sr)
                 # 获取音频长度
                 durations.append(duration)
                 text = text.lower().strip()
-                if only_keep_zh_en:
-                    # 过滤非法的字符
-                    text = is_ustr(text)
                 if len(text) == 0: continue
                 # 保证全部都是简体
                 text = convert(text, 'zh-cn')
@@ -89,21 +85,15 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
                 lines = f.readlines()
             for line in tqdm(lines):
                 try:
-                    audio_path, text = line.replace('\n', '').replace('\r', '').split('\t')
+                    audio_path, text = line.strip().split('\t')
                 except Exception as e:
                     logger.warning(f'{line} 错误，已跳过，错误信息：{e}')
                     continue
-                # 重新调整音频格式并保存
-                if is_change_frame_rate:
-                    change_rate(audio_path, target_sr=target_sr)
                 # 获取音频长度
-                audio_data, samplerate = soundfile.read(audio_path)
-                duration = float(len(audio_data)) / samplerate
+                audio_segment = AudioSegment.from_file(audio_path)
+                duration = audio_segment.duration
                 durations.append(duration)
                 text = text.lower().strip()
-                if only_keep_zh_en:
-                    # 过滤非法的字符
-                    text = is_ustr(text)
                 if len(text) == 0 or text == ' ': continue
                 # 保证全部都是简体
                 text = convert(text, 'zh-cn')
@@ -143,8 +133,18 @@ def create_manifest(annotation_path, train_manifest_path, test_manifest_path, is
     logger.info("完成生成数据列表，数据集总长度为{:.2f}小时！".format(sum(durations) / 3600.))
 
 
-# 将多段短音频合并为长音频，减少文件数量
 def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16000):
+    """将多段短音频合并为长音频，减少文件数量
+
+    :param annotation_path: 标注列表文件夹路径
+    :type annotation_path: str
+    :param save_audio_path: 合并后的音频保存路径
+    :type save_audio_path: str
+    :param max_duration: 合并的最大音频长度
+    :type max_duration: int
+    :param target_sr: 目标采样率
+    :type target_sr: int
+    """
     # 合并数据列表
     train_list_path = os.path.join(annotation_path, 'merge_audio.json')
     if os.path.exists(train_list_path):
@@ -161,21 +161,17 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16
         for line in tqdm(lines):
             audio_path, text = line.replace('\n', '').replace('\r', '').split('\t')
             if not os.path.exists(audio_path): continue
-            audio_data, samplerate = soundfile.read(audio_path)
-            # 获取音频长度
-            duration = float(len(audio_data)) / samplerate
-            # 重新调整音频格式并保存
-            if samplerate != target_sr:
-                audio_data = resampy.resample(audio_data, sr_orig=samplerate, sr_new=target_sr)
-                soundfile.write(audio_path, audio_data, samplerate=target_sr)
-                audio_data, _ = soundfile.read(audio_path)
+            audio_segment = AudioSegment.from_file(audio_path)
+            # 重采样
+            if audio_segment.sample_rate != target_sr:
+                audio_segment.resample(target_sample_rate=target_sr)
             # 合并数据
-            duration_sum.append(duration)
-            wav.append(audio_data)
+            duration_sum.append(audio_segment.duration)
+            wav.append(audio_segment.samples)
             # 列表数据
             list_d = dict(text=text,
-                          duration=round(duration, 5),
-                          start_time=round(sum(duration_sum) - duration, 5),
+                          duration=round(audio_segment.duration, 5),
+                          start_time=round(sum(duration_sum) - audio_segment.duration, 5),
                           end_time=round(sum(duration_sum), 5))
             list_data.append(list_d)
             # 删除已处理的音频文件
@@ -203,101 +199,13 @@ def merge_audio(annotation_path, save_audio_path, max_duration=600, target_sr=16
     f_ann.close()
 
 
-# 改变音频采样率
-def change_rate(audio_path, target_sr=16000):
-    is_change = False
-    wav, samplerate = soundfile.read(audio_path, dtype='float32')
-    # 多通道转单通道
-    if wav.ndim > 1:
-        wav = wav.T
-        wav = np.mean(wav, axis=tuple(range(wav.ndim - 1)))
-        is_change = True
-    # 重采样
-    if samplerate != target_sr:
-        wav = resampy.resample(wav, sr_orig=samplerate, sr_new=target_sr)
-        is_change = True
-    if is_change:
-        soundfile.write(audio_path, wav, samplerate=target_sr)
-
-
-# 过滤非法的字符
-def is_ustr(in_str):
-    out_str = ''
-    for i in range(len(in_str)):
-        if is_uchar(in_str[i]):
-            out_str = out_str + in_str[i]
-    return out_str
-
-
-# 判断是否为中文字符或者英文字符
-def is_uchar(uchar):
-    if uchar == ' ': return True
-    if u'\u4e00' <= uchar <= u'\u9fa5':
-        return True
-    if u'\u0030' <= uchar <= u'\u0039':
-        return False
-    if (u'\u0041' <= uchar <= u'\u005a') or (u'\u0061' <= uchar <= u'\u007a'):
-        return True
-    if uchar in ["'"]:
-        return True
-    if uchar in ['-', ',', '.', '>', '?']:
-        return False
-    return False
-
-
-# 生成噪声的数据列表
-def create_noise(path, noise_manifest_path, is_change_frame_rate=True, target_sr=16000):
-    if not os.path.exists(path):
-        logger.info('噪声音频文件为空，已跳过！')
-        return
-    json_lines = []
-    logger.info('正在创建噪声数据列表，路径：%s，请等待 ...' % path)
-    for file in tqdm(os.listdir(path)):
-        audio_path = os.path.join(path, file)
-        try:
-            # 噪声的标签可以标记为空
-            text = ""
-            # 重新调整音频格式并保存
-            if is_change_frame_rate:
-                change_rate(audio_path, target_sr=target_sr)
-            f_wave = wave.open(audio_path, "rb")
-            duration = f_wave.getnframes() / f_wave.getframerate()
-            json_lines.append(
-                json.dumps(
-                    {
-                        'audio_filepath': audio_path.replace('\\', '/'),
-                        'duration': duration,
-                        'text': text
-                    },
-                    ensure_ascii=False))
-        except Exception as e:
-            continue
-    with open(noise_manifest_path, 'w', encoding='utf-8') as f_noise:
-        for json_line in json_lines:
-            f_noise.write(json_line + '\n')
-
-
-# 获取全部字符
-def count_manifest(counter, manifest_path):
-    with open(manifest_path, 'r', encoding='utf-8') as f:
-        for line in tqdm(f.readlines()):
-            line = json.loads(line)
-            for char in line["text"].replace('\n', ''):
-                counter.update(char)
-    if os.path.exists(manifest_path.replace('train', 'test')):
-        with open(manifest_path.replace('train', 'test'), 'r', encoding='utf-8') as f:
-            for line in tqdm(f.readlines()):
-                line = json.loads(line)
-                for char in line["text"].replace('\n', ''):
-                    counter.update(char)
-
-
 def create_manifest_binary(train_manifest_path, test_manifest_path):
-    """
-    生成数据列表的二进制文件
+    """生成数据列表的二进制文件
+
     :param train_manifest_path: 训练列表的路径
+    :type train_manifest_path: str
     :param test_manifest_path: 测试列表的路径
-    :return:
+    :type test_manifest_path: str
     """
     for manifest_path in [train_manifest_path, test_manifest_path]:
         dataset_writer = DatasetWriter(manifest_path)
@@ -307,100 +215,3 @@ def create_manifest_binary(train_manifest_path, test_manifest_path):
             line = line.replace('\n', '')
             dataset_writer.add_data(line)
         dataset_writer.close()
-
-
-def decode_audio(file, sample_rate: int = 16000):
-    """读取音频，主要用于兜底读取，支持各种数据格式
-
-    Args:
-      file: Path to the input file or a file-like object.
-      sample_rate: Resample the audio to this sample rate.
-
-    Returns:
-      A float32 Numpy array.
-    """
-    resampler = av.audio.resampler.AudioResampler(format="s16", layout="mono", rate=sample_rate)
-
-    raw_buffer = io.BytesIO()
-    dtype = None
-
-    with av.open(file, metadata_errors="ignore") as container:
-        frames = container.decode(audio=0)
-        frames = _ignore_invalid_frames(frames)
-        frames = _group_frames(frames, 500000)
-        frames = _resample_frames(frames, resampler)
-
-        for frame in frames:
-            array = frame.to_ndarray()
-            dtype = array.dtype
-            raw_buffer.write(array)
-
-    audio = np.frombuffer(raw_buffer.getbuffer(), dtype=dtype)
-
-    # Convert s16 back to f32.
-    return audio.astype(np.float32) / 32768.0
-
-
-def _ignore_invalid_frames(frames):
-    iterator = iter(frames)
-
-    while True:
-        try:
-            yield next(iterator)
-        except StopIteration:
-            break
-        except av.error.InvalidDataError:
-            continue
-
-
-def _group_frames(frames, num_samples=None):
-    fifo = av.audio.fifo.AudioFifo()
-
-    for frame in frames:
-        frame.pts = None  # Ignore timestamp check.
-        fifo.write(frame)
-
-        if num_samples is not None and fifo.samples >= num_samples:
-            yield fifo.read()
-
-    if fifo.samples > 0:
-        yield fifo.read()
-
-
-def _resample_frames(frames, resampler):
-    # Add None to flush the resampler.
-    for frame in itertools.chain(frames, [None]):
-        yield from resampler.resample(frame)
-
-
-# 将音频流转换为numpy
-def buf_to_float(x, n_bytes=2, dtype=np.float32):
-    """Convert an integer buffer to floating point values.
-    This is primarily useful when loading integer-valued wav data
-    into numpy arrays.
-
-    Parameters
-    ----------
-    x : np.ndarray [dtype=int]
-        The integer-valued data buffer
-
-    n_bytes : int [1, 2, 4]
-        The number of bytes per sample in ``x``
-
-    dtype : numeric type
-        The target output type (default: 32-bit float)
-
-    Returns
-    -------
-    x_float : np.ndarray [dtype=float]
-        The input data buffer cast to floating point
-    """
-
-    # Invert the scale of the data
-    scale = 1.0 / float(1 << ((8 * n_bytes) - 1))
-
-    # Construct the format string
-    fmt = "<i{:d}".format(n_bytes)
-
-    # Rescale and format the data buffer
-    return scale * np.frombuffer(x, fmt).astype(dtype)

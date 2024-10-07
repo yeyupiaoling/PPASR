@@ -2,85 +2,100 @@
 
 训练保存的或者下载作者提供的模型都是模型参数，我们要将它导出为预测模型，这样可以直接使用模型，不再需要模型结构代码，同时使用Inference接口可以加速预测，详细参数请查看该程序。
 ```shell
-python export_model.py --resume_model=models/conformer_online_fbank/best_model/
+python export_model.py --resume_model=models/ConformerModel_fbank/best_model/
 ```
 
 输出结果：
 ```
-[2022-10-28 22:42:54.069936 INFO   ] utils:print_arguments:19 - ----------- 额外配置参数 -----------
-[2022-10-28 22:47:05.984016 INFO   ] utils:print_arguments:21 - configs: configs/conformer_online_zh.yml
-[2022-10-28 22:47:05.984016 INFO   ] utils:print_arguments:21 - resume_model: models/conformer_online_fbank/best_model/
-[2022-10-28 22:47:05.984016 INFO   ] utils:print_arguments:21 - save_model: models/
-[2022-10-28 22:47:05.984016 INFO   ] utils:print_arguments:21 - use_gpu: True
-[2022-10-28 22:42:54.069936 INFO   ] utils:print_arguments:22 - ------------------------------------------------
-[2022-10-28 22:42:54.069936 INFO   ] utils:print_arguments:23 - ----------- 配置文件参数 -----------
-[2022-10-28 22:42:54.069936 INFO   ] utils:print_arguments:26 - ctc_beam_search_decoder_conf:
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	alpha: 2.2
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	beam_size: 300
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	beta: 4.3
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	cutoff_prob: 0.99
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	cutoff_top_n: 40
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	language_model_path: lm/zh_giga.no_cna_cmn.prune01244.klm
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	num_processes: 10
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:26 - dataset_conf:
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	batch_size: 32
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	dataset_vocab: dataset/vocabulary.txt
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	manifest_type: txt
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	max_duration: 20
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	mean_istd_path: dataset/mean_istd.json
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	min_duration: 0.5
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	noise_manifest_path: dataset/manifest.noise
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	num_workers: 4
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	test_manifest: dataset/manifest.test
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:28 - 	train_manifest: dataset/manifest.train
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:30 - decoder: ctc_beam_search
-[2022-10-28 22:42:54.070936 INFO   ] utils:print_arguments:26 - decoder_conf:
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	attention_heads: 4
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	dropout_rate: 0.1
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	linear_units: 2048
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	num_blocks: 6
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	positional_dropout_rate: 0.1
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	self_attention_dropout_rate: 0.0
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	src_attention_dropout_rate: 0.0
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:26 - encoder_conf:
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	activation_type: swish
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	attention_dropout_rate: 0.0
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	attention_heads: 4
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	cnn_module_kernel: 15
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	dropout_rate: 0.1
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	input_layer: conv2d
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	linear_units: 2048
-[2022-10-28 22:42:54.079936 INFO   ] utils:print_arguments:28 - 	normalize_before: True
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	num_blocks: 12
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	output_size: 256
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	pos_enc_layer_type: rel_pos
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	positional_dropout_rate: 0.1
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	use_cnn_module: True
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:30 - metrics_type: cer
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:26 - model_conf:
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	ctc_weight: 0.3
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	length_normalized_loss: False
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	lsm_weight: 0.1
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:28 - 	reverse_weight: 0.0
-[2022-10-28 22:42:54.080939 INFO   ] utils:print_arguments:26 - optimizer_conf:
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	learning_rate: 0.001
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	warmup_steps: 25000
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	weight_decay: 1e-6
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:26 - preprocess_conf:
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	feature_method: fbank
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	n_mels: 80
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	n_mfcc: 40
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	sample_rate: 16000
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	target_dB: -20
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:28 - 	use_dB_normalization: True
-[2022-10-28 22:42:54.081940 INFO   ] utils:print_arguments:26 - train_conf:
-[2022-10-28 22:42:54.082940 INFO   ] utils:print_arguments:28 - 	accum_grad: 4
-[2022-10-28 22:42:54.082940 INFO   ] utils:print_arguments:28 - 	grad_clip: 5.0
-[2022-10-28 22:42:54.082940 INFO   ] utils:print_arguments:28 - 	log_interval: 100
-[2022-10-28 22:42:54.082940 INFO   ] utils:print_arguments:28 - 	max_epoch: 100
-[2022-10-28 22:42:54.082940 INFO   ] utils:print_arguments:30 - use_model: conformer_online
-[2022-10-28 22:42:54.082940 INFO   ] utils:print_arguments:31 - ------------------------------------------------
-[2021-09-18 10:23:47.022243] 成功恢复模型参数和优化方法参数：models/conformer_online_fbank/best_model/model.pdparams
-
-预测模型已保存：models/conformer_online_fbank/infer
+2024-09-21 15:33:53.584 | INFO     | ppasr.utils.utils:print_arguments:13 - ----------- 额外配置参数 -----------
+2024-09-21 15:33:53.585 | INFO     | ppasr.utils.utils:print_arguments:15 - configs: configs/conformer.yml
+2024-09-21 15:33:53.585 | INFO     | ppasr.utils.utils:print_arguments:15 - resume_model: models/ConformerModel_fbank/best_model/
+2024-09-21 15:33:53.585 | INFO     | ppasr.utils.utils:print_arguments:15 - save_model: models/
+2024-09-21 15:33:53.585 | INFO     | ppasr.utils.utils:print_arguments:15 - save_quant: False
+2024-09-21 15:33:53.585 | INFO     | ppasr.utils.utils:print_arguments:15 - use_gpu: True
+2024-09-21 15:33:53.585 | INFO     | ppasr.utils.utils:print_arguments:16 - ------------------------------------------------
+2024-09-21 15:33:53.607 | INFO     | ppasr.utils.utils:print_arguments:19 - ----------- 配置文件参数 -----------
+2024-09-21 15:33:53.607 | INFO     | ppasr.utils.utils:print_arguments:23 - dataset_conf:
+2024-09-21 15:33:53.607 | INFO     | ppasr.utils.utils:print_arguments:26 - 	batch_sampler:
+2024-09-21 15:33:53.607 | INFO     | ppasr.utils.utils:print_arguments:28 - 		batch_size: 6
+2024-09-21 15:33:53.607 | INFO     | ppasr.utils.utils:print_arguments:28 - 		drop_last: True
+2024-09-21 15:33:53.607 | INFO     | ppasr.utils.utils:print_arguments:28 - 		shuffle: True
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		sortagrad: True
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:26 - 	dataLoader:
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		num_workers: 4
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:26 - 	dataset:
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		manifest_type: txt
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		max_duration: 20
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		min_duration: 0.5
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		sample_rate: 16000
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		target_dB: -20
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		use_dB_normalization: True
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:30 - 	mean_istd_path: dataset/mean_istd.json
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:30 - 	test_manifest: dataset/manifest.test
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:30 - 	train_manifest: dataset/manifest.train
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:23 - decoder_conf:
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:26 - 	decoder_args:
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		attention_heads: 4
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		dropout_rate: 0.1
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		linear_units: 1024
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		num_blocks: 3
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		positional_dropout_rate: 0.1
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		r_num_blocks: 3
+2024-09-21 15:33:53.608 | INFO     | ppasr.utils.utils:print_arguments:28 - 		self_attention_dropout_rate: 0.1
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		src_attention_dropout_rate: 0.1
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:30 - 	decoder_name: BiTransformerDecoder
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:23 - encoder_conf:
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:26 - 	encoder_args:
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		activation_type: swish
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		attention_dropout_rate: 0.1
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		attention_heads: 4
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		cnn_module_kernel: 15
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		dropout_rate: 0.1
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		input_layer: conv2d
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		linear_units: 2048
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		normalize_before: True
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		num_blocks: 12
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		output_size: 256
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		pos_enc_layer_type: rel_pos
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		positional_dropout_rate: 0.1
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:28 - 		use_cnn_module: True
+2024-09-21 15:33:53.610 | INFO     | ppasr.utils.utils:print_arguments:30 - 	encoder_name: ConformerEncoder
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:23 - model_conf:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	model: ConformerModel
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:26 - 	model_args:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		ctc_weight: 0.3
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		length_normalized_loss: False
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		lsm_weight: 0.1
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		reverse_weight: 0.3
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		streaming: True
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:23 - optimizer_conf:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	optimizer: Adam
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:26 - 	optimizer_args:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		lr: 0.001
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		weight_decay: 1e-06
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	scheduler: WarmupLR
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:26 - 	scheduler_args:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		min_lr: 1e-05
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		warmup_steps: 25000
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:23 - preprocess_conf:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	feature_method: fbank
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:26 - 	method_args:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:28 - 		num_mel_bins: 80
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:23 - tokenizer_conf:
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	build_vocab_size: None
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	model_type: char
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	non_linguistic_symbols: []
+2024-09-21 15:33:53.611 | INFO     | ppasr.utils.utils:print_arguments:30 - 	remove_non_linguistic_symbols: False
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:30 - 	vocab_model_dir: dataset/vocab_model/
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:23 - train_conf:
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:30 - 	accum_grad: 4
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:30 - 	enable_amp: False
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:30 - 	grad_clip: 5.0
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:30 - 	log_interval: 100
+2024-09-21 15:33:53.612 | INFO     | ppasr.utils.utils:print_arguments:30 - 	max_epoch: 200
+2024-09-21 15:33:53.613 | INFO     | ppasr.utils.utils:print_arguments:30 - 	use_compile: False
+2024-09-21 15:33:53.613 | INFO     | ppasr.utils.utils:print_arguments:33 - ------------------------------------------------
+2024-09-21 15:33:53.979 | INFO     | ppasr.model_utils:build_model:23 - 成功创建模型：ConformerModel，参数为：{'streaming': True, 'ctc_weight': 0.3, 'lsm_weight': 0.1, 'reverse_weight': 0.3, 'length_normalized_loss': False, 'input_size': 80, 'vocab_size': 8000, 'mean_istd_path': 'dataset/mean_istd.json', 'sos_id': 2, 'eos_id': 3}
+2024-09-21 15:33:54.401 | INFO     | ppasr.trainer:export:615 - 成功恢复模型参数和优化方法参数：models/ConformerModel_fbank/best_model/model.pth
+2024-09-21 15:33:55.666 | INFO     | ppasr.trainer:export:627 - 预测模型已保存：models/ConformerModel_fbank/inference_model\inference.pth
 ```

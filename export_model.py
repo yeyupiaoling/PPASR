@@ -10,7 +10,7 @@ add_arg('configs',          str,   'configs/conformer.yml',    '配置文件')
 add_arg("use_gpu",          bool,  True,                       '是否使用GPU评估模型')
 add_arg("save_quant",       bool,  False,                      '是否保存量化模型')
 add_arg('save_model',       str,   'models/',                  '模型保存的路径')
-add_arg('resume_model',     str,   'models/conformer_streaming_fbank/best_model/', '准备导出的模型路径')
+add_arg('resume_model',     str,   'models/ConformerModel_fbank/best_model/', '准备转换的模型路径')
 args = parser.parse_args()
 print_arguments(args=args)
 

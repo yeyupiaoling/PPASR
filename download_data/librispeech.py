@@ -5,7 +5,7 @@ import os
 
 from utility import download, unpack, add_arguments
 
-URL_ROOT = "https://openslr.elda.org/resources/12"
+URL_ROOT = "https://https://openslr.trmal.net/resources/12"
 URL_TEST_CLEAN = URL_ROOT + "/test-clean.tar.gz"
 URL_TEST_OTHER = URL_ROOT + "/test-other.tar.gz"
 URL_DEV_CLEAN = URL_ROOT + "/dev-clean.tar.gz"
@@ -26,6 +26,7 @@ parser = argparse.ArgumentParser(description=__doc__)
 add_arg = functools.partial(add_arguments, argparser=parser)
 add_arg("target_dir", default="../dataset/audio/", type=str, help="存放音频文件的目录")
 add_arg("annotation_text", default="../dataset/annotation/", type=str, help="存放音频标注文件的目录")
+add_arg("filepath", default=None, type=str, help="提前下载好的数据集压缩文件夹")
 args = parser.parse_args()
 
 
@@ -49,13 +50,13 @@ def create_annotation_text(data_dir, annotation_path):
             for line in io.open(text_filepath, encoding="utf8"):
                 segments = line.strip().split()
                 text = ' '.join(segments[1:]).lower()
-                audio_filepath = os.path.join(subfolder, segments[0] + '.flac')
+                audio_filepath = os.path.join(subfolder, segments[0] + '.flac').replace('\\', '/')
                 if 'test-clean' not in subfolder and 'test-other' not in subfolder and \
                         'dev-other' not in subfolder and 'dev-other' not in subfolder:
-                    f_train.write(audio_filepath[3:] + '\t' + text + '\n')
+                    f_train.write(audio_filepath.replace('../', '') + '\t' + text + '\n')
                 else:
                     if 'test-clean' in subfolder:
-                        f_test.write(audio_filepath[3:] + '\t' + text + '\n')
+                        f_test.write(audio_filepath.replace('../', '') + '\t' + text + '\n')
     f_test.close()
     f_train.close()
 
@@ -63,8 +64,11 @@ def create_annotation_text(data_dir, annotation_path):
 def prepare_dataset(url, md5sum, target_dir, annotation_path):
     """Download, unpack and create summmary manifest file."""
     data_dir = os.path.join(target_dir, 'LibriSpeech')
-    # download
-    filepath = download(url, md5sum, target_dir)
+    if args.filepath is None:
+        # download
+        filepath = download(url, md5sum, target_dir)
+    else:
+        filepath = os.path.join(args.filepath, url.split("/")[-1])
     # unpack
     unpack(filepath, target_dir)
 

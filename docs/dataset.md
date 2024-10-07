@@ -1,6 +1,6 @@
 # 数据准备
 
-1. `download_data`目录是用来下载公开数据集和制作训练数据列表及词汇表的，本项目提供了下载公开的中文普通话语音数据集，分别是Aishell，Free ST-Chinese-Mandarin-Corpus，THCHS-30 这三个数据集，总大小超过28G。下载这三个数据只需要执行一下代码即可，当然如果想快速训练，也可以只下载其中一个。**注意：** `noise.py`可下载可不下载，这是用于训练时数据增强的，如果不想使用噪声数据增强，可以不用下载。
+1. 在`download_data`目录下是公开数据集的下载和制作训练数据列表和词汇表的，本项目提供了下载公开的中文普通话语音数据集，分别是Aishell，Free ST-Chinese-Mandarin-Corpus，THCHS-30 这三个数据集，总大小超过28G。下载这三个数据只需要执行一下代码即可，当然如果想快速训练，也可以只下载其中一个。**注意：** `noise.py`可下载可不下载，这是用于训练时数据增强的，如果不想使用噪声数据增强，可以不用下载。
 ```shell script
 cd download_data/
 python aishell.py
@@ -9,11 +9,11 @@ python thchs_30.py
 python noise.py
 ```
 
-**注意：** 这样下载慢，可以获取程序中的`DATA_URL`单独下载，用迅雷等下载工具，这样下载速度快很多。然后把下载的压缩文件放在`dataset/audio`目录下，就会自动跳过下载，直接解压文件文本生成数据列表。
+**注意：** 这样下载慢，可以获取程序中的`DATA_URL`单独下载，用迅雷等下载工具，这样下载速度快很多。然后通过参数`filepath`指定下载好的压缩文件路径，就会自动跳过下载，直接解压文件文本生成数据列表。
 
-2. 如果开发者有自己的数据集，可以使用自己的数据集进行训练，当然也可以跟上面下载的数据集一起训练。自定义的语音数据需要符合以下格式，另外对于音频的采样率，本项目默认使用的是16000Hz，在`create_data.py`中也提供了统一音频数据的采样率转换为16000Hz，只要`is_change_frame_rate`参数设置为True就可以。
+2. 如果开发者有自己的数据集，可以使用自己的数据集进行训练，当然也可以跟上面下载的数据集一起训练。自定义的语音数据需要符合以下格式。
     1. 语音文件需要放在`dataset/audio/`目录下，例如我们有个`wav`的文件夹，里面都是语音文件，我们就把这个文件存放在`dataset/audio/`。
-    2. 然后把数据列表文件存在`dataset/annotation/`目录下，程序会遍历这个文件下的所有数据列表文件。例如这个文件下存放一个`my_audio.txt`，它的内容格式如下。每一行数据包含该语音文件的相对路径和该语音文件对应的标注内容，他们之间用`\t`隔开。要注意的是该中文文本只能包含纯中文，不能包含标点符号、阿拉伯数字以及英文字母。
+    2. 然后把数据列表文件存在`dataset/annotation/`目录下，程序会遍历这个文件下的所有数据列表文件。例如这个文件下存放一个`my_audio.txt`，它的内容格式如下。每一行数据包含该语音文件的相对路径和该语音文件对应的标注内容，他们之间用`\t`隔开。
 
 中文的格式：
 ```
@@ -32,10 +32,30 @@ dataset/audio/LibriSpeech/dev-clean/1272/135031/1272-135031-0007.flac   he eats 
 dataset/audio/LibriSpeech/dev-clean/1272/135031/1272-135031-0008.flac   i hope he doesn't work too hard said shaggy
 ```
 
-3. 最后执行下面的数据集处理程序，详细参数请查看该程序。这个程序是把我们的数据集生成三个JSON格式的数据列表，分别是`manifest.test、manifest.train、manifest.noise`。然后建立词汇表，把所有出现的字符都存放子在`vocabulary.txt`文件中，一行一个字符。最后计算均值和标准差用于归一化，默认使用全部的语音计算均值和标准差，并将结果保存在`mean_istd.json`中。以上生成的文件都存放在`dataset/`目录下。数据划分说明，如果`dataset/annotation`存在`test.txt`，那全部测试数据都使用这个数据，否则使用全部数据的1/500的数据，直到指定的最大测试数据量。
+中英文混合的格式：
+```
+dataset/audio/wav/0175/H0175A0171.wav   今天是 sunday 明天就要 go to school
+dataset/audio/wav/0175/H0175A0377.wav   ok 今天天气不错
+```
+
+3. 最后执行下面的数据集处理程序，详细参数请查看该程序。这个程序是把我们的数据集生成JSON格式的训练和测试数据列表，分别是`manifest.test、manifest.train`。然后使用Sentencepiece建立词汇表模型，建立的词汇表模型默认存放子在`dataset/vocab_model`目录下。最后计算均值和标准差用于归一化，默认使用全部的语音计算均值和标准差，并将结果保存在`mean_istd.json`中。以上生成的文件都存放在`dataset/`目录下。数据划分说明，如果`dataset/annotation`存在`test.txt`，那全部测试数据都使用这个数据，否则使用全部数据的1/500的数据，直到指定的最大测试数据量。
 ```shell
 python create_data.py
 ```
+
+
+# 提取特征（可选）
+
+在训练过程中，首先是要读取音频数据，然后提取特征，最后再进行训练。其中读取音频数据、提取特征也是比较消耗时间的，所以我们可以选择提前提取好取特征，训练模型的是就可以直接加载提取好的特征，这样训练速度会更快。这个提取特征是可选择，如果没有提取好的特征，训练模型的时候就会从读取音频数据，然后提取特征开始。提取特征步骤如下：
+
+1. 执行`extract_features.py`，提取特征，特征会保存在`dataset/features`目录下，并生成新的数据列表`manifest_features.train`和`manifest_features.test`。
+
+```shell
+python extract_features.py --configs=configs/conformer.yml --save_dir=dataset/features
+```
+
+2. 修改配置文件，将`dataset_conf.train_manifest`和`dataset_conf.test_manifest`修改为`manifest_features.train`和`manifest_features.test`。
+
 
 # 超大数据集
 
@@ -56,9 +76,11 @@ python create_data.py --is_merge_audio=True
 ```yaml
 # 数据集参数
 dataset_conf:
-  # 数据列表类型，支持txt、binary
-  manifest_type: 'binary'
+  dataset:
+    # 数据列表类型，支持txt、binary
+    manifest_type: 'binary'
 ```
+
 
 # 常见公开数据集
 

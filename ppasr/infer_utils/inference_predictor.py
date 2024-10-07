@@ -2,10 +2,7 @@ import os
 
 import numpy as np
 import paddle.inference as paddle_infer
-
-from ppasr.utils.logger import setup_logger
-
-logger = setup_logger(__name__)
+from loguru import logger
 
 
 class InferencePredictor:
@@ -13,7 +10,7 @@ class InferencePredictor:
                  configs,
                  use_model,
                  streaming=True,
-                 model_dir='models/conformer_streaming_fbank/infer/',
+                 model_dir='models/ConformerModel_fbank/inference_model/',
                  use_gpu=True,
                  use_tensorrt=False,
                  gpu_mem=1000,
@@ -38,8 +35,8 @@ class InferencePredictor:
         self.att_cache = np.zeros([0, 0, 0, 0], dtype=np.float32)
         self.offset = np.array([0], dtype=np.int32)
         # 创建 config
-        model_path = os.path.join(model_dir, 'model.pdmodel')
-        params_path = os.path.join(model_dir, 'model.pdiparams')
+        model_path = os.path.join(model_dir, 'inference.pdmodel')
+        params_path = os.path.join(model_dir, 'inference.pdiparams')
         if not os.path.exists(model_path) or not os.path.exists(params_path):
             raise Exception("模型文件不存在，请检查%s和%s是否存在！" % (model_path, params_path))
         config = paddle_infer.Config(model_path, params_path)

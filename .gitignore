@@ -5,15 +5,12 @@ dataset/*
 !dataset/test.wav
 !dataset/test_long.wav
 log/
-data/__pycache__/
-utils/__pycache__/
 lm/
 tools/generate_audio/models/
 tools/generate_audio/dgk_lost_conv/
 tools/generate_audio/corpus.txt
-test.py
+test*.py
 android/
-convert_model.py
 build/
 dist/
 ppasr.egg-info/
