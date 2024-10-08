@@ -28,7 +28,7 @@ from ppasr.decoders.ctc_prefix_beam_search import ctc_prefix_beam_search
 from ppasr.model_utils import build_model
 from ppasr.optimizer import build_lr_scheduler, build_optimizer
 from ppasr.utils.checkpoint import save_checkpoint, load_pretrained, load_checkpoint
-from ppasr.utils.metrics import cer, wer
+from ppasr.utils.metrics import cer, wer, mer
 from ppasr.utils.summary import summary
 from ppasr.utils.utils import dict_to_object, print_arguments
 from ppasr.data_utils.utils import create_manifest, merge_audio
@@ -436,6 +436,7 @@ class PPASRTrainer(object):
         :param pretrained_model: 预训练模型的路径，当为None则不使用预训练模型
         :param augment_conf_path: 数据增强的配置文件，为json格式
         """
+        paddle.jit.enable_to_static(False)
         # 获取有多少张显卡训练
         nranks = paddle.distributed.get_world_size()
         self.local_rank = paddle.distributed.get_rank()
@@ -490,11 +491,11 @@ class PPASRTrainer(object):
             self.eval_loss, self.eval_error_result = self.evaluate()
             logger.info(
                 f'Test epoch: {epoch_id}, time/epoch: {str(timedelta(seconds=(time.time() - start_epoch)))}, '
-                f'loss: {self.eval_loss:.5f}, {self.configs.metrics_type}: {self.eval_error_result:.5f}, '
-                f'best {self.configs.metrics_type}: '
+                f'loss: {self.eval_loss:.5f}, {self.metrics_type}: {self.eval_error_result:.5f}, '
+                f'best {self.metrics_type}: '
                 f'{self.eval_error_result if self.eval_error_result <= self.eval_best_error_rate else self.eval_best_error_rate:.5f}')
             logger.info('=' * 70)
-            writer.add_scalar(f'Test/{self.configs.metrics_type}', self.eval_error_result, self.test_log_step)
+            writer.add_scalar(f'Test/{self.metrics_type}', self.eval_error_result, self.test_log_step)
             writer.add_scalar('Test/Loss', self.eval_loss, self.test_log_step)
             self.test_log_step += 1
             self.model.train()
@@ -521,6 +522,7 @@ class PPASRTrainer(object):
         :type max_text_duration: int
         :return: 评估结果
         """
+        paddle.jit.enable_to_static(False)
         if self.test_loader is None:
             # 获取测试数据
             self.__setup_dataloader(max_text_duration=max_text_duration)
@@ -556,16 +558,18 @@ class PPASRTrainer(object):
                 labels_str = self.tokenizer.ids2text(labels)
                 for out_string, label in zip(*(out_strings, labels_str)):
                     # 计算字错率或者词错率
-                    if self.configs.metrics_type == 'wer':
-                        error_rate = wer(out_string, label)
+                    if self.metrics_type == 'wer':
+                        error_rate = wer(label, out_string)
+                    elif self.metrics_type == 'mer':
+                        error_rate = mer(label, out_string)
                     else:
-                        error_rate = cer(out_string, label)
+                        error_rate = cer(label, out_string)
                     error_results.append(error_rate)
                     if display_result:
                         logger.info(f'预测结果为：{out_string}')
                         logger.info(f'实际标签为：{label}')
-                        logger.info(f'这条数据的{self.configs.metrics_type}：{round(error_rate, 6)}，'
-                                    f'当前{self.configs.metrics_type}：{round(sum(error_results) / len(error_results), 6)}')
+                        logger.info(f'这条数据的{self.metrics_type}：{round(error_rate, 6)}，'
+                                    f'当前{self.metrics_type}：{round(sum(error_results) / len(error_results), 6)}')
                         logger.info('-' * 70)
         loss = float(sum(losses) / len(losses)) if len(losses) > 0 else -1
         error_result = float(sum(error_results) / len(error_results)) if len(error_results) > 0 else -1
@@ -583,6 +587,7 @@ class PPASRTrainer(object):
         :param save_quant: 是否保存量化模型
         :return:
         """
+        paddle.jit.enable_to_static(True)
         # 获取训练数据
         audio_featurizer = AudioFeaturizer(**self.configs.preprocess_conf)
         tokenizer = PPASRTokenizer(**self.configs.tokenizer_conf)

@@ -23,10 +23,5 @@ def ctc_greedy_search(ctc_probs: paddle.Tensor,
     mask = make_pad_mask(ctc_lens, maxlen)  # (B, maxlen)
     topk_index = topk_index.masked_fill_(mask, blank_id)  # (B, maxlen)
     hyps = [hyp.tolist() for hyp in topk_index]
-    scores, _ = topk_prob.max(1)
-    scores = scores.cpu().detach().numpy().tolist()
-    results = []
-    for hyp, score in zip(hyps, scores):
-        r = remove_duplicates_and_blank(hyp, blank_id)
-        results.append(r)
+    results = [remove_duplicates_and_blank(hyp, blank_id) for hyp in hyps]
     return results

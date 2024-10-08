@@ -1,7 +1,5 @@
 import importlib
-from typing import Tuple, Dict
-
-import paddle
+from typing import Tuple
 
 from ppasr.data_utils.normalizer import FeatureNormalizer
 from ppasr.model_utils.loss.ctc import CTCLoss
@@ -152,23 +150,18 @@ class ConformerModel(paddle.nn.Layer):
                               ys_out_pad, ignore_label=self.ignore_id, )
         return loss_att, acc_att
 
-    @paddle.jit.to_static
     def ignore_symbol(self) -> int:
         return self.ignore_id
 
-    @paddle.jit.to_static
     def subsampling_rate(self) -> int:
         return self.encoder.embed.subsampling_rate
 
-    @paddle.jit.to_static
     def right_context(self) -> int:
         return self.encoder.embed.right_context
 
-    @paddle.jit.to_static
     def sos_symbol(self) -> int:
         return self.sos
 
-    @paddle.jit.to_static
     def eos_symbol(self) -> int:
         return self.eos
 
@@ -240,19 +233,21 @@ class ConformerModel(paddle.nn.Layer):
         assert encoder_out.shape[0] == 1
         num_hyps = hyps.shape[0]
         assert hyps_lens.shape[0] == num_hyps
-        encoder_out = encoder_out.repeat(num_hyps, 1, 1)
+        encoder_out = encoder_out.tile((num_hyps, 1, 1))
         encoder_mask = paddle.ones((num_hyps, 1, encoder_out.shape[1]), dtype=paddle.bool)
         r_hyps_lens = hyps_lens - 1
         r_hyps = hyps[:, 1:]
+
         max_len = paddle.max(r_hyps_lens)
-        index_range = paddle.arange(0, max_len, 1).to(encoder_out.device)
+        index_range = paddle.arange(0, max_len, 1)
         seq_len_expand = r_hyps_lens.unsqueeze(1)
         seq_mask = seq_len_expand > index_range  # (beam, max_len)
         index = (seq_len_expand - 1) - index_range  # (beam, max_len)
         index = index * seq_mask
-        r_hyps = paddle.gather(r_hyps, 1, index)
+        r_hyps = paddle.assign(paddle.take_along_axis(r_hyps, axis=1, indices=index))
         r_hyps = paddle.where(seq_mask, r_hyps, self.eos)
         r_hyps = paddle.concat([hyps[:, 0:1], r_hyps], axis=1)
+
         decoder_out, r_decoder_out, _ = self.decoder(encoder_out, encoder_mask, hyps, hyps_lens, r_hyps,
                                                      reverse_weight)  # (num_hyps, max_hyps_len, vocab_size)
         decoder_out = paddle.nn.functional.log_softmax(decoder_out, axis=-1)
@@ -261,5 +256,22 @@ class ConformerModel(paddle.nn.Layer):
 
     @paddle.no_grad()
     def export(self):
-        static_model = self.eval()
+        if self.streaming:
+            static_model = paddle.jit.to_static(
+                self.get_encoder_out_chunk,
+                input_spec=[
+                    paddle.static.InputSpec(shape=[1, None, self.input_size], dtype=paddle.float32),  # [B, T, D]
+                    paddle.static.InputSpec(shape=[1], dtype=paddle.int32),  # offset, int, but need be tensor
+                    paddle.static.InputSpec(shape=[1], dtype=paddle.int32),  # required_cache_size, int
+                    paddle.static.InputSpec(shape=[None, None, None, None], dtype=paddle.float32),  # att_cache
+                    paddle.static.InputSpec(shape=[None, None, None, None], dtype=paddle.float32)  # cnn_cache
+                ])
+        else:
+            static_model = paddle.jit.to_static(
+                self.get_encoder_out,
+                input_spec=[
+                    paddle.static.InputSpec(shape=[None, None, self.input_size], dtype=paddle.float32),  # [B, T, D]
+                    paddle.static.InputSpec(shape=[None], dtype=paddle.int64),  # audio_length, [B]
+                ])
+
         return static_model
