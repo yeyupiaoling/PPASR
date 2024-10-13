@@ -48,7 +48,7 @@ class DeepSpeech2Model(nn.Layer):
                                     **encoder_conf.encoder_args if encoder_conf.encoder_args is not None else {})
         self.decoder = CTCLoss(odim=vocab_size,
                                encoder_output_size=self.encoder.output_size,
-                               dopout_rate=0.1)
+                               dropout_rate=0.1)
 
     def forward(self, speech, speech_lengths, text, text_lengths):
         """Compute Model loss

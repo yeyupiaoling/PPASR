@@ -53,12 +53,12 @@ PPASR是一款基于PaddlePaddle实现的自动语音识别框架，PPASR中文�
 
 2. [AIShell](https://openslr.magicdatatech.com/resources/33) (179小时，普通话) 的预训练模型列表，错误率类型为字错率（CER）：
 
-|    使用模型     | 是否为流式 | 预处理方式 |          解码方式          | 自带的测试集 |   下载地址   |
-|:-----------:|:-----:|:-----:|:----------------------:|:------:|:--------:|
-|  Conformer  | True  | fbank |   ctc_greedy_search    |        | 加入知识星球获取 |
-|  Conformer  | True  | fbank | ctc_prefix_beam_search |        | 加入知识星球获取 |
-|  Conformer  | True  | fbank |  attention_rescoring   |        | 加入知识星球获取 |
-| DeepSpeech2 | True  | fbank |   ctc_greedy_search    |        | 加入知识星球获取 |
+|    使用模型     | 是否为流式 | 预处理方式 |          解码方式          | 自带的测试集  |   下载地址   |
+|:-----------:|:-----:|:-----:|:----------------------:|:-------:|:--------:|
+|  Conformer  | True  | fbank |   ctc_greedy_search    | 0.06110 | 加入知识星球获取 |
+|  Conformer  | True  | fbank | ctc_prefix_beam_search | 0.06114 | 加入知识星球获取 |
+|  Conformer  | True  | fbank |  attention_rescoring   | 0.05412 | 加入知识星球获取 |
+| DeepSpeech2 | True  | fbank |   ctc_greedy_search    |         | 加入知识星球获取 |
 
 
 3. [Librispeech](https://openslr.magicdatatech.com/resources/12) (960小时，普通话) 的预训练模型列表，错误率类型为词错率（WER）：
