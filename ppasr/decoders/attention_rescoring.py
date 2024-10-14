@@ -12,6 +12,7 @@ def attention_rescoring(
         ctc_lens: paddle.Tensor,
         encoder_outs: paddle.Tensor,
         encoder_lens: paddle.Tensor,
+        num_workers: int = 4,
         beam_size: int = 10,
         blank_id: int = 0,
         ctc_weight: float = 0.3,
@@ -24,6 +25,7 @@ def attention_rescoring(
     param ctc_lens: (B, ) 每个样本的实际长度
     param encoder_outs: (B, maxlen, encoder_dim) 编码器输出
     param encoder_lens: (B, ) 每个样本的实际长度
+    param num_workers: 并行解码的进程数
     param beam_size: 解码搜索大小
     param blank_id: 空白标签的id
     param ctc_weight: CTC解码器权重
@@ -34,8 +36,8 @@ def attention_rescoring(
     batch_size = encoder_outs.shape[0]
     sos, eos, ignore_id = model.sos_symbol(), model.eos_symbol(), model.ignore_symbol()
     # len(hyps) = beam_size, encoder_out: (1, maxlen, encoder_dim)
-    _, hyps_list = ctc_prefix_beam_search(ctc_probs=ctc_probs, ctc_lens=ctc_lens, blank_id=blank_id,
-                                          beam_size=beam_size)
+    _, hyps_list = ctc_prefix_beam_search(ctc_probs=ctc_probs, ctc_lens=ctc_lens, num_workers=num_workers,
+                                          blank_id=blank_id, beam_size=beam_size)
     assert len(hyps_list[0]) == beam_size
 
     results = []

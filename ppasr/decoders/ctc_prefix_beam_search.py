@@ -59,12 +59,14 @@ def run_ctc_prefix_beam_search(ctc_prob: List,
 
 def ctc_prefix_beam_search(ctc_probs: paddle.Tensor,
                            ctc_lens: paddle.Tensor,
+                           num_workers: int = 4,
                            beam_size: int = 10,
                            blank_id: int = 0) -> [List, List]:
     """CTC prefix beam search
 
     param ctc_probs: (B, maxlen, vocab_size) 模型编码器输出的概率分布
     param ctc_lens: (B, ) 每个样本的实际长度
+    param num_workers: 并行解码的进程数
     param beam_size: 解码搜索大小
     param blank_id: 空白标签的id
     return: 解码结果，和所有解码结果，用于attention_rescoring解码器使用
@@ -72,17 +74,16 @@ def ctc_prefix_beam_search(ctc_probs: paddle.Tensor,
     # 如果只有一条数据，直接解码
     batch_size = ctc_probs.shape[0]
     if batch_size == 1:
-        ctc_prob = ctc_probs[0].numpy().tolist()
+        ctc_prob = ctc_probs[0].tolist()
         num_t = ctc_lens[0].item()
         return run_ctc_prefix_beam_search(ctc_prob, num_t, beam_size, blank_id)
     # 多进程并行解码
-    cpu_count = multiprocessing.cpu_count()
-    num_processes = min(batch_size, cpu_count)
+    num_processes = min(batch_size, num_workers)
     # 创建进程池
     pool = multiprocessing.Pool(processes=num_processes)
     processes_results = []
     for i in range(batch_size):
-        ctc_prob = ctc_probs[i].numpy().tolist()
+        ctc_prob = ctc_probs[i].tolist()
         num_t = ctc_lens[i].item()
         args = (ctc_prob, num_t, beam_size, blank_id)
         processes_results.append(pool.apply_async(run_ctc_prefix_beam_search, args))
