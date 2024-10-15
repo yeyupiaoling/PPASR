@@ -14,5 +14,6 @@ typeguard>=2.13.3
 onnxruntime>=1.17.1
 sentencepiece>=0.2.0
 loguru>=0.7.2
-yeaudio>=0.0.2
+yeaudio>=0.0.6
+kaldi_native_fbank>=1.20.0
 tqdm

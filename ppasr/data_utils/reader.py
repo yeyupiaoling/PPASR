@@ -84,7 +84,6 @@ class PPASRDataset(Dataset):
             start_frame, end_frame = data_list["start_frame"], data_list["end_frame"]
             feature = np.load(audio_file)
             feature = feature[start_frame:end_frame, :]
-            feature = paddle.to_tensor(feature, dtype=paddle.float32)
         else:
             if 'start_time' not in data_list.keys():
                 # 读取音频
@@ -107,13 +106,11 @@ class PPASRDataset(Dataset):
                                                        sample_rate=audio_segment.sample_rate)
         # 特征增强
         if self.mode == 'train':
-            if isinstance(feature, paddle.Tensor):
-                feature = feature.cpu().numpy()
             if self.spec_augment is not None:
                 feature = self.spec_augment(feature)
             if self.spec_sub_augment is not None:
                 feature = self.spec_sub_augment(feature)
-            feature = paddle.to_tensor(feature, dtype=paddle.float32)
+        feature = paddle.to_tensor(feature, dtype=paddle.float32)
         # 有些任务值需要音频特征
         if self._tokenizer is None:
             return feature

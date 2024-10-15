@@ -1,4 +1,5 @@
 import multiprocessing
+import platform
 from collections import defaultdict
 from typing import List
 
@@ -76,8 +77,19 @@ def ctc_prefix_beam_search(ctc_probs: paddle.Tensor,
     if batch_size == 1:
         ctc_prob = ctc_probs[0].tolist()
         num_t = ctc_lens[0].item()
-        return run_ctc_prefix_beam_search(ctc_prob, num_t, beam_size, blank_id)
-    # 多进程并行解码
+        result, hyps = run_ctc_prefix_beam_search(ctc_prob, num_t, beam_size, blank_id)
+        return [result], [hyps]
+    # Windows系统不支持多进程
+    if platform.system() == 'Windows':
+        results, hyps_list = [], []
+        for i in range(batch_size):
+            ctc_prob = ctc_probs[i].tolist()
+            num_t = ctc_lens[i].item()
+            result, hyps = run_ctc_prefix_beam_search(ctc_prob, num_t, beam_size, blank_id)
+            results.append(result)
+            hyps_list.append(hyps)
+        return results, hyps_list
+    # 其他系统使用多进程并行解码
     num_processes = min(batch_size, num_workers)
     # 创建进程池
     pool = multiprocessing.Pool(processes=num_processes)
